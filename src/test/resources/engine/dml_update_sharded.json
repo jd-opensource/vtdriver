@@ -1,0 +1,411 @@
+[
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0),('11', 1), ('22', 0)"
+    ],
+    "updateSql": "update :ks.engine_test set f_tinyint = 1 where f_key = '11'",
+    "updateCount": 2,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "needSort": true,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0), ('22', 0),('11', 3), ('22', 2)"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key = '11'",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select f_tinyint from engine_test order by f_tinyint"
+    ],
+    "needSort": false,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 0
+        },
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 2
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with alias",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0), ('22', 0)"
+    ],
+    "updateSql": "update engine_test as engine_test_alias set f_tinyint = 1 where engine_test_alias.f_key = '11'",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "needSort": true,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with parenthesized expression",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0), ('22', 0)"
+    ],
+    "updateSql": "update engine_test set :ks.engine_test.f_tinyint = 1 where (:ks.engine_test.f_key = '11')",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "needSort": true,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with multi-part where clause with parens",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0), ('22', 0)"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where (f_tinyint = 0 and f_key = '11')",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id, changing one vindex column, using order by and limit",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint) values('11', 0), ('22', 0)"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key = '11' order by :ks.engine_test.f_key asc limit 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id, stray where clause",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('22', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key = f_varchar and f_key = '11'",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1
+        },
+        {
+          "f_tinyint": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update columns of multi column vindex",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('22', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1, f_varchar = '22' where f_key = '11'",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "22"
+        },
+        {
+          "f_tinyint": 0,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with no primary vindex on where clause (scatter update)",
+    "initSql": [
+      "delete from engine_test;",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('22', 0, '00');",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) VALUES('33', 0, '11'), ('44', 0, '00');",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) VALUES('55', 0, '11'), ('66', 0, '00');"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1",
+    "updateCount": 6,
+    "affectedRows": 6,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "needSort": true,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "00"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "00"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with non-comparison expr",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('33', 0, '00')",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) VALUES('22', 0, '11'), ('55', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key between '11' and '33'",
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "needSort": true,
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "00"
+        },
+        {
+          "f_tinyint": 0,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with primary id through IN clause",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('33', 0, '00')",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) VALUES('22', 0, '11'), ('55', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key in ('11', '22', '33')",
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "00"
+        },
+        {
+          "f_tinyint": 0,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with non-unique key",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '33'), ('22', 0, '33'), ('22', 0, '33'), ('22', 0, '33'), ('22', 0, '66')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_varchar = '33'",
+    "updateCount": 4,
+    "affectedRows": 4,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test order by f_tinyint"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 0,
+          "f_varchar": "66"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "33"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "33"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "33"
+        },
+        {
+          "f_tinyint": 1,
+          "f_varchar": "33"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with where clause with parens",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('22', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where (f_varchar = '11' or f_key = '11')",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 0,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update vindex value to null with complex where clause",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(f_key,f_tinyint,f_varchar) values('11', 0, '11'), ('22', 0, '00')"
+    ],
+    "updateSql": "update engine_test set f_tinyint = 1 where f_key + 11 = '22'",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select f_tinyint, f_varchar from engine_test"
+    ],
+    "verifyResult": [
+      [
+        {
+          "f_tinyint": 1,
+          "f_varchar": "11"
+        },
+        {
+          "f_tinyint": 0,
+          "f_varchar": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from engine_test",
+      "insert into engine_test(id,f_key,f_tinyint) values(1, '11', 0),(2, '11', 1), (3, '22', 0)"
+    ],
+    "updateSql": "update engine_test set f_key = '1' where f_key = '11'",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: You can't update primary vindex columns."
+  }
+]

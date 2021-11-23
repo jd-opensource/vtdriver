@@ -1,0 +1,525 @@
+[
+  {
+    "comment": "# update split-table key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(99,'11', 0),(1,'11', 1), (98,'22', 0)"
+    ],
+    "query": "update table_engine_test set id=10,f_key=1 where f_key = '11'",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: You can't update primary tindex columns. Invalid update on tindex:"
+  },
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(99,'11', 0),(1,'11', 1), (98,'22', 0)"
+    ],
+    "query": "update :ks.table_engine_test set f_tinyint = 1 where f_key = '11'",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 0
+      }
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(97,'11', 1), (2,'22', 0),(96,'11', 3), (3,'22', 2)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_key = '11'",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test order by f_tinyint",
+    "needSort": false
+  },
+  {
+    "comment": "# update by primary keyspace id with alias",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(95,'11', 0), (4,'22', 0)"
+    ],
+    "query": "update table_engine_test as table_engine_test_alias set f_tinyint = 1 where table_engine_test_alias.f_key = '11'",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0
+      },
+      {
+        "f_tinyint": 1
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# update by primary keyspace id with parenthesized expression",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(94,'11', 1), (6,'22', 0)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where (f_key = '11')",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 0,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0
+      },
+      {
+        "f_tinyint": 1
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# update by primary keyspace id with multi-part where clause with parens",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(93,'11', 0), (7,'22', 0)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where (f_tinyint = 0 and f_key = '11')",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0
+      },
+      {
+        "f_tinyint": 1
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# update by primary keyspace id, changing one vindex column, using order by and limit",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(92,'11', 1), (7,'22', 0)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_key = '11' order by f_key asc limit 1",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 0,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0
+      },
+      {
+        "f_tinyint": 1
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# update by primary keyspace id, stray where clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(2, '11', 2), (3, '11', 4)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_tinyint = id and f_key = '11'",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 4
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# update columns of multi column vindex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(91,'11', 0, false), (8,'22', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1, f_bit = true where f_key = '11'",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 0,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update with no primary vindex on where clause (scatter update)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(90,'11', 1, true), (9,'22', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update with non-comparison expr",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(89,'11', 0, true), (10,'22', 1, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_key between '11' and '22'",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update with primary id through IN clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(10,'11', 0, true), (9,'abc', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_key in ('11', 'abc')",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 2,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update with non-unique key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(88,'11', 0, true), (11,'13', 0, true), (87,'12', 1, true), (12,'12', 0, true), (86,'12', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_bit = true",
+    "updateVar": [],
+    "updateCount": 4,
+    "affectUpdateCount": 3,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "f_bit": false
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      }
+    ],
+    "needSort": false,
+    "verifySql": "select f_tinyint, f_bit from table_engine_test order by f_tinyint"
+  },
+  {
+    "comment": "# update with where clause with parens",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(85,'11', 0, false), (13,'22', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where (f_bit = true or f_key = '11')",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": false
+      },
+      {
+        "f_tinyint": 0,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update vindex value to null with complex where clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(86,'11', 0, true), (14,'22', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_key + 11 = '22'",
+    "updateVar": [],
+    "updateCount": 1,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 0,
+        "f_bit": false
+      }
+    ],
+    "verifySql": "select f_tinyint, f_bit from table_engine_test"
+  },
+  {
+    "comment": "# update split-table key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(99,'11', 0),(1,'11', 1), (98,'22', 0)"
+    ],
+    "query": "update table_engine_test set id=10,f_key=1 where f_key = '11'",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: You can't update primary tindex columns. Invalid update on tindex:"
+  },
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint) values(99,'11', 0),(1,'11', 1), (98,'22', 0);"
+    ],
+    "query": "update :ks.table_engine_test set f_tinyint = 1 where f_key = '11';",
+    "updateVar": [],
+    "updateCount": 2,
+    "affectUpdateCount": 1,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifySql": "select f_tinyint from table_engine_test",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 0
+      }
+    ]
+  },
+  {
+    "comment": "# update with non-unique key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(88,'11', 0, true), (11,'13', 0, true), (87,'12', 1, true), (12,'12', 0, true), (86,'12', 0, false)"
+    ],
+    "query": "update table_engine_test set f_tinyint = 1 where f_bit = true",
+    "updateVar": [],
+    "updateCount": 4,
+    "affectUpdateCount": 3,
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "f_bit": false
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      },
+      {
+        "f_tinyint": 1,
+        "f_bit": true
+      }
+    ],
+    "needSort": false,
+    "verifySql": "select f_tinyint, f_bit from table_engine_test order by f_tinyint;"
+  }
+]

@@ -1,0 +1,147 @@
+[
+  {
+    "comment": "# delete from, no owned vindexes, single shard",
+    "initSql": [
+      "delete from music",
+      "INSERT INTO `music` (`id`, `user_id`, `col`) VALUES (1, 1, '1'),(2, 2, '1'),(3, 1, '1'),(4, 2, '1'),(5, 21, '1'),(6, 21, '1');"
+    ],
+    "deleteSql": "delete from music where user_id = 1",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      4
+    ],
+    "verifySql": [
+      "select count(*) from music"
+    ]
+  },
+  {
+    "comment": "# delete from, no owned vindexes",
+    "initSql": [
+      "delete from music",
+      "INSERT INTO `music` (`id`, `user_id`, `col`) VALUES (1, 1, '1'),(2, 2, '1'),(3, 1, '1'),(4, 3, '1'),(5, 4, '1'),(6, 5, '1');"
+    ],
+    "deleteSql": "delete from music where user_id = 4 or user_id = 5",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      4
+    ],
+    "verifySql": [
+      "select count(*) from music"
+    ]
+  },
+  {
+    "comment": "# delete from with no where clause",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id) VALUES (100, 101, 101),(200, 102, 102),(300, 103, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_extra",
+    "deleteUpdateCount": 5,
+    "verifyResult": [
+      0
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with no where clause & explicit keyspace reference",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id) VALUES (100, 101, 101),(200, 102, 102),(300, 103, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from :ks.user_extra",
+    "deleteUpdateCount": 5,
+    "verifyResult": [
+      0
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete with non-comparison expr, single shard",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id) VALUES (100, 1, 101),(200, 1, 102),(300, 2, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_extra where user_id between 1 and 2",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      2
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete with non-comparison expr",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id) VALUES (1, 1, 101),(2, 2, 102),(3, 3, 103),(4, 4, 104),(5, 5, 105)",
+      "insert into user_extra(id, user_id, extra_id) VALUES (6, 6, 101),(7, 7, 102),(8, 8, 103),(9, 9, 104),(10, 10, 105)"
+    ],
+    "deleteSql": "delete from user_extra where user_id between 3 and 5",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      7
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with no index match",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id, email) VALUES (100, 1, 101,'jose'),(200, 1, 102,'abc'),(300, 2, 103,'jose'),(400, 104, 104,'abc'),(500, 105, 105,'abc')"
+    ],
+    "deleteSql": "delete from user_extra where email = 'jose'",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      3
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with primary id in through IN clause, single shard",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id, email) VALUES (100, 1, 101,'jose'),(200, 1, 102,'abc'),(300, 2, 103,'jose'),(400, 104, 104,'abc'),(500, 105, 105,'abc')"
+    ],
+    "deleteSql": "delete from user_extra where user_id in (1, 2)",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      2
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with primary id in through IN clause",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id, email) VALUES (100, 4, 101,'jose'),(200, 5, 102,'abc'),(300, 6, 103,'jose'),(400, 7, 104,'abc'),(500, 8, 105,'abc')"
+    ],
+    "deleteSql": "delete from :ks.user_extra where user_id in (4, 5)",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      3
+    ],
+    "verifySql": [
+      "select count(*) from user_extra"
+    ]
+  },
+  {
+    "comment": "# error in from",
+    "initSql": [],
+    "deleteSql": "delete from user_extra and user_extra.Id < 300",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found",
+    "verifyResult": [],
+    "verifySql": []
+  }
+]

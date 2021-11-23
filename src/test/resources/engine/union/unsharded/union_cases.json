@@ -1,0 +1,441 @@
+[
+  {
+    "comment": "# union of information_schema",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "skipResultCheck": true,
+    "query": "select PLUGIN_NAME from information_schema.PLUGINS union select PLUGIN_NAME from information_schema.PLUGINS",
+    "verifyResult": []
+  },
+  {
+    "comment": "# union all between two scatter selects",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded_extra union all select id from user_unsharded",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded_extra where id = 100 union all select id from user_unsharded where id = 1",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 100
+      }
+    ]
+  },
+  {
+    "comment": "# almost dereks query - two queries with order by and limit being scattered to two different sets of tablets",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "(select id, name from user_unsharded order by id asc limit 1) union all (select id, name from user_unsharded order by id desc limit 1)",
+    "verifyResult": [
+      {
+        "id": 1,
+        "name": "101"
+      },
+      {
+        "id": 5,
+        "name": "105"
+      }
+    ]
+  },
+  {
+    "comment": " Union all",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select id, name from user_unsharded union all select id, name from user_unsharded",
+    "verifyResult": [
+      {
+        "id": 1,
+        "name": "101"
+      },
+      {
+        "id": 2,
+        "name": "102"
+      },
+      {
+        "id": 3,
+        "name": "103"
+      },
+      {
+        "id": 4,
+        "name": "104"
+      },
+      {
+        "id": 5,
+        "name": "105"
+      },
+      {
+        "id": 1,
+        "name": "101"
+      },
+      {
+        "id": 2,
+        "name": "102"
+      },
+      {
+        "id": 3,
+        "name": "103"
+      },
+      {
+        "id": 4,
+        "name": "104"
+      },
+      {
+        "id": 5,
+        "name": "105"
+      }
+    ]
+  },
+  {
+    "comment": " union operations in subqueries (FROM)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from (select id, name from user_unsharded union all select id, name from user_unsharded) as t",
+    "verifyResult": [
+      {
+        "id": 1,
+        "name": "101"
+      },
+      {
+        "id": 2,
+        "name": "102"
+      },
+      {
+        "id": 3,
+        "name": "103"
+      },
+      {
+        "id": 4,
+        "name": "104"
+      },
+      {
+        "id": 5,
+        "name": "105"
+      },
+      {
+        "id": 1,
+        "name": "101"
+      },
+      {
+        "id": 2,
+        "name": "102"
+      },
+      {
+        "id": 3,
+        "name": "103"
+      },
+      {
+        "id": 4,
+        "name": "104"
+      },
+      {
+        "id": 5,
+        "name": "105"
+      }
+    ]
+  },
+  {
+    "comment": " union all between two scatter selects, with order by",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "(select id from user_unsharded_extra order by id limit 2) union all (select id from user_unsharded_extra order by id desc limit 3) ",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": " union all on scatter and single route",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded_extra where user_id = 101 union select id from user_unsharded_extra where user_id = 102 union all select id from user_unsharded_extra",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# count(id)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(id) from user_unsharded_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# count(*)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(*) from user_unsharded_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# distinct(id)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select distinct(id) from user_unsharded_extra",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# count(distinct(id))",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(distinct(id)) from user_unsharded_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "multi": false,
+    "query": "select name from user_unsharded where name in ( select name from user_unsharded ) order by name limit 3",
+    "verifyResult": [
+      {
+        "name": "101"
+      },
+      {
+        "name": "102"
+      },
+      {
+        "name": "103"
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "multi": false,
+    "query": "select name from user_unsharded where name in ( select name from user_unsharded ) order by name limit 1,1",
+    "verifyResult": [
+      {
+        "name": "102"
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where id = 222 union all select id from user_unsharded_extra where id = 200",
+    "verifyResult": [
+      {
+        "id": 200
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where id = 222 union all select id from user_unsharded_extra where id = 555",
+    "verifyResult": []
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where id = 2 union all select id from user_unsharded_extra where id = 200",
+    "verifyResult": [
+      {
+        "id": 2
+      },
+      {
+        "id": 200
+      }
+    ]
+  }
+]

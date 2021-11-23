@@ -1,0 +1,286 @@
+/*
+Copyright 2021 JD Project Authors. Licensed under Apache-2.0.
+
+Copyright 2019 The Vitess Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package com.jd.jdbc.engine.table;
+
+import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
+import com.jd.jdbc.IExecute;
+import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.context.IContext;
+import com.jd.jdbc.engine.Engine;
+import com.jd.jdbc.engine.InsertEngine;
+import com.jd.jdbc.engine.PrimitiveEngine;
+import com.jd.jdbc.engine.SequenceCache;
+import com.jd.jdbc.engine.Vcursor;
+import com.jd.jdbc.planbuilder.MultiQueryPlan;
+import com.jd.jdbc.sqlparser.ast.SQLExpr;
+import com.jd.jdbc.sqlparser.ast.statement.SQLInsertStatement;
+import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceStatement;
+import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertStatement;
+import com.jd.jdbc.sqlparser.utils.TableNameUtils;
+import com.jd.jdbc.sqltypes.SqlTypes;
+import com.jd.jdbc.sqltypes.VtPlanValue;
+import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.tindexes.ActualTable;
+import com.jd.jdbc.tindexes.LogicTable;
+import com.jd.jdbc.vindexes.VKeyspace;
+import io.vitess.proto.Query;
+import io.vitess.proto.Topodata;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class TableInsertEngine implements PrimitiveEngine {
+    private static final SequenceCache SEQUENCE_CACHE = new SequenceCache();
+
+    /**
+     * Opcode is the execution opcode.
+     */
+    private Engine.InsertOpcode insertOpcode;
+
+    /**
+     * Keyspace specifies the keyspace to send the query to.
+     */
+    private VKeyspace keyspace;
+
+    /**
+     * Query specifies the query to be executed.
+     * For InsertSharded plans, this value is unused,
+     * and Prefix, Mid and Suffix are used instead.
+     */
+    private MySqlInsertReplaceStatement insertReplaceStmt;
+
+    /**
+     * midExprList for sharded insert plans.
+     */
+    private List<SQLInsertStatement.ValuesClause> midExprList;
+
+    /**
+     * VindexValues specifies values for all the vindex columns.
+     * This is a three-dimensional data structure:
+     * Insert.Values[i] represents the values to be inserted for the i'th colvindex (i < len(Insert.Table.ColumnVindexes))
+     * Insert.Values[i].Values[j] represents values for the j'th column of the given colVindex (j < len(colVindex[i].Columns)
+     * Insert.Values[i].Values[j].Values[k] represents the value pulled from row k for that column: (k < len(ins.rows))
+     */
+    private List<VtPlanValue> vindexValueList;
+
+    private LogicTable table;
+
+    /**
+     * Generate is only set for inserts where a sequence must be generated.
+     */
+    private InsertEngine.Generate generate;
+
+    /**
+     * Option to override the standard behavior and allow a multi-shard insert
+     * to use single round trip autocommit.
+     * <p>
+     * This is a clear violation of the SQL semantics since it means the statement
+     * is not atomic in the presence of PK conflicts on one shard and not another.
+     * However some application use cases would prefer that the statement partially
+     * succeed in order to get the performance benefits of autocommit.
+     */
+    private Boolean multiShardAutocommit;
+
+    private long insertId;
+
+    private InsertEngine insertEngine;
+
+    public TableInsertEngine(final Engine.InsertOpcode insertOpcode, final VKeyspace keyspace, final LogicTable table) {
+        this.insertOpcode = insertOpcode;
+        this.keyspace = keyspace;
+        this.table = table;
+        this.generate = null;
+        this.multiShardAutocommit = Boolean.FALSE;
+    }
+
+    @Override
+    public String getKeyspaceName() {
+        return null;
+    }
+
+    @Override
+    public String getTableName() {
+        if (this.table != null) {
+            return this.table.getLogicTable();
+        }
+        return "";
+    }
+
+    @Override
+    public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
+        if (ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER) {
+            throw new SQLException("insert is not allowed for read only connection");
+        }
+        switch (this.insertOpcode) {
+            case InsertUnsharded:
+                return this.execInsertUnsharded(ctx, vcursor, bindVariableMap, wantFields);
+            case InsertSharded:
+            case InsertShardedIgnore:
+                return execInsertSharded(ctx, vcursor, bindVariableMap, wantFields);
+            default:
+                throw new SQLException("unsupported query route: " + this.insertOpcode);
+        }
+    }
+
+    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantField)
+        throws SQLException {
+
+        List<ActualTable> actualTables = new ArrayList<>();
+        List<List<Query.Value>> indexesPerTable = new ArrayList<>();
+        buildActualTables(bindVariableMap, actualTables, indexesPerTable);
+
+        List<SQLInsertStatement.ValuesClause> innerEngineMidExprList = this.insertReplaceStmt.getValuesList();
+        return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, null, innerEngineMidExprList);
+    }
+
+    private IExecute.ExecuteMultiShardResponse execInsertSharded(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantField)
+        throws SQLException {
+
+        List<ActualTable> actualTables = new ArrayList<>();
+        List<List<Query.Value>> indexesPerTable = new ArrayList<>();
+        buildActualTables(bindVariableMap, actualTables, indexesPerTable);
+
+        // temp store inner insert engine's insert data rows and their corresponding plan value list
+        // as rows and their corresponding plan value will be redistributed to different tables
+        List<VtPlanValue> innerEnginePlanValueList = this.insertEngine.getVindexValueList().get(0).getVtPlanValueList().get(0).getVtPlanValueList();
+        List<SQLInsertStatement.ValuesClause> innerEngineMidExprList = this.insertEngine.getMidExprList();
+        return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, innerEnginePlanValueList, innerEngineMidExprList);
+    }
+
+    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantField,
+                                                                            List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable, List<VtPlanValue> innerEnginePlanValueList,
+                                                                            List<SQLInsertStatement.ValuesClause> innerEngineMidExprList) throws SQLException {
+        List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
+        List<PrimitiveEngine> sourceList = new ArrayList<>();
+        List<Map<String, Query.BindVariable>> batchBindVariableMap = new ArrayList<>();
+        Map<String, LogicTable> shardTableLTMap = new HashMap<>();
+
+        List<VtPlanValue> tempRouteValueList = new ArrayList<>();
+        List<VtPlanValue> bList = new ArrayList<>();
+        bList.add(new VtPlanValue());
+        tempRouteValueList.add(new VtPlanValue(bList));
+
+        for (int i = 0; i < actualTables.size(); i++) {
+            ActualTable actualTable = actualTables.get(i);
+            shardTableLTMap.put(actualTable.getActualTableName(), actualTable.getLogicTable());
+            List<Query.Value> indexes = indexesPerTable.get(i);
+            List<VtPlanValue> tempInnerPlanValueList = new ArrayList<>();
+            List<SQLInsertStatement.ValuesClause> valuesClauseList = new ArrayList<>();
+            for (Query.Value idx : indexes) {
+                long index = Long.parseLong(idx.getValue().toString(StandardCharsets.UTF_8));
+                valuesClauseList.add(innerEngineMidExprList.get(Math.toIntExact(index)));
+                if (innerEnginePlanValueList != null) {
+                    tempInnerPlanValueList.add(innerEnginePlanValueList.get(Math.toIntExact(index)));
+                }
+            }
+            Map<String, String> switchTables = new HashMap<>();
+            switchTables.put(actualTable.getLogicTable().getLogicTable(), actualTable.getActualTableName());
+            Map<String, Query.BindVariable> bindVarClone = new HashMap<>(bindVariableMap);
+
+            tempRouteValueList.get(0).getVtPlanValueList().get(0).setVtPlanValueList(tempInnerPlanValueList);
+            shardQueryList.add(getChangedInsertQueries(ctx, vcursor, bindVarClone, switchTables, valuesClauseList, tempRouteValueList));
+            sourceList.add(this.insertEngine);
+            batchBindVariableMap.add(bindVariableMap);
+        }
+        PrimitiveEngine primitive = MultiQueryPlan.buildMultiQueryPlan(sourceList, shardQueryList, batchBindVariableMap);
+        VtResultSet resultSet = Engine.execCollectMultQueries(ctx, primitive, vcursor, wantField, shardTableLTMap);
+        return new IExecute.ExecuteMultiShardResponse(resultSet).setUpdate();
+    }
+
+    private void buildActualTables(Map<String, Query.BindVariable> bindVariableMap, List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable) throws SQLException {
+        Map<String, Integer> actualTableIndex = new HashMap<>();
+        // compute target table partitions and their corresponding value's index
+        for (int rowNum = 0; rowNum < this.vindexValueList.size(); rowNum++) {
+            VtPlanValue planValue = this.vindexValueList.get(rowNum);
+            VtValue rowResolvedValue = planValue.resolveValue(bindVariableMap);
+            String col = this.table.getTindexCol().getColumnName();
+            String name = Engine.insertVarName(col, rowNum);
+            bindVariableMap.put(name, SqlTypes.valueBindVariable(rowResolvedValue));
+            ActualTable actualTable = this.table.map(rowResolvedValue);
+            if (actualTable == null) {
+                throw new SQLException("cannot calculate split table, logic table: " + table.getLogicTable());
+            }
+            Query.Value index = Query.Value.newBuilder().setValue(ByteString.copyFrom(String.valueOf(rowNum).getBytes())).build();
+            if (actualTableIndex.containsKey(actualTable.getActualTableName())) {
+                indexesPerTable.get(actualTableIndex.get(actualTable.getActualTableName())).add(index);
+            } else {
+                actualTables.add(actualTable);
+                actualTableIndex.put(actualTable.getActualTableName(), actualTables.size() - 1);
+                indexesPerTable.add(Lists.newArrayList(index));
+            }
+        }
+    }
+
+    private IExecute.ResolvedShardQuery getChangedInsertQueries(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindValues, final Map<String, String> switchTables,
+                                                                final List<SQLInsertStatement.ValuesClause> valuesList, final List<VtPlanValue> tempPlanValueList) throws SQLException {
+        StringBuilder prefixBuf = new StringBuilder();
+        StringBuilder suffixBuf = new StringBuilder();
+
+        if (this.insertReplaceStmt instanceof MySqlInsertStatement) {
+            prefixBuf.append("insert ");
+        } else {
+            prefixBuf.append("replace ");
+        }
+        if (this.insertReplaceStmt.isIgnore()) {
+            prefixBuf.append("ignore ");
+        }
+        String tableName = TableNameUtils.getTableSimpleName(this.insertReplaceStmt.getTableSource()).toLowerCase();
+        if (switchTables.containsKey(tableName)) {
+            tableName = switchTables.get(tableName);
+        }
+        prefixBuf.append("into ").append(tableName).append(" ");
+
+        List<SQLExpr> columnList = this.insertReplaceStmt.getColumns();
+        if (columnList != null && !columnList.isEmpty()) {
+            StringJoiner sj = new StringJoiner(", ", "(", ")");
+            for (SQLExpr column : columnList) {
+                sj.add(column.toString());
+            }
+            prefixBuf.append(sj).append(" ");
+        }
+        prefixBuf.append("values ");
+
+        List<SQLExpr> duplicateKeyUpdateList = this.insertReplaceStmt.getDuplicateKeyUpdate();
+        if (duplicateKeyUpdateList != null && !duplicateKeyUpdateList.isEmpty()) {
+            suffixBuf.append("on duplicate key update ");
+            StringJoiner sj = new StringJoiner(", ", "", "");
+            for (SQLExpr expr : duplicateKeyUpdateList) {
+                sj.add(expr.toString());
+            }
+            suffixBuf.append(sj);
+        }
+
+        return this.insertEngine.resolveShardQuery(ctx, vcursor, bindValues, tempPlanValueList, valuesList, prefixBuf.toString(), suffixBuf.toString(), duplicateKeyUpdateList, switchTables);
+    }
+
+    @Override
+    public Boolean needsTransaction() {
+        return true;
+    }
+}

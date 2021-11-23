@@ -1,0 +1,484 @@
+[
+  {
+    "comment": "# union all between two scatter selects",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra union all select id from user_metadata",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      },
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 22 union all select id from user_metadata where user_id = 55",
+    "verifyResult": [
+      {
+        "id": 2
+      },
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# almost dereks query - two queries with order by and limit being scattered to two different sets of tablets",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "email",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "(select id, email from user_extra order by id asc limit 1) union all (select id, email from user_metadata order by id desc limit 1)",
+    "verifyResult": [
+      {
+        "id": 1,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 5,
+        "email": "5@jd.com"
+      }
+    ]
+  },
+  {
+    "comment": "# Union all",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "email",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select id, email from user_extra union all select id, email from user_metadata",
+    "verifyResult": [
+      {
+        "id": 1,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 2,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 3,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 4,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 5,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 4,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 3,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 2,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 1,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 5,
+        "email": "5@jd.com"
+      }
+    ]
+  },
+  {
+    "comment": " union operations in subqueries (FROM)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "email",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from (select id, email from user_extra union all select id, email from user_metadata) as t",
+    "verifyResult": [
+      {
+        "id": 1,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 2,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 3,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 4,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 5,
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "id": 4,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 3,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 2,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 1,
+        "email": "5@jd.com"
+      },
+      {
+        "id": 5,
+        "email": "5@jd.com"
+      }
+    ]
+  },
+  {
+    "comment": " union all between two scatter selects, with order by",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "(select id from user_extra order by id limit 5) union all (select id from user_extra order by id desc limit 5) ",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      },
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": " union all on scatter and single route",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 22 union select id from user_extra where user_id = 22 union all select id from user_extra",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      },
+      {
+        "id": 2
+      }
+    ]
+  },
+  {
+    "comment": "# count(id)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(id) from user_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# count(*)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(*) from user_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# distinct(id)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select distinct(id) from user_extra",
+    "verifyResult": [
+      {
+        "id": 1
+      },
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      },
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "email",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "multi": false,
+    "query": "select email from user_extra where email in ( select email from user_extra ) order by email limit 3",
+    "verifyResult": [
+      {
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "email": "tdavid5@jd.com"
+      },
+      {
+        "email": "tdavid5@jd.com"
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "email",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "multi": false,
+    "query": "select email from user_extra where email in ( select email from user_extra ) order by email limit 1,1",
+    "verifyResult": [
+      {
+        "email": "tdavid5@jd.com"
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique (222 not in the table)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 222 union all select id from user_metadata where user_id = 55",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique (222 and 555 not in the table)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 222 union all select id from user_metadata where user_id = 555",
+    "verifyResult": []
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 22 union all select id from user_metadata where user_id = 55",
+    "verifyResult": [
+      {
+        "id": 2
+      },
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# union all between two SelectEqualUnique (555 not in the table)",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where user_id = 22 union all select id from user_metadata where user_id = 555",
+    "verifyResult": [
+      {
+        "id": 2
+      }
+    ]
+  },
+  {
+    "comment": "# count(distinct(user_id)), user_id is shard key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(distinct(user_id)) from user_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# count(distinct(id)), id is not shard key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select count(distinct(id)) from user_extra",
+    "verifyResult": [
+      {
+        "id": 5
+      }
+    ]
+  },
+  {
+    "comment": "# union",
+    "query": "select id from user_extra where user_id = 22 union all select id from user_metadata and user_id = 55",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# union",
+    "query": "select id from user_extra and user_id = 22 union all select id from user_metadata where user_id = 55",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  }
+]

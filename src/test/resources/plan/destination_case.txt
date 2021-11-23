@@ -1,0 +1,230 @@
+# Test cases in this file follow the code in bypass_shard_cases.go.
+#
+
+# insert
+"/*shard=80-, set for specific shard*/INSERT INTO USER_METADATA (USER_ID, NAME) VALUES (42, 'ms X'), (43, 'abc'), (44, 'def')"
+"insert statement does not support execute by destination"
+
+# update
+"/*shard=80-, set for specific shard*/update user set val = 1 where id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "/*shard=80-, set for specific shard*/update user set val = 1 where id = 1",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "80-",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": true,
+    "Query": "update user set val = 1 where id = 1"
+  }
+}
+
+# update
+"/*shard=80-, set for specific shard*/update music set user_id = 11 where id = 11 order by id asc limit 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "/*shard=80-, set for specific shard*/update music set user_id = 11 where id = 11 order by id asc limit 1",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "80-",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": true,
+    "Query": "update music set user_id = 11 where id = 11 order by id asc limit 1"
+  }
+}
+
+"/*shard=-80, set for specific shard*/DELETE FROM USER WHERE ID = 42"
+{
+  "QueryType": "DELETE",
+  "Original": "/*shard=-80, set for specific shard*/DELETE FROM USER WHERE ID = 42",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": true,
+    "Query": "delete from USER where ID = 42"
+  }
+}
+
+# select count
+"/*shard=-80, set for specific shard*/select count(*), col from user"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select count(*), col from user",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select count(*), col from user"
+  }
+}
+
+# select count(distinct())
+"/*shard=-80, set for specific shard*/select count(distinct(id)) from user"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select count(distinct(id)) from user",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select count(DISTINCT id) from user"
+  }
+}
+
+# select distinct
+"/*shard=-80, set for specific shard*/select distinct(id) from user"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select distinct(id) from user",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select distinct id from user"
+  }
+}
+
+# select union all
+"/*shard=-80, set for specific shard*/select id from user where id = 1 union all (select user_id from user_metadata order by user_id limit 2,3)"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select id from user where id = 1 union all (select user_id from user_metadata order by user_id limit 2,3)",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select id from user where id = 1 union all (select user_id from user_metadata order by user_id limit 2, 3)"
+  }
+}
+
+# select join
+"/*shard=-80, set for specific shard*/select user.id from user join user_metadata on user.id = user_metadata.user_id where user_metadata.user_id = 105"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select user.id from user join user_metadata on user.id = user_metadata.user_id where user_metadata.user_id = 105",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select user.id from user join user_metadata on user.id = user_metadata.user_id where user_metadata.user_id = 105"
+  }
+}
+
+
+
+# select subquery
+"/*shard=-80, set for specific shard*/select user_id from user_metadata uu where name in (select name from user_metadata where name = uu.name and user_metadata.user_id in (select user_extra.extra_id from user_extra where user_extra.user_id = uu.user_id))"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select user_id from user_metadata uu where name in (select name from user_metadata where name = uu.name and user_metadata.user_id in (select user_extra.extra_id from user_extra where user_extra.user_id = uu.user_id))",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select user_id from user_metadata as uu where name in ( select name from user_metadata where name = uu.name and user_metadata.user_id in ( select user_extra.extra_id from user_extra where user_extra.user_id = uu.user_id ) )"
+  }
+}
+
+# select memorySort
+"/*shard=-80, set for specific shard*/select user_id, email, count(*) from user_metadata group by email order by user_id"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select user_id, email, count(*) from user_metadata group by email order by user_id",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select user_id, email, count(*) from user_metadata group by email order by user_id"
+  }
+}
+
+# select memorySort
+"/*shard=-80, set for specific shard*/select user_id, email, count(*) k from user_metadata group by email order by k"
+{
+  "QueryType": "SELECT",
+  "Original": "/*shard=-80, set for specific shard*/select user_id, email, count(*) k from user_metadata group by email order by k",
+  "Instructions": {
+    "OperatorType": "Send",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetDestination": "-80",
+    "SingleShardOnly": true,
+    "ShardNameNeeded": true,
+    "MultiShardAutocommit": true,
+    "IsDML": false,
+    "Query": "select user_id, email, count(*) as k from user_metadata group by email order by k"
+  }
+}
+
+
+

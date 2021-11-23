@@ -1,0 +1,123 @@
+[
+  {
+    "comment": "# scatter aggregate order by references multiple non-group-by expressions",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 11, 111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 22, 111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 22, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "count",
+        "alias": "k"
+      }
+    ],
+    "needSort": "false",
+    "query": "select f_int, f_smallint, count(*) k from plan_test group by f_int order by f_smallint, f_int, k",
+    "verifyResult": [
+      {
+        "f_int": "111",
+        "f_smallint": "11",
+        "count": "2"
+      },
+      {
+        "f_int": "222",
+        "f_smallint": "22",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with memory sort and limit",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 11, 111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 22, 111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 22, 222)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 4, 4)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (5, 5, 5)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (6, 6, 6)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (7, 7, 7)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (8, 8, 8)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (9, 9, 9)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (10, 10, 10)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (11, 11, 11)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (12, 12, 12)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (13, 13, 13)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (14, 14, 14)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "count",
+        "alias": "k"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_int, f_smallint, count(*) k from plan_test group by f_int order by f_int desc, k desc limit 10",
+    "verifyResult": [
+      {
+        "f_smallint": "22",
+        "f_int": "222",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_int": "111",
+        "count": "2"
+      },
+      {
+        "f_smallint": "14",
+        "f_int": "14",
+        "count": "1"
+      },
+      {
+        "f_smallint": "13",
+        "f_int": "13",
+        "count": "1"
+      },
+      {
+        "f_smallint": "12",
+        "f_int": "12",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_int": "11",
+        "count": "1"
+      },
+      {
+        "f_smallint": "10",
+        "f_int": "10",
+        "count": "1"
+      },
+      {
+        "f_smallint": "9",
+        "f_int": "9",
+        "count": "1"
+      },
+      {
+        "f_smallint": "8",
+        "f_int": "8",
+        "count": "1"
+      },
+      {
+        "f_smallint": "7",
+        "f_int": "7",
+        "count": "1"
+      }
+    ]
+  }
+]

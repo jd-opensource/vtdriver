@@ -1,0 +1,184 @@
+[
+  {
+    "comment": "# simple insert unsharded",
+    "insertSql": "insert into unsharded values(1, 2)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded"
+  },
+  {
+    "comment": "# simple upsert unsharded",
+    "insertSql": "insert into unsharded values(1, 2) on duplicate key update predef2 = 22",
+    "insertVar": [],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded"
+  },
+  {
+    "comment": "# unsharded insert, no col list with auto-inc and authoritative column list",
+    "insertSql": "insert into unsharded_authoritative values(11,22)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_authoritative"
+  },
+  {
+    "comment": "# insert unsharded, column present",
+    "insertSql": "insert into unsharded_auto(id, val) values(1, 'aa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# insert unsharded, column absent",
+    "insertSql": "insert into unsharded_auto(val) values('aa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        2
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# insert unsharded, column absent",
+    "insertSql": "insert into unsharded_auto(val) values(false)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        3
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# insert unsharded, multi-val",
+    "insertSql": "insert into unsharded_auto(id, val) values(4, 'aa'), (null, 'bb')",
+    "insertVar": [],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        5
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# simple replace unsharded",
+    "insertSql": "replace into unsharded values(1, 222)",
+    "insertVar": [],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded"
+  },
+  {
+    "comment": "# simple replace unsharded",
+    "insertSql": "replace into unsharded values(3, 4)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        2
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded"
+  },
+  {
+    "comment": "# simple replace unsharded",
+    "insertSql": "replace into unsharded values(?, ?)",
+    "insertVar": [
+      1,
+      2
+    ],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        2
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded"
+  },
+  {
+    "comment": "# replace unsharded, column present",
+    "insertSql": "replace into unsharded_auto(id, val) values(1, 'aa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        5
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# replace unsharded, column absent",
+    "insertSql": "replace into unsharded_auto(val) values('aa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        6
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# replace unsharded, multi-val",
+    "insertSql": "replace into unsharded_auto(id, val) values(1, 'aa'), (?, ?)",
+    "insertVar": [
+      null,
+      "bb"
+    ],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        7
+      ]
+    ],
+    "verifySql": "select count(*) from unsharded_auto"
+  },
+  {
+    "comment": "# insert duplicate PK",
+    "insertSql": "insert into unsharded(predef1, predef2) values (1, 2)",
+    "insertVar": [],
+    "exception": "java.sql.SQLIntegrityConstraintViolationException",
+    "errorMessage": "Duplicate entry"
+  }
+]

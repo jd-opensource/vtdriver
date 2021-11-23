@@ -1,0 +1,336 @@
+# delete from by primary keyspace id
+"delete from user where id = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user where id = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user where id = 1 for update",
+    "Query": "delete from user where id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# routing rules: deleted from a routed table
+"delete from route1 where id = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from route1 where id = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user where id = 1 for update",
+    "Query": "delete from user as route1 where id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# delete: routing rules for subquery
+"delete from  unsharded_a where a=(select a from route2)"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from  unsharded_a where a=(select a from route2)",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from unsharded_a where a = (select a from unsharded as route2)"
+  }
+}
+
+
+# delete from by lookup
+"delete from music where id = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from music where id = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select user_id, id from music where id = 1 for update",
+    "Query": "delete from music where id = 1",
+    "TableName": "music",
+    "Values": [
+      1
+    ],
+    "Vindex": "music_user_map"
+  }
+}
+
+# delete row in a multi column vindex table
+"delete from multicolvin where kid=1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from multicolvin where kid=1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "kid_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select kid, column_a, column_b, column_c from multicolvin where kid = 1 for update",
+    "Query": "delete from multicolvin where kid = 1",
+    "TableName": "multicolvin",
+    "Values": [
+      1
+    ],
+    "Vindex": "kid_index"
+  }
+}
+
+# delete with target destination
+"delete from `user[-]`.user_extra"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from `user[-]`.user_extra",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "ByDestination",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from user_extra",
+    "TableName": "user_extra"
+  }
+}
+
+# delete from with no index match - multi shard autocommit
+"delete /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ from user_extra where name = 'jose'"
+{
+  "QueryType": "DELETE",
+  "Original": "delete /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ from user_extra where name = 'jose'",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": true,
+    "Query": "delete /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ from user_extra where name = 'jose'",
+    "TableName": "user_extra"
+  }
+}
+
+# delete from with no index match - query timeout
+"delete /*vt+ QUERY_TIMEOUT_MS=1 */ from user_extra where name = 'jose'"
+{
+  "QueryType": "DELETE",
+  "Original": "delete /*vt+ QUERY_TIMEOUT_MS=1 */ from user_extra where name = 'jose'",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete /*vt+ QUERY_TIMEOUT_MS=1 */ from user_extra where name = 'jose'",
+    "QueryTimeout": 1,
+    "TableName": "user_extra"
+  }
+}
+
+
+# delete from user by primary keyspace id with in clause
+"delete from user where id in (1, 2, 3)"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user where id in (1, 2, 3)",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "In",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user where id in (1, 2, 3) for update",
+    "Query": "delete from user where id in (1, 2, 3)",
+    "TableName": "user",
+    "Values": [
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# delete from user by complex expression
+"delete from user where id + 1 = 2"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user where id + 1 = 2",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user where id + 1 = 2 for update",
+    "Query": "delete from user where id + 1 = 2",
+    "TableName": "user"
+  }
+}
+
+# delete from user without a where clause
+"delete from user"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user for update",
+    "Query": "delete from user",
+    "TableName": "user"
+  }
+}
+
+# delete with single table targets
+"delete music from music where id = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete music from music where id = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select user_id, id from music where id = 1 for update",
+    "Query": "delete music from music where id = 1",
+    "TableName": "music",
+    "Values": [
+      1
+    ],
+    "Vindex": "music_user_map"
+  }
+}
+
+# scatter delete with owned lookup vindex
+"delete from user"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user for update",
+    "Query": "delete from user",
+    "TableName": "user"
+  }
+}
+
+# delete with binary value
+"delete from user where name = _binary 'abc'"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user where name = _binary 'abc'",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user where name = _binary 'abc' for update",
+    "Query": "delete from user where name = _binary 'abc'",
+    "TableName": "user"
+  }
+}
+
+# delete with shard targeting
+"delete from `user[-]`.user"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from `user[-]`.user",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "ByDestination",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly from user for update",
+    "Query": "delete from user",
+    "TableName": "user"
+  }
+}

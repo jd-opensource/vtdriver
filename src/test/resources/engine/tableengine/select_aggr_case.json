@@ -1,0 +1,1223 @@
+[
+  {
+    "comment": "# Aggregate on unique partitioned table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      },
+      {
+        "name": "f_key"
+      }
+    ],
+    "verifyResult": [
+      {
+        "_long": "3",
+        "f_key": "11"
+      },
+      {
+        "_long": "1",
+        "f_key": "12"
+      },
+      {
+        "_long": "1",
+        "f_key": "14"
+      }
+    ],
+    "query": "select count(*),f_key from table_engine_test where f_tinyint = 1 group by f_key"
+  },
+  {
+    "comment": "# Aggregate detection (non-aggregate function)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "_string",
+        "alias": "trim(' ABC ')"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "_string": "ABC",
+        "f_tinyint": 1
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 1
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 0
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 1
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 0
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 1
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 2
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 3
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 4
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 5
+      },
+      {
+        "_string": "ABC",
+        "f_tinyint": 1
+      }
+    ],
+    "query": "select trim(' ABC '), f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# select distinct with unique vindex for scatter route.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',1,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "15",
+        "f_tinyint": 0
+      },
+      {
+        "f_key": "12",
+        "f_tinyint": 2
+      },
+      {
+        "f_key": "13",
+        "f_tinyint": 3
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 4
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 5
+      }
+    ],
+    "query": "select distinct f_key, f_tinyint from table_engine_test"
+  },
+  {
+    "comment": "# distinct and group by together",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',1,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "15",
+        "f_tinyint": 0
+      },
+      {
+        "f_key": "12",
+        "f_tinyint": 2
+      },
+      {
+        "f_key": "13",
+        "f_tinyint": 3
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 4
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 5
+      }
+    ],
+    "query": "select distinct f_key, f_tinyint from table_engine_test group by f_key, f_tinyint"
+  },
+  {
+    "comment": "# count aggregate",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "_long": 11
+      }
+    ],
+    "query": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# sum aggregate",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "_bigDecimal",
+        "alias": "sum(f_tinyint)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "_bigDecimal": 19
+      }
+    ],
+    "query": "select sum(f_tinyint) from table_engine_test"
+  },
+  {
+    "comment": "# min aggregate",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',-8,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "min(f_tinyint)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": -8
+      }
+    ],
+    "query": "select min(f_tinyint) from table_engine_test"
+  },
+  {
+    "comment": "# max aggregate",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',15,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "max(f_tinyint)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 15
+      }
+    ],
+    "query": "select max(f_tinyint) from table_engine_test"
+  },
+  {
+    "comment": "# distinct and group by together for scatter route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',1,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "15",
+        "f_tinyint": 0
+      },
+      {
+        "f_key": "12",
+        "f_tinyint": 2
+      },
+      {
+        "f_key": "13",
+        "f_tinyint": 3
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 4
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 5
+      }
+    ],
+    "query": "select distinct f_tinyint, f_key  from table_engine_test group by f_tinyint, f_key"
+  },
+  {
+    "comment": "# group by a unique tindex should use a simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'13',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "14",
+        "_long": 1
+      },
+      {
+        "f_key": "15",
+        "_long": 1
+      },
+      {
+        "f_key": "12",
+        "_long": 2
+      },
+      {
+        "f_key": "13",
+        "_long": 2
+      },
+      {
+        "f_key": "11",
+        "_long": 5
+      }
+    ],
+    "query": "select f_key, count(*) from table_engine_test group by f_key"
+  },
+  {
+    "comment": "# group by a unique vindex and other column should use a simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'15',0,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1,
+        "_long": 4
+      },
+      {
+        "f_key": "15",
+        "f_tinyint": 0,
+        "_long": 2
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_key": "12",
+        "f_tinyint": 2,
+        "_long": 1
+      },
+      {
+        "f_key": "13",
+        "f_tinyint": 3,
+        "_long": 1
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 4,
+        "_long": 1
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 5,
+        "_long": 1
+      }
+    ],
+    "query": "select f_tinyint, f_key, count(*) from table_engine_test group by f_tinyint, f_key"
+  },
+  {
+    "comment": "# group by a non-vindex column should use an OrderdAggregate primitive",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "_long": 2
+      }
+    ],
+    "query": "select f_tinyint, count(*) from table_engine_test group by f_tinyint"
+  },
+  {
+    "comment": "# group by a unique vindex should use complex aggr",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "1 + count(*)"
+      }
+    ],
+    "verifyResult": [
+    ],
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in scatter query: complex aggregate expression",
+    "query": "select f_tinyint, 1+count(*) from table_engine_test group by f_tinyint"
+  },
+  {
+    "comment": "# group by a unique vindex should use a simple route, even if aggr is complex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "1 + count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "11",
+        "_long": 2
+      },
+      {
+        "id": 2,
+        "f_key": "11",
+        "_long": 2
+      },
+      {
+        "id": 3,
+        "f_key": "11",
+        "_long": 2
+      }
+    ],
+    "query": "select id, f_key, 1+count(*) from table_engine_test group by id, f_key"
+  },
+  {
+    "comment": "# group by a unique vindex where alias from select list is used",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "f_key",
+        "alias": "val"
+      },
+      {
+        "name": "_long",
+        "alias": "1 + count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "11",
+        "_long": 2
+      },
+      {
+        "id": 2,
+        "f_key": "11",
+        "_long": 2
+      },
+      {
+        "id": 3,
+        "f_key": "11",
+        "_long": 2
+      }
+    ],
+    "query": "select id, f_key as val, 1+count(*) from table_engine_test group by id, val"
+  },
+  {
+    "comment": "# group by a unique vindex where expression is qualified (alias should be ignored)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "iidd"
+      },
+      {
+        "name": "_long",
+        "alias": "1 + count(*)"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "_long": 2
+      },
+      {
+        "f_tinyint": 1,
+        "_long": 2
+      },
+      {
+        "f_tinyint": 1,
+        "_long": 2
+      }
+    ],
+    "query": "select f_tinyint as iidd, 1+count(*) from table_engine_test group by table_engine_test.f_key, table_engine_test.id"
+  },
+  {
+    "comment": "# group by a unique vindex where it should skip non-aliased expressions.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id"
+      },
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_bit"
+      },
+      {
+        "name": "_long",
+        "alias": "1 + count(*)"
+      },
+      {
+        "name": "_string",
+        "alias": "fkey"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "11",
+        "f_bit": true,
+        "f_tinyint": 1,
+        "_long": 2,
+        "_string": "11"
+      },
+      {
+        "id": 2,
+        "f_key": "11",
+        "f_bit": false,
+        "f_tinyint": 1,
+        "_long": 2,
+        "_string": "11"
+      },
+      {
+        "id": 3,
+        "f_key": "11",
+        "f_bit": true,
+        "f_tinyint": 0,
+        "_long": 2,
+        "_string": "11"
+      }
+    ],
+    "query": "select *, f_key as fkey, 1+count(*) from table_engine_test group by f_key, id"
+  },
+  {
+    "comment": "# group by a unique vindex should revert to simple route, and having clause should find the correct symbols.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'12',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "c"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "12",
+        "_long": 1
+      }
+    ],
+    "query": "select f_key, count(*) c from table_engine_test group by f_key, id having f_key = '12' and c = 1"
+  },
+  {
+    "comment": "# scatter aggregate using distinct",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'12',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select distinct f_tinyint from table_engine_test",
+    "verifyResult": [
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "0"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by select col",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select f_tinyint from table_engine_test group by f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 0
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct group by unique vindex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "count(distinct f_tinyint)"
+      }
+    ],
+    "query": "select f_key, count(distinct f_tinyint) from table_engine_test group by f_key",
+    "verifyResult": [
+      {
+        "f_key": 11,
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct unique vindex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(distinct f_key)"
+      }
+    ],
+    "query": "select f_tinyint, count(distinct f_key) from table_engine_test group by f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 0,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "count(distinct f_tinyint)"
+      }
+    ],
+    "query": "select f_key, count(distinct f_tinyint) from table_engine_test group by f_key",
+    "verifyResult": [
+      {
+        "f_key": 11,
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex and no group by",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "_long",
+        "columnIndex": 1
+      }
+    ],
+    "needSort": false,
+    "query": "select count(distinct f_tinyint) from table_engine_test",
+    "verifyResult": [
+      {
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex, count expression aliased",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "c2"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_key, count(distinct f_tinyint) c2 from table_engine_test group by f_key",
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# sum with distinct no unique vindex",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_bigDecimal",
+        "alias": "sum(distinct f_tinyint)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_key, sum(distinct f_tinyint) from table_engine_test group by f_key",
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "_bigDecimal": 1
+      }
+    ]
+  },
+  {
+    "comment": "# min with distinct no unique vindex. distinct is ignored.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint",
+        "alias": "min(distinct f_tinyint)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_key, min(distinct f_tinyint) from table_engine_test group by f_key",
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 0
+      }
+    ]
+  },
+  {
+    "comment": "# order by count distinct",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',2,true),(3,'11',3,true),(4,'12',1,false),(5,'12',0,false),(6,'13',0,true),(7,'13',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "_long",
+        "alias": "k"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_key, count(distinct f_tinyint) k from table_engine_test group by f_key order by k",
+    "verifyResult": [
+      {
+        "f_key": "13",
+        "_long": 1
+      },
+      {
+        "f_key": "12",
+        "_long": 2
+      },
+      {
+        "f_key": "11",
+        "_long": 3
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by aggregate function",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select count(*) b from table_engine_test group by b",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "group by expression cannot reference an aggregate function: b"
+  },
+  {
+    "comment": "# scatter aggregate multiple group by (columns)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_key, f_tinyint, count(*) from table_engine_test group by f_tinyint, f_key",
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1,
+        "_long": 2
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 0,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate multiple group by (numbers)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_bit"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_bit, f_tinyint, count(*) from table_engine_test group by f_bit, f_tinyint",
+    "verifyResult": [
+      {
+        "f_bit": true,
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_bit": false,
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_bit": true,
+        "f_tinyint": 0,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by column number",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select f_tinyint from table_engine_test group by 1",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 0
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by invalid column number",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test group by 2",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 2"
+  },
+  {
+    "comment": "# scatter aggregate order by null",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select count(*) from table_engine_test order by null",
+    "verifyResult": [
+      {
+        "_long": 3
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with complex select list (can't build order by)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select distinct f_tinyint+1 from table_engine_test",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "generating order by clause: cannot reference a complex expression"
+  },
+  {
+    "comment": "# scatter aggregate with numbered order by columns",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_tinyint, f_key, count(*) from table_engine_test group by 1, 2 order by 1, 2",
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "f_key": "11",
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "f_key": "11",
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with named order by columns",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_key, f_tinyint, count(*) from table_engine_test group by 1, 2 order by f_key, f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "f_key": "11",
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "f_key": "11",
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with jumbled order by columns",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'11',1,2,3),(2,'11',1,2,4),(3,'11',0,2,3)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_tinyint, f_midint, f_int, count(*) from table_engine_test group by 1, 2, 3 order by f_tinyint, f_midint, f_int",
+    "verifyResult": [
+      {
+        "f_tinyint": 0,
+        "f_midint": 2,
+        "f_int": 3,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 3,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 4,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with some descending order by cols",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'11',1,2,3),(2,'11',1,2,4),(3,'11',0,2,3)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_tinyint, f_midint, f_int, count(*) from table_engine_test group by 3, 2, 1 order by 1 desc, 3 desc, f_midint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 4,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 3,
+        "_long": 1
+      },
+      {
+        "f_tinyint": 0,
+        "f_midint": 2,
+        "f_int": 3,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# invalid order by column numner for scatter",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select f_midint, count(*) from table_engine_test group by f_midint order by 5 limit 10",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 5"
+  },
+  {
+    "comment": "# Group by with collate operator",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_int) values(1,'11',1,2),(2,'11',2,4),(3,'11',3,6),(4,'11',2,6)"
+    ],
+    "query": "select table_engine_test.f_int as a from table_engine_test where table_engine_test.f_tinyint = 2 group by a collate utf8_general_ci",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "unsupported: in scatter query: only simple references allowed"
+  },
+  {
+    "comment": "# Group by invalid column number (code is duplicated from symab).",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test group by 1.1",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number is not an int"
+  },
+  {
+    "comment": "# Group by out of range column number (code is duplicated from symab).",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test group by 2",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 2"
+  },
+  {
+    "comment": "# syntax error detected by planbuilder",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',0,true)"
+    ],
+    "query": "select count(distinct *) from table_engine_test",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "syntax error: COUNT(DISTINCT *)"
+  }
+]

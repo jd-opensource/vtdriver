@@ -1,0 +1,747 @@
+[
+  {
+    "comment": "# '*' expression for simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "query": "select table_engine_test.* from table_engine_test",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "3",
+        "f_key": "22",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# unqualified '*' expression for simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false), (3,'22',0,true)"
+    ],
+    "query": "select * from table_engine_test",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "3",
+        "f_key": "22",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# fully qualified '*' expression for simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false), (3,'22',0,true)"
+    ],
+    "query": "select :ks.table_engine_test.* from :ks.table_engine_test",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "3",
+        "f_key": "22",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# Hex number is not treated as a simple value",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',0x1C,false), (3,'22',2,true)"
+    ],
+    "query": "select * from table_engine_test where f_tinyint = 0x1C",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "28",
+        "f_bit": "false"
+      }
+    ]
+  },
+  {
+    "comment": "# sharded limit offset",
+    "needSort": false,
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',2,true),(7,'244',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'10',3,false),(6,'14',6,true)"
+    ],
+    "query": "select f_key, f_tinyint from table_engine_test order by f_tinyint limit 3, 4",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.String"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "22",
+        "f_tinyint": "2"
+      },
+      {
+        "f_key": "10",
+        "f_tinyint": "3"
+      },
+      {
+        "f_key": "244",
+        "f_tinyint": "5"
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": "6"
+      }
+    ]
+  },
+  {
+    "comment": "# Sharding Key Condition in Parenthesis",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where (f_key ='11') AND f_bit = true limit 2",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "3",
+        "f_key": "11",
+        "f_tinyint": "2",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# Multiple parenthesized expressions",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',4,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where (f_tinyint = 4) AND (f_key ='11') limit 5",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "4",
+        "f_bit": "false"
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Table.Column",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',4,false),(3,'key',2,true),(7,'11',5,true),(8,'key',8,false),(9,'key',127,true),(4,'key',-1,true),(5,'key2',3,false),(6,'14',6,true)"
+    ],
+    "needSort": false,
+    "query": "select user0_.f_tinyint as col0_ from table_engine_test user0_ where f_key = 'key' order by user0_.f_tinyint desc limit 2",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "col0_",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "127"
+      },
+      {
+        "f_tinyint": "8"
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Column",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',4,false),(3,'key',2,true),(7,'11',5,true),(8,'key',8,false),(9,'key',127,true),(4,'key',-1,true),(5,'key2',3,false),(6,'14',6,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "col0_",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "needSort": false,
+    "query": "select user0_.f_tinyint as col0_ from table_engine_test user0_ where f_key = 'key' order by col0_ desc limit 3",
+    "verifyResult": [
+      {
+        "f_tinyint": "127"
+      },
+      {
+        "f_tinyint": "8"
+      },
+      {
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# Booleans and parenthesis",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',-1,false),(3,'key',-1,true),(7,'11',5,true),(8,'key',-1,false),(9,'key',127,true),(4,'key',-1,true),(5,'key2',3,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where f_tinyint = -1 AND (f_bit = true) limit 5",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "3",
+        "f_key": "key",
+        "f_tinyint": "-1",
+        "f_bit": "true"
+      },
+      {
+        "id": "4",
+        "f_key": "key",
+        "f_tinyint": "-1",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# Column as boolean-ish",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',-1,false),(3,'key',1,true),(7,'11',1,true),(8,'key',1,false),(9,'key',1,true),(4,'key',1,true),(5,'key2',1,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where (f_tinyint = 1) AND f_bit ",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "3",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "4",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "7",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "9",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# PK as fake boolean, and column as boolean-ish",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',-1,false),(3,'key',1,true),(7,'11',1,true),(8,'key',1,false),(9,'key',1,true),(4,'key',1,true),(5,'key2',1,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where (id = 1) AND f_bit = true limit 5",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "key",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# sql_calc_found_rows without limit",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',-1,false),(3,'key',1,true),(7,'11',1,true),(8,'key',1,false),(9,'key',1,true),(4,'key',1,true),(5,'key2',1,false),(6,'14',6,true)"
+    ],
+    "query": "select sql_calc_found_rows * from table_engine_test where f_tinyint = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "3",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "4",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "5",
+        "f_key": "key2",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "7",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "8",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "9",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# '*' expression for simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "query": "select table_engine_test.* from table_engine_test;",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "3",
+        "f_key": "22",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# Hex number is not treated as a simple value",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',0x1C,false), (3,'22',2,true)"
+    ],
+    "query": "select * from table_engine_test where f_tinyint = 0x1C;",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "2",
+        "f_key": "11",
+        "f_tinyint": "28",
+        "f_bit": "false"
+      }
+    ]
+  },
+  {
+    "comment": "# sharded limit offset",
+    "needSort": false,
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',2,true),(7,'244',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'10',3,false),(6,'14',6,true)"
+    ],
+    "query": "select f_key, f_tinyint from table_engine_test order by f_tinyint limit 3, 4;",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.String"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "22",
+        "f_tinyint": "2"
+      },
+      {
+        "f_key": "10",
+        "f_tinyint": "3"
+      },
+      {
+        "f_key": "244",
+        "f_tinyint": "5"
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": "6"
+      }
+    ]
+  },
+  {
+    "comment": "# Sharding Key Condition in Parenthesis",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
+    ],
+    "query": "select * from table_engine_test where (f_key ='11') AND f_bit = true limit 2;",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "1",
+        "f_key": "11",
+        "f_tinyint": "0",
+        "f_bit": "true"
+      },
+      {
+        "id": "3",
+        "f_key": "11",
+        "f_tinyint": "2",
+        "f_bit": "true"
+      }
+    ]
+  },
+  {
+    "comment": "# sql_calc_found_rows without limit",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'key',0,true),(2,'11',-1,false),(3,'key',1,true),(7,'11',1,true),(8,'key',1,false),(9,'key',1,true),(4,'key',1,true),(5,'key2',1,false),(6,'14',6,true)"
+    ],
+    "query": "select sql_calc_found_rows * from table_engine_test where f_tinyint = 1;",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.Long"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": "3",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "4",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "5",
+        "f_key": "key2",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "7",
+        "f_key": "11",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      },
+      {
+        "id": "8",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "false"
+      },
+      {
+        "id": "9",
+        "f_key": "key",
+        "f_tinyint": "1",
+        "f_bit": "true"
+      }
+    ]
+  }
+]

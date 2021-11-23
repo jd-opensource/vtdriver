@@ -1,0 +1,128 @@
+[
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1 join plan_test as t2",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1, plan_test as t2",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      },
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1 left join plan_test as t2 on t1.f_tinyint = t2.f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1 straight_join plan_test as t2 on t1.f_tinyint = t2.f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1 right join plan_test as t2 on t1.f_tinyint = t2.f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unsharded",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Long"
+      }
+    ],
+    "needSort": true,
+    "query": "select t1.f_tinyint from engine_test as t1 inner join plan_test as t2 on t1.f_tinyint = t2.f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  }
+]

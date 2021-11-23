@@ -1,0 +1,53 @@
+schemas:
+  - schema: commerce
+    logicTables:
+      - { actualTableExprs: 'shard_by_long_test_${1..4}',
+          logicTable: shard_by_long_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: INT32
+      }
+      - { actualTableExprs: 'shard_by_murmur_test_${1..4}',
+          logicTable: shard_by_murmur_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: VARCHAR
+      }
+      - { actualTableExprs: 'table_engine_test_${1..4}',
+          logicTable: table_engine_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: VARCHAR
+      }
+      - { actualTableExprs: 'shard_rule_mod_${1..4}',
+          logicTable: shard_rule_mod,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: INT32
+      }
+  - schema: customer
+    logicTables:
+      - { actualTableExprs: 'table_engine_test_${1..4}',
+          logicTable: table_engine_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: INT32 }
+
+      - { actualTableExprs: 'shard_by_murmur_test_${1..4}',
+          logicTable: shard_by_murmur_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: VARCHAR
+      }
+      - { actualTableExprs: 'shard_by_long_test_${1..4}',
+          logicTable: shard_by_long_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: INT32
+      }
+      - { actualTableExprs: 'shard_rule_mod_${1..4}',
+          logicTable: shard_rule_mod,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_key,
+          shardingColumnType: INT32
+      }

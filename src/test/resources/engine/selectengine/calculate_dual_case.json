@@ -1,0 +1,104 @@
+[
+  {
+    "comment": "# select from nothing",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select 1 as f_bigint",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 1
+      }
+    ]
+  },
+  {
+    "comment": "# select from dual",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select 1 as f_bigint from dual",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 1
+      }
+    ]
+  },
+  {
+    "comment": "# add arithmetic",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select 1+2 as f_bigint from dual",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 3
+      }
+    ]
+  },
+  {
+    "comment": "# minus arithmetic",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select 1-2 as f_bigint from dual",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": -1
+      }
+    ]
+  },
+  {
+    "comment": "# multiply arithmetic",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select 3*2 as f_bigint from dual",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 6
+      }
+    ]
+  },
+  {
+    "comment": "# divide arithmetic",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_double"
+      }
+    ],
+    "query": "select 5/2 as f_double from dual",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_double": 2.5
+      }
+    ]
+  }
+]

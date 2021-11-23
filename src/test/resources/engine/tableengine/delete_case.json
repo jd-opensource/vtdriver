@@ -1,0 +1,122 @@
+[
+  {
+    "comment": "# delete from, no owned vindexes",
+    "initSql": [
+      "delete from table_engine_test",
+      "INSERT INTO `table_engine_test` (`id`, `f_tinyint`, `f_key`) VALUES (1, 1, '1'),(2, 2, '1'),(3, 1, '1'),(4, 2, '1'),(5, 21, '1'),(6, 21, '1');"
+    ],
+    "query": "delete from table_engine_test where f_tinyint = 1",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 4,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from with no where clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_key) VALUES (100, 101, 'k1'),(200, 102, 'k2'),(300, 103, 'k3'),(400, 104, 'k4'),(500, 105, 'k5')"
+    ],
+    "query": "delete from table_engine_test",
+    "deleteVar": [],
+    "deleteCount": 5,
+    "verifyResult": 0,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from with no where clause & explicit keyspace reference",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint) VALUES (100, '101', 101),(200, '102', 102),(300, '103', 103),(400, '104', 104),(500, '105', 105)"
+    ],
+    "query": "delete from :ks.table_engine_test",
+    "deleteVar": [],
+    "deleteCount": 5,
+    "verifyResult": 0,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete with non-comparison expr",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint) VALUES (100, '1', 101),(200, '1', 102),(300, '2', 103),(400, '104', 104),(500, '105', 105)"
+    ],
+    "query": "delete from table_engine_test where f_tinyint between 102 and 103;",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 3,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from with no index match",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_bit, f_key) VALUES (100, 1, true,'jose'),(200, 1, true,'abc'),(300, 2, false,'jose'),(400, 104, false,'abc'),(500, 105, true,'abc');"
+    ],
+    "query": "delete from table_engine_test where f_key = 'jose'",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 3,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from with primary id in through IN clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_bit, f_key) VALUES (100, 1, true,'jose'),(200, 1, false,'abc'),(300, 2, true,'jose'),(400, 104, true,'abc'),(500, 105, false,'abc')"
+    ],
+    "query": "delete from table_engine_test where f_tinyint in (1, 2);",
+    "deleteVar": [],
+    "deleteCount": 3,
+    "verifyResult": 2,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from with primary id in through IN clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_bit, f_key) VALUES (100, 1, true,'jose'),(200, 1, true,'abc'),(300, 2, true,'jose'),(400, 104, true,'abc'),(500, 105, false,'abc')"
+    ],
+    "query": "delete from table_engine_test where id in (100, 200)",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 3,
+    "verifySql": "select count(*) from table_engine_test"
+  },
+  {
+    "comment": "# delete from, no owned vindexes",
+    "initSql": [
+      "delete from table_engine_test;",
+      "INSERT INTO `table_engine_test` (`id`, `f_tinyint`, `f_key`) VALUES (1, 1, '1'),(2, 2, '1'),(3, 1, '1'),(4, 2, '1'),(5, 21, '1'),(6, 21, '1');"
+    ],
+    "query": "delete from table_engine_test where f_tinyint = 1;",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 4,
+    "verifySql": "select count(*) from table_engine_test;"
+  },
+  {
+    "comment": "# delete from with no index match",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_bit, f_key) VALUES (100, 1, true,'jose'),(200, 1, true,'abc'),(300, 2, false,'jose'),(400, 104, false,'abc'),(500, 105, true,'abc');"
+    ],
+    "query": "delete from table_engine_test where f_key = 'jose';",
+    "deleteVar": [],
+    "deleteCount": 2,
+    "verifyResult": 0,
+    "verifySql": "select count(*) from table_engine_test where f_key = 'jose';"
+  },
+  {
+    "comment": "# delete from with no where clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_tinyint, f_key) VALUES (100, 101, 'k1'),(200, 102, 'k2'),(300, 103, 'k3'),(400, 104, 'k4'),(500, 105, 'k5');"
+    ],
+    "query": "delete from table_engine_test",
+    "deleteVar": [],
+    "deleteCount": 5,
+    "verifyResult": 0,
+    "verifySql": "select count(*) from table_engine_test where f_tinyint = 101;"
+  }
+]

@@ -1,0 +1,914 @@
+[
+  {
+    "comment": "# scatter aggregate in a subquery",
+    "fields": [
+      {
+        "name": "cnt",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": false,
+    "query": "select cnt from (select count(*) as cnt from user_unsharded) t",
+    "verifyResult": [
+      {
+        "cnt": 5
+      }
+    ]
+  },
+  {
+    "comment": "# information_schema query using database() func",
+    "fields": [
+      {
+        "name": "cnt",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": false,
+    "skipResultCheck": true,
+    "query": "SELECT INDEX_LENGTH FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE()"
+  },
+  {
+    "comment": "# subquery of information_schema with itself",
+    "fields": [
+      {
+        "name": "pluginName",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "skipResultCheck": true,
+    "query": "select PLUGIN_NAME pluginName from information_schema.PLUGINS where PLUGIN_NAME in (select PLUGIN_NAME from information_schema.PLUGINS) and PLUGIN_NAME IN ('mysql_native_password','sha256_password')"
+  },
+  {
+    "comment": "# subquery",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_unsharded_extra join user_unsharded u where u.name in (select name from user_unsharded where user_unsharded.name = u.name and user_unsharded_extra.extra_id = user_unsharded.predef1) and u.name in (user_unsharded_extra.extra_id, 1)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  ensure subquery reordering gets us a better plan",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_unsharded_extra join user_unsharded u where u.name in (select costly from user_unsharded where user_unsharded.name = 105) and u.name = 105",
+    "verifyResult": [
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  nested subquery",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_unsharded_extra join user_unsharded u where u.name in (select predef2 from user_unsharded where user_unsharded.name = u.name and user_unsharded_extra.extra_id = user_unsharded.predef1 and user_unsharded.name in (select extra_id from user_unsharded_extra where user_unsharded_extra.user_id = user_unsharded.name)) and u.name in (user_unsharded_extra.extra_id, 1)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# Correlated subquery in where clause",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where user_unsharded.predef1 in (select user_unsharded_extra.extra_id from user_unsharded_extra where user_unsharded_extra.user_id = user_unsharded.name)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same int val",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where name = 105 and user_unsharded.predef1 in (select user_unsharded_extra.extra_id from user_unsharded_extra where user_unsharded_extra.user_id = 105)",
+    "verifyResult": [
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same str val",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where name = '103' and user_unsharded.predef1 in (select user_unsharded_extra.extra_id from user_unsharded_extra where user_unsharded_extra.user_id = '103')",
+    "verifyResult": [
+      {
+        "userId": 3
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same outermost column value",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded uu where name in (select name from user_unsharded where name = uu.name and user_unsharded.predef1 in (select user_unsharded_extra.extra_id from user_unsharded_extra where user_unsharded_extra.user_id = uu.name))",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in IN clause.",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user_unsharded where name in (select costly from user_unsharded)",
+    "verifyResult": [
+      {
+        "userName": "101"
+      },
+      {
+        "userName": "102"
+      },
+      {
+        "userName": "103"
+      },
+      {
+        "userName": "104"
+      },
+      {
+        "userName": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in NOT IN clause.",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user_unsharded where name not in (select textcol1 from user_unsharded)",
+    "verifyResult": [
+      {
+        "userName": "101"
+      },
+      {
+        "userName": "102"
+      },
+      {
+        "userName": "103"
+      },
+      {
+        "userName": "104"
+      },
+      {
+        "userName": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in EXISTS clause.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where exists (select predef1 from user_unsharded)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  cross-shard subquery as expression",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from music where user_id = (select user_id from music)",
+    "verifyResult": [
+      {
+        "userId": 101
+      }
+    ]
+  },
+  {
+    "comment": "#  multi-level pullout",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from music where user_id = (select user_id from music where user_id in (select user_id from music))",
+    "verifyResult": [
+      {
+        "userId": 101
+      }
+    ]
+  },
+  {
+    "comment": "# database() call in where clause.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded where database()",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# Select with equals null",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from music where id = null",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# index hints, make sure they are not stripped.",
+    "fields": [
+      {
+        "name": "user_unsharded.costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_unsharded.costly from user_unsharded use index(user_costly_uindex)",
+    "verifyResult": [
+      {
+        "userCostly": 101
+      },
+      {
+        "userCostly": 102
+      },
+      {
+        "userCostly": 103
+      },
+      {
+        "userCostly": 104
+      },
+      {
+        "userCostly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery",
+    "fields": [
+      {
+        "name": "user_unsharded.costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select id, textcol1 from user_unsharded where name = 5) as t",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# subquery with join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select name from user_unsharded where name = 105 ) as t join user_unsharded_extra on t.name = user_unsharded_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery with join, and aliased references",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select user_unsharded.name from user_unsharded where user_unsharded.name = 105 ) as t join user_unsharded_extra on t.name = user_unsharded_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery in RHS of join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from user_unsharded_extra join ( select name from user_unsharded where name = 105 ) as t on t.name = user_unsharded_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery in FROM with cross-shard join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select name from user_unsharded where name = 105 ) as t join user_unsharded_extra on t.name = user_unsharded_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# merge subqueries with single-shard routes",
+    "fields": [
+      {
+        "name": "u.predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "e.extra_id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.predef1, e.extra_id from ( select predef1 from user_unsharded where name = 105 ) as u join ( select extra_id from user_unsharded_extra where user_id = 105 ) as e",
+    "verifyResult": [
+      {
+        "userPredef1": 105,
+        "userExtraExtraId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  wire-up on within cross-shard subquery",
+    "fields": [
+      {
+        "name": "t.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.id from ( select user_unsharded.id, user_unsharded.predef2 from user_unsharded join user_unsharded_extra on user_unsharded_extra.extra_id = user_unsharded.costly ) as t",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# subquery with join primitive (FROM)",
+    "fields": [
+      {
+        "name": "user_unsharded_extra.id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "t.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id, t.id from ( select user_unsharded.id from user_unsharded join user_unsharded_extra on user_unsharded.id < 3) as t",
+    "verifyResult": [
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      }
+    ]
+  },
+  {
+    "comment": "#  order by on a cross-shard subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from ( select user_unsharded.name, user_unsharded.costly from user_unsharded join user_unsharded_extra ) as t order by name",
+    "verifyResult": [
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  HAVING uses subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user_unsharded having name in ( select costly from user_unsharded )",
+    "verifyResult": [
+      {
+        "userName": 101
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY after pull-out subquery",
+    "fields": [
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol1 from user_unsharded where textcol1 in ( select textcol1 from user_unsharded ) order by textcol1",
+    "verifyResult": [
+      {
+        "userTextcol1": "user_unsharded.textcol1_1"
+      },
+      {
+        "userTextcol1": "user_unsharded.textcol1_2"
+      },
+      {
+        "userTextcol1": "user_unsharded.textcol1_3"
+      },
+      {
+        "userTextcol1": "user_unsharded.textcol1_4"
+      },
+      {
+        "userTextcol1": "user_unsharded.textcol1_5"
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY NULL after pull-out subquery",
+    "fields": [
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol2 from user_unsharded where textcol2 in ( select textcol2 from user_unsharded ) order by null",
+    "verifyResult": [
+      {
+        "userTextcol2": "user_unsharded.textcol2_1"
+      },
+      {
+        "userTextcol2": "user_unsharded.textcol2_2"
+      },
+      {
+        "userTextcol2": "user_unsharded.textcol2_3"
+      },
+      {
+        "userTextcol2": "user_unsharded.textcol2_4"
+      },
+      {
+        "userTextcol2": "user_unsharded.textcol2_5"
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY RAND() after pull-out subquery",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select costly from user_unsharded where costly in ( select costly from user_unsharded ) order by rand()",
+    "verifyResult": [
+      {
+        "userCostly": 101
+      },
+      {
+        "userCostly": 102
+      },
+      {
+        "userCostly": 103
+      },
+      {
+        "userCostly": 104
+      },
+      {
+        "userCostly": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  Order by subquery column",
+    "fields": [
+      {
+        "name": "u.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.name from user_unsharded u join ( select user_id from user_unsharded_extra where user_id = 105 ) eu on u.name = eu.user_id where u.name = 105 order by eu.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol2 from user_unsharded where textcol2 in ( select textcol2 from user_unsharded ) order by textcol2 limit 1",
+    "verifyResult": [
+      {
+        "userTextcol2": "user_unsharded.textcol2_1"
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "ue.user_id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "user_unsharded_extra.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from user_unsharded_extra group by user_id having sum(id) > 50",
+    "verifyResult": [
+      {
+        "userId": 100,
+        "userExtraUserId": 101,
+        "userExtraId": 101
+      },
+      {
+        "userId": 200,
+        "userExtraUserId": 102,
+        "userExtraId": 102
+      },
+      {
+        "userId": 300,
+        "userExtraUserId": 103,
+        "userExtraId": 103
+      },
+      {
+        "userId": 400,
+        "userExtraUserId": 104,
+        "userExtraId": 104
+      },
+      {
+        "userId": 500,
+        "userExtraUserId": 105,
+        "userExtraId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select * from user_unsharded_extra group by user_id having sum(id) > 500) as id",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery, user_id is shard key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from user_unsharded_extra where exists (select user_id from user_unsharded_extra where user_id >101)",
+    "verifyResult": [
+      {
+        "userId": 101
+      },
+      {
+        "userId": 102
+      },
+      {
+        "userId": 103
+      },
+      {
+        "userId": 104
+      },
+      {
+        "userId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_unsharded_extra where exists (select id from user_unsharded_extra where id >91)",
+    "verifyResult": [
+      {
+        "userId": 100
+      },
+      {
+        "userId": 200
+      },
+      {
+        "userId": 300
+      },
+      {
+        "userId": 400
+      },
+      {
+        "userId": 500
+      }
+    ]
+  }
+]

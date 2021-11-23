@@ -1,0 +1,362 @@
+# scatter aggregate order by references ungrouped column
+"select a, b, count(*) from user group by a order by b"
+{
+  "QueryType": "SELECT",
+  "Original": "select a, b, count(*) from user group by a order by b",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "1 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "count(2)",
+        "Distinct": "false",
+        "GroupBy": "0",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select a, b, count(*) from user where 1 != 1 group by a",
+            "Query": "select a, b, count(*) from user group by a order by a asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter aggregate order by references aggregate expression
+"select a, b, count(*) k from user group by a order by k"
+{
+  "QueryType": "SELECT",
+  "Original": "select a, b, count(*) k from user group by a order by k",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "2 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "count(2)",
+        "Distinct": "false",
+        "GroupBy": "0",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select a, b, count(*) as k from user where 1 != 1 group by a",
+            "Query": "select a, b, count(*) as k from user group by a order by a asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter aggregate order by references multiple non-group-by expressions
+"select a, b, count(*) k from user group by a order by b, a, k"
+{
+  "QueryType": "SELECT",
+  "Original": "select a, b, count(*) k from user group by a order by b, a, k",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "1 ASC, 0 ASC, 2 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "count(2)",
+        "Distinct": "false",
+        "GroupBy": "0",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select a, b, count(*) as k from user where 1 != 1 group by a",
+            "Query": "select a, b, count(*) as k from user group by a order by a asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter aggregate with memory sort and limit
+"select a, b, count(*) k from user group by a order by k desc limit 10"
+{
+  "QueryType": "SELECT",
+  "Original": "select a, b, count(*) k from user group by a order by k desc limit 10",
+  "Instructions": {
+    "OperatorType": "Limit",
+    "Count": 10,
+    "Inputs": [
+      {
+        "OperatorType": "Sort",
+        "Variant": "Memory",
+        "OrderBy": "2 DESC",
+        "Inputs": [
+          {
+            "OperatorType": "Aggregate",
+            "Variant": "Ordered",
+            "Aggregates": "count(2)",
+            "Distinct": "false",
+            "GroupBy": "0",
+            "Inputs": [
+              {
+                "OperatorType": "Route",
+                "Variant": "SelectScatter",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select a, b, count(*) as k from user where 1 != 1 group by a",
+                "Query": "select a, b, count(*) as k from user group by a order by a asc",
+                "Table": "user"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter aggregate with memory sort and order by number
+"select a, b, count(*) k from user group by a order by 1,3"
+{
+  "QueryType": "SELECT",
+  "Original": "select a, b, count(*) k from user group by a order by 1,3",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "0 ASC, 2 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "count(2)",
+        "Distinct": "false",
+        "GroupBy": "0",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select a, b, count(*) as k from user where 1 != 1 group by a",
+            "Query": "select a, b, count(*) as k from user group by a order by 1 asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter aggregate with memory sort and order by number, reuse weight_string
+# we have to use a meaningless construct to test this.
+"select textcol1, count(*) k from user group by textcol1 order by textcol1, k, textcol1"
+{
+  "QueryType": "SELECT",
+  "Original": "select textcol1, count(*) k from user group by textcol1 order by textcol1, k, textcol1",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "2 ASC, 1 ASC, 2 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "count(1)",
+        "Distinct": "false",
+        "GroupBy": "2",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select textcol1, count(*) as k, weight_string(textcol1) from user where 1 != 1 group by textcol1",
+            "Query": "select textcol1, count(*) as k, weight_string(textcol1) from user group by textcol1 order by textcol1 asc, textcol1 asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# order by on a cross-shard query. Note: this happens only when an order by column is from the second table
+"select user.col1 as a, user.col2 b, music.col3 c from user, music where user.name = music.user_id and user.name = 1 order by c"
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2 b, music.col3 c from user, music where user.name = music.user_id and user.name = 1 order by c",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "2 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Join",
+        "Variant": "Join",
+        "JoinColumnIndexes": [-1,-2,1],
+        "TableName": "user_music",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectEqualUnique",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select user.col1 as a, user.col2 as b, user.name from user where 1 != 1",
+            "Query": "select user.col1 as a, user.col2 as b, user.name from user where user.name = 1",
+            "Table": "user",
+            "Values": [
+              1
+            ],
+            "Vindex": "hash"
+          },
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectEqualUnique",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select music.col3 as c from music where 1 != 1",
+            "Query": "select music.col3 as c from music where music.user_id = :user_name",
+            "Table": "music",
+            "Values": [
+              ":user_name"
+            ],
+            "Vindex": "hash"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# Order by for join, with mixed cross-shard ordering
+"select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by 1 asc, 3 desc, 2 asc"
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by 1 asc, 3 desc, 2 asc",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "0 ASC, 2 DESC, 1 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Join",
+        "Variant": "Join",
+        "JoinColumnIndexes": [-1,-2,1],
+        "TableName": "user_music",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectEqualUnique",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select user.col1 as a, user.col2, user.name from user where 1 != 1",
+            "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1",
+            "Table": "user",
+            "Values": [
+              1
+            ],
+            "Vindex": "hash"
+          },
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select music.col3 from music where 1 != 1",
+            "Query": "select music.col3 from music where music.id = :user_name",
+            "Table": "music"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# order by on a cross-shard subquery
+"select name from ( select user.name, user.col from user join user_extra ) as t order by name"
+{
+  "QueryType": "SELECT",
+  "Original": "select name from ( select user.name, user.col from user join user_extra ) as t order by name",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "0 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Subquery",
+        "Columns": [
+          0
+        ],
+        "Inputs": [
+          {
+            "OperatorType": "Join",
+            "Variant": "Join",
+            "JoinColumnIndexes": [-1,-2],
+            "TableName": "user_user_extra",
+            "Inputs": [
+              {
+                "OperatorType": "Route",
+                "Variant": "SelectScatter",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select user.name, user.col from user where 1 != 1",
+                "Query": "select user.name, user.col from user",
+                "Table": "user"
+              },
+              {
+                "OperatorType": "Route",
+                "Variant": "SelectScatter",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select 1 from user_extra where 1 != 1",
+                "Query": "select 1 from user_extra",
+                "Table": "user_extra"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

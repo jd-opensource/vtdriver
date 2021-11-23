@@ -1,0 +1,343 @@
+[
+  {
+    "comment": "# ORDER BY uses column numbers",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,1),(2,'key2',1,2),(3,'key3',2,1),(4,'key4',2,1),(5,'key5',3,4),(6,'key6',5,6)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "SELECT f_int FROM TABLE_ENGINE_TEST WHERE f_tinyint = 1 ORDER BY 1",
+    "verifyResult": [
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 2
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY uses column numbers",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,2),(2,'key2',1,2),(3,'key3',2,4),(4,'key4',2,4),(5,'key5',3,4),(6,'key6',5,6)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "SELECT f_int FROM TABLE_ENGINE_TEST ORDER BY f_int",
+    "verifyResult": [
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 3
+      },
+      {
+        "f_int": 5
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY on scatter with multiple number column",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'key1',1,2,3),(2,'key2',1,2,4),(3,'key3',2,4,6),(4,'key4',2,4,7),(5,'key5',3,4,5),(6,'key6',2,6,1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "SELECT f_tinyint, f_midint, f_int FROM TABLE_ENGINE_TEST ORDER BY f_tinyint, f_midint, f_int;",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 3
+      },
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 4
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 4,
+        "f_int": 6
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 4,
+        "f_int": 7
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 6,
+        "f_int": 1
+      },
+      {
+        "f_tinyint": 3,
+        "f_midint": 4,
+        "f_int": 5
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY on scatter with number column, qualified name",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'key1',1,2,3),(2,'key2',1,2,4),(3,'key3',2,4,6),(4,'key4',2,4,7),(5,'key5',3,4,5),(6,'key6',2,6,1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "SELECT f_tinyint, table_engine_test.f_midint, f_int FROM TABLE_ENGINE_TEST ORDER BY f_tinyint, f_midint, f_int;",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 3
+      },
+      {
+        "f_tinyint": 1,
+        "f_midint": 2,
+        "f_int": 4
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 4,
+        "f_int": 6
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 4,
+        "f_int": 7
+      },
+      {
+        "f_tinyint": 2,
+        "f_midint": 6,
+        "f_int": 1
+      },
+      {
+        "f_tinyint": 3,
+        "f_midint": 4,
+        "f_int": 5
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY NULL",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,2),(2,'key2',1,2),(3,'key3',2,4),(4,'key4',2,4),(5,'key5',3,4),(6,'key6',5,6)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "SELECT f_int FROM TABLE_ENGINE_TEST ORDER BY NULL;",
+    "verifyResult": [
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 3
+      },
+      {
+        "f_int": 5
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY RAND()",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,2),(2,'key2',2,2),(3,'key3',4,4),(4,'key4',3,5)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "SELECT f_int FROM TABLE_ENGINE_TEST ORDER BY RAND()",
+    "verifyResult": [
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 2
+      },
+      {
+        "f_int": 3
+      },
+      {
+        "f_int": 4
+      }
+    ]
+  },
+  {
+    "comment": "# Order by, '*' expression",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY F_MIDINT",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: order by must reference a column in the select list"
+  },
+  {
+    "comment": "# Order by, qualified '*' expression",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT TABLE_ENGINE_TEST.* FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY F_MIDINT",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: order by must reference a column in the select list"
+  },
+  {
+    "comment": "# Order by, qualified '*' expression",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY TABLE_ENGINE_TEST.F_MIDINT",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: order by must reference a column in the select list"
+  },
+  {
+    "comment": "# Order by with math functions",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY -F_MIDINT",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: complex order by expression"
+  },
+  {
+    "comment": "# Order by with math operations",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY F_TINYINT + F_VARCHAR COLLATE UTF8_GENERAL_CI DESC",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: complex order by expression"
+  },
+  {
+    "comment": "# Order by with math operations",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY F_TINYINT + F_VARCHAR COLLATE UTF8_GENERAL_CI DESC;",
+    "exception": "java.sql.SQLFeatureNotSupportedException",
+    "errorMessage": "unsupported: in sharded table query: complex order by expression"
+  },
+  {
+    "comment": "# LIMIT",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit,f_midint,f_int) values(1,'key1',1,false,2,3),(2,'key2',5,false,2,4),(3,'key3',5,true,4,2)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "SELECT F_INT FROM TABLE_ENGINE_TEST WHERE F_TINYINT = 5 ORDER BY F_INT LIMIT 1;",
+    "verifyResult": [
+      {
+        "f_int": 2
+      }
+    ]
+  },
+  {
+    "comment": "# limit for scatter",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,2),(2,'key2',1,3),(3,'key3',2,4),(4,'key4',2,4),(5,'key5',3,4),(6,'key6',5,6)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "SELECT F_INT FROM TABLE_ENGINE_TEST ORDER BY F_INT LIMIT 1",
+    "verifyResult": [
+      {
+        "f_int": 1
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard expression in parenthesis with limit",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_int,f_tinyint) values(1,'key1',1,2),(2,'key2',1,2),(3,'key2',1,4),(4,'key4',2,4),(5,'key5',3,4),(6,'key6',5,6)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "SELECT f_int FROM TABLE_ENGINE_TEST WHERE (f_int = 1 AND f_key ='key2') ORDER BY f_int limit 5",
+    "verifyResult": [
+      {
+        "f_int": 1
+      },
+      {
+        "f_int": 1
+      }
+    ]
+  }
+]

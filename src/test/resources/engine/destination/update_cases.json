@@ -1,0 +1,134 @@
+[
+  {
+    "comment": "# update success id = 1 in shard -80",
+    "updateSql": "/*shard=-80, set for specific shard*/update user set predef1 = 10 where id = 1",
+    "updateCount": 1,
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 1 in shard -80",
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "/*shard=-80, set for specific shard*/select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 1 in shard -80",
+    "verfiyResult": [
+    ],
+    "verfiySql": "/*shard=80-, set for specific shard*/select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 10 in shard -80",
+    "updateSql": "update user set predef1 = 2 where id = 10",
+    "updateCount": 1,
+    "verfiyResult": [
+    ],
+    "verfiySql": "/*shard=80-, set for specific shard*/select predef1 from user where id = 10",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 10 in shard -80",
+    "verfiyResult": [
+      [
+        2
+      ]
+    ],
+    "verfiySql": "select predef1 from user where id = 10",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 10 in shard -80",
+    "verfiyResult": [
+      [
+        2
+      ]
+    ],
+    "verfiySql": "/*shard=-80, set for specific shard*/select predef1 from user where id = 10",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update fail id = 1",
+    "updateSql": "/*shard=80-, set for specific shard*/update user set predef1 = 20 where id = 1",
+    "updateCount": 0,
+    "verfiyResult": [
+    ],
+    "verfiySql": "/*shard=80-, set for specific shard*/select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 10 in shard -80",
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "/*shard=-80, set for specific shard*/select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# update success id = 10 in shard -80",
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  }
+]

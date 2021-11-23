@@ -1,0 +1,1151 @@
+[
+  {
+    "comment": "# exception",
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select countt(*) from plan_test",
+    "exception": "java.sql.SQLSyntaxErrorException",
+    "errorMessage": "You have an error in your SQL syntax;"
+  },
+  {
+    "comment": "# Aggregate on unique sharded",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)"
+    ],
+    "query": "select count(*), :ks.plan_test.f_int from plan_test where f_tinyint = 1;",
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(*)"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "verifyResult": [
+      {
+        "count": "1",
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# Aggregate detection (non-aggregate function)",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "trim",
+        "alias": "trim(' ABC ')"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select trim(' ABC '), f_tinyint from :ks.plan_test",
+    "verifyResult": [
+      {
+        "trim": "ABC",
+        "f_tinyint": "1"
+      },
+      {
+        "trim": "ABC",
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# select distinct with unique vindex for scatter route.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)"
+    ],
+    "query": "select distinct f_int, f_tinyint from plan_test",
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "f_tinyint": "1"
+      },
+      {
+        "f_int": "12345",
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# distinct and group by together for single route.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (3, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 88888, 222)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select distinct f_int, f_midint from plan_test group by :ks.plan_test.f_int",
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "f_midint": "111"
+      },
+      {
+        "f_int": "88888",
+        "f_midint": "222"
+      }
+    ]
+  },
+  {
+    "comment": "# count aggregate",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select count(*) from plan_test",
+    "verifyResult": [
+      {
+        "count": 2
+      }
+    ]
+  },
+  {
+    "comment": "# sum aggregate",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "sum",
+        "alias": "sum(f_int)"
+      }
+    ],
+    "query": "select sum(f_int) from plan_test",
+    "verifyResult": [
+      {
+        "sum": 24690
+      }
+    ]
+  },
+  {
+    "comment": "# min aggregate",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "min",
+        "alias": "min(f_int)"
+      }
+    ],
+    "query": "select min(f_int) from plan_test",
+    "verifyResult": [
+      {
+        "min": 1234
+      }
+    ]
+  },
+  {
+    "comment": "# max aggregate",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 123)"
+    ],
+    "fields": [
+      {
+        "name": "max",
+        "alias": "max(f_int)"
+      }
+    ],
+    "query": "select max(f_int) from plan_test",
+    "verifyResult": [
+      {
+        "max": 12345
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex should use a simple route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_tinyint, count(*) from plan_test group by f_tinyint",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "2",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "3",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "4",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex and other column should use a simple route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (3, 1234, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (4, 123, 222)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (5, 123, 333)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_tinyint, f_int, count(*) from plan_test group by f_tinyint, f_int",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "2",
+        "f_int": "12345",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "3",
+        "f_int": "1234",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "4",
+        "f_int": "123",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "5",
+        "f_int": "123",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a non-vindex column should use an OrderdAggregate primitive",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 222)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (3, 1234, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (4, 1234, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (6, 1234, 111)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_int, count(*) from plan_test group by f_int",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "count": "2"
+      },
+      {
+        "f_int": "1234",
+        "count": "3"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex should revert to simple route, and having clause should find the correct symbols.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "c"
+      }
+    ],
+    "query": "select f_tinyint, count(*) c from plan_test group by f_tinyint having :ks.plan_test.f_tinyint = 1 and c = 1",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate using distinct",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 123)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 123)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select distinct f_int from plan_test",
+    "verifyResult": [
+      {
+        "f_int": "123"
+      },
+      {
+        "f_int": "1234"
+      },
+      {
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct group by unique vindex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "count(distinct f_int)"
+      }
+    ],
+    "query": "select f_tinyint, count(distinct f_int) from plan_test group by f_tinyint",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "2",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "3",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "4",
+        "count": "1"
+      },
+      {
+        "f_tinyint": "6",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct unique vindex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(distinct f_tinyint)"
+      }
+    ],
+    "query": "select f_int, count(distinct f_tinyint) from plan_test group by f_int",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_int": "1234",
+        "count": "1"
+      },
+      {
+        "f_int": "12345",
+        "count": "4"
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 1234, 222)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (3, 12345, 333)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (4, 1234, 333)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (6, 12345, 333)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(distinct f_midint)"
+      }
+    ],
+    "query": "select f_int, count(distinct f_midint) from plan_test group by f_int",
+    "verifyResult": [
+      {
+        "f_int": "1234",
+        "count": "2"
+      },
+      {
+        "f_int": "12345",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex and no group by",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(distinct f_int)"
+      }
+    ],
+    "query": "select count(distinct f_int) from plan_test",
+    "verifyResult": [
+      {
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# count with distinct no unique vindex, count expression aliased",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 222, 123)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "count",
+        "alias": "c2"
+      }
+    ],
+    "query": "select f_smallint, count(distinct f_int) c2 from plan_test group by f_smallint",
+    "verifyResult": [
+      {
+        "f_smallint": "111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "222",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# sum with distinct no unique vindex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 222, 123)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "sum",
+        "alias": "sum(distinct f_int)"
+      }
+    ],
+    "query": "select f_smallint, sum(distinct f_int) from plan_test group by f_smallint",
+    "verifyResult": [
+      {
+        "f_smallint": "111",
+        "sum": "12345"
+      },
+      {
+        "f_smallint": "222",
+        "sum": "1357"
+      }
+    ]
+  },
+  {
+    "comment": "# min with distinct no unique vindex. distinct is ignored.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 222, 123)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "min",
+        "alias": "min(distinct f_int)"
+      }
+    ],
+    "query": "select f_smallint, min(distinct f_int) from plan_test group by f_smallint",
+    "verifyResult": [
+      {
+        "f_smallint": "111",
+        "min": "12345"
+      },
+      {
+        "f_smallint": "222",
+        "min": "123"
+      }
+    ]
+  },
+  {
+    "comment": "# order by count distinct",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 222, 123)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "count",
+        "alias": "k"
+      }
+    ],
+    "query": "select f_smallint, count(distinct f_int) k from plan_test group by f_smallint order by k",
+    "verifyResult": [
+      {
+        "f_smallint": "111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "222",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by aggregate function",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 222, 123)"
+    ],
+    "fields": [
+      {
+        "name": "count",
+        "alias": "b"
+      }
+    ],
+    "query": "select count(*) b from plan_test group by b",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "group by expression cannot reference an aggregate function: b"
+  },
+  {
+    "comment": "# scatter aggregate multiple group by (columns)",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select f_smallint, f_int, count(*) from plan_test group by f_int, f_smallint",
+    "verifyResult": [
+      {
+        "f_smallint": "111",
+        "f_int": "12345",
+        "count": "2"
+      },
+      {
+        "f_smallint": "222",
+        "f_int": "1234",
+        "count": "1"
+      },
+      {
+        "f_smallint": "333",
+        "f_int": "1234",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by column number",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_int from plan_test group by 1",
+    "verifyResult": [
+      {
+        "f_int": "12345"
+      },
+      {
+        "f_int": "1234"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by invalid column number",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_int from plan_test group by 2",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 2"
+  },
+  {
+    "comment": "# scatter aggregate order by null",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "query": "select count(*) from plan_test order by null",
+    "verifyResult": [
+      {
+        "count": 4
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with complex select list (can't build order by)",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "f_int+1"
+      }
+    ],
+    "query": "select distinct f_int+1 from plan_test",
+    "verifyResult": [
+      {
+        "f_int": "12346"
+      },
+      {
+        "f_int": "1235"
+      }
+    ],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "generating order by clause: cannot reference a complex expression"
+  },
+  {
+    "comment": "# scatter aggregate with numbered order by columns",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (1, 11, 111, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (2, 11, 222, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (3, 22, 111, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (4, 22, 111, 1234, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (5, 22, 111, 1234, 'abc')"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_varchar"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_smallint, f_midint, f_int, f_varchar, count(*) from plan_test group by 1, 2, 3 order by 1, 2, 3",
+    "verifyResult": [
+      {
+        "f_smallint": "11",
+        "f_midint": "111",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_midint": "222",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "1234",
+        "f_varchar": "abc",
+        "count": "2"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with named order by columns",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (1, 11, 111, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (2, 11, 222, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (3, 22, 111, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (4, 22, 111, 1234, 'abc')",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_varchar) values (5, 22, 111, 1234, 'abc')"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_varchar"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_smallint, f_midint, f_int, f_varchar, count(*) from plan_test group by 1, 2, 3 order by f_smallint, f_midint, f_int",
+    "verifyResult": [
+      {
+        "f_smallint": "11",
+        "f_midint": "111",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_midint": "222",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "1234",
+        "f_varchar": "abc",
+        "count": "2"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "12345",
+        "f_varchar": "abc",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with jumbled order by columns",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (1, 11, 111, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (2, 11, 222, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (3, 22, 111, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (4, 22, 111, 2222, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (5, 22, 111, 2222, 22222)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_bigint"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_smallint, f_midint, f_int, f_bigint, count(*) from plan_test group by 1, 2, 3, 4 order by f_smallint, f_midint, f_int, f_bigint",
+    "verifyResult": [
+      {
+        "f_smallint": "11",
+        "f_midint": "111",
+        "f_int": "1111",
+        "f_bigint": "11111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_midint": "222",
+        "f_int": "1111",
+        "f_bigint": "11111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "1111",
+        "f_bigint": "11111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "2222",
+        "f_bigint": "11111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "2222",
+        "f_bigint": "22222",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate with some descending order by cols",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (1, 11, 111, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (2, 22, 111, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (3, 11, 222, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (4, 22, 222, 1111, 11111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int, f_bigint) values (5, 22, 111, 2222, 22222)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_smallint, f_midint, f_int, count(*) from plan_test group by 3, 2, 1 order by 1 desc, 3 desc, f_midint",
+    "verifyResult": [
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "2222",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "111",
+        "f_int": "1111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "22",
+        "f_midint": "222",
+        "f_int": "1111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_midint": "111",
+        "f_int": "1111",
+        "count": "1"
+      },
+      {
+        "f_smallint": "11",
+        "f_midint": "222",
+        "f_int": "1111",
+        "count": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# invalid order by column numner for scatter",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (1, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (2, 222, 1234)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (3, 111, 12345)",
+      "insert into plan_test(f_tinyint, f_smallint, f_int) values (4, 333, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select f_midint, count(*) from plan_test group by f_midint order by 5 limit 10",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 5"
+  },
+  {
+    "comment": "# Group by with collate operator",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 555)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "a"
+      }
+    ],
+    "query": "select plan_test.f_int as a from plan_test where plan_test.f_tinyint = 5 group by a collate utf8_general_ci",
+    "verifyResult": [
+      {
+        "f_int": "555"
+      }
+    ]
+  },
+  {
+    "comment": "# Group by invalid column number (code is duplicated from symab).",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 555)"
+    ],
+    "fields": [
+      {
+        "name": "tinyint"
+      }
+    ],
+    "query": "select f_tinyint from plan_test group by 1.1",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number is not an int"
+  },
+  {
+    "comment": "# Group by out of range column number (code is duplicated from symab).",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 555)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select f_tinyint from plan_test group by 2",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range: 2"
+  },
+  {
+    "comment": "# syntax error detected by planbuilder",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 555)"
+    ],
+    "fields": [
+      {
+        "name": "count",
+        "alias": "count(distinct *)"
+      }
+    ],
+    "query": "select count(distinct *) from plan_test",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "syntax error: COUNT(DISTINCT *)"
+  },
+  {
+    "comment": "# error in from",
+    "initSql": [],
+    "fields": [
+      {
+        "name": "Costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "Id",
+        "javaType": "Integer"
+      }
+    ],
+    "query": "select user.Costly, user_extra.Id from user join user_extra and user.Costly < 103 and user_extra.Id < 300",
+    "verifyResult": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# error in from",
+    "initSql": [],
+    "fields": [
+      {
+        "name": "Costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "Id",
+        "javaType": "Integer"
+      }
+    ],
+    "query": "select user.Costly, user_extra.Id from user and user_extra.Id < 300",
+    "verifyResult": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  }
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "comment": "# non-split talbe join with a split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "needSort": true,
+    "query": "select table_engine_test.id from user join table_engine_test on user.name = user_extra.user_id where user.name = 105",
+    "fields": [
+      {
+        "name": "user_extra.id",
+        "javaType": "Integer"
+      }
+    ],
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  },
+  {
+    "comment": "# a split talbe join with a non-split split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "needSort": true,
+    "query": "select table_engine_test.id from table_engine_test join user on user.id = table_engine_test.id where user.name = 105",
+    "fields": [
+      {
+        "name": "user_extra.id",
+        "javaType": "Integer"
+      }
+    ],
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  }
+]

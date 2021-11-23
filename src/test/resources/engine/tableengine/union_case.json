@@ -1,0 +1,70 @@
+[
+  {
+    "comment": "# union all between a split table and a non-split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra union all select id from table_engine_test",
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  },
+  {
+    "comment": "# union all between non-split table and a split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from table_engine_test union all select id from user_metadata",
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  },
+  {
+    "comment": "# union between a split table and a non-split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra union select id from table_engine_test",
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  },
+  {
+    "comment": "# union between non-split table and a split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from table_engine_test union select id from user_metadata",
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  }
+]

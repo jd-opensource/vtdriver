@@ -1,0 +1,114 @@
+[
+  {
+    "comment": "# distinct and group by together for scatter route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',1,true),(2,'11',1,false),(3,'11',1,true),(4,'14',1,true),(5,'15',0,false),(6,'11',1,true),(7,'12',2,true),(8,'13',3,false),(9,'11',4, false), (10,'11',5,true), (11, '11', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "f_key"
+      },
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "11",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "14",
+        "f_tinyint": 1
+      },
+      {
+        "f_key": "15",
+        "f_tinyint": 0
+      },
+      {
+        "f_key": "12",
+        "f_tinyint": 2
+      },
+      {
+        "f_key": "13",
+        "f_tinyint": 3
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 4
+      },
+      {
+        "f_key": "11",
+        "f_tinyint": 5
+      }
+    ],
+    "query": "select distinct f_tinyint, f_key  from table_engine_test group by f_tinyint"
+  },
+  {
+    "comment": "# scatter aggregate order by references ungrouped column",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'11',1,2,1),(2,'11',2,2,1),(3,'11',0,2,3)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_int, f_tinyint, count(*) from table_engine_test group by f_int order by f_tinyint",
+    "verifyResult": [
+      {
+        "f_int": 3,
+        "f_tinyint": 0,
+        "_long": 1
+      },
+      {
+        "f_int": 1,
+        "f_tinyint": 2,
+        "_long": 2
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate order by references ungrouped column",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'11',1,2,1),(2,'11',2,2,1),(3,'11',0,2,3)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "_long",
+        "alias": "k"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_int, f_tinyint, count(*) k from table_engine_test group by f_int order by k",
+    "verifyResult": [
+      {
+        "f_int": 3,
+        "f_tinyint": 0,
+        "_long": 1
+      },
+      {
+        "f_int": 1,
+        "f_tinyint": 2,
+        "_long": 2
+      }
+    ]
+  }
+]

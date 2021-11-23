@@ -1,0 +1,173 @@
+[
+  {
+    "comment": "# Single table sharded scatter",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "query": "select f_tinyint from plan_test",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "2"
+      },
+      {
+        "f_tinyint": "4"
+      },
+      {
+        "f_tinyint": "6"
+      }
+    ]
+  },
+  {
+    "comment": "# Single information_schema query",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "table_schema"
+      }
+    ],
+    "skipResultCheck": true,
+    "query": "select table_schema from information_schema.tables"
+  },
+  {
+    "comment": "# access to unqualified column names in information_schema",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "table_schema"
+      }
+    ],
+    "skipResultCheck": true,
+    "query": "select table_schema from information_schema.tables where table_schema = 'mysql'"
+  },
+  {
+    "comment": "# access to qualified column names in information_schema",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "table_schema"
+      }
+    ],
+    "skipResultCheck": true,
+    "query": "select table_schema from information_schema.tables where information_schema.tables.table_schema = 'mysql'"
+  },
+  {
+    "comment": "# access to unqualified column names in performance_schema",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "host"
+      }
+    ],
+    "query": "select host from performance_schema.hosts where host = 'localhost'",
+    "verifyResult": [
+      {
+        "host": "localhost"
+      }
+    ]
+  },
+  {
+    "comment": "# access to qualified column names in performance_schema",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "host"
+      }
+    ],
+    "query": "select host from performance_schema.hosts where performance_schema.hosts.host = 'localhost'",
+    "verifyResult": [
+      {
+        "host": "localhost"
+      }
+    ]
+  },
+  {
+    "comment": "# Single sys query",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "mysql_version"
+      }
+    ],
+    "query": "select mysql_version from sys.version",
+    "skipResultCheck": true
+  },
+  {
+    "comment": "# access to unqualified column names in sys",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "mysql_version"
+      }
+    ],
+    "query": "select mysql_version from sys.version where mysql_version is not null",
+    "skipResultCheck": true
+  },
+  {
+    "comment": "# access to qualified column names in sys",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "mysql_version"
+      }
+    ],
+    "query": "select mysql_version from sys.version where sys.version.mysql_version is not null",
+    "skipResultCheck": true
+  },
+  {
+    "comment": "# Single mysql query",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "plugin"
+      }
+    ],
+    "skipResultCheck": true,
+    "query": "select plugin from mysql.user limit 1"
+  },
+  {
+    "comment": "# access to unqualified column names in mysql",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "plugin"
+      }
+    ],
+    "skipResultCheck": true,
+    "query": "select plugin from mysql.user where user = 'root' limit 1"
+  },
+  {
+    "comment": "# access to qualified column names in mysql",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "plugin"
+      }
+    ],
+    "query": "select plugin from mysql.user where mysql.user.user = 'root' limit 1",
+    "skipResultCheck": true
+  }
+]

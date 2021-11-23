@@ -1,0 +1,411 @@
+[
+  {
+    "comment": "# in Transaction --- table auto --- simple insert",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x')",
+      "insert into auto (id,ai,email) values(1,1,'x')",
+      "insert into auto (id,ai,email) values(3,3,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table auto --- simple insert",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x')",
+      "insert into auto (id,ai,email) values(3,3,'x')",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table auto --- insert multiple values",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x'),(3,3,'x'),(4,4,'x'),(5,5,'x')",
+      "insert into auto (id,ai,email) values(6,6,'x'),(1,1,'x'),(7,7,'x'),(8,8,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table auto --- insert multiple values",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x'),(3,3,'x'),(4,4,'x'),(5,5,'x')",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table auto --- insert multiple values",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x'),(3,3,'x'),(4,4,'x'),(5,5,'x')",
+      "insert into auto (id,ai,email) values(6,6,'x')",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table user --- simple insert",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc') "
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table user --- simple insert",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table user --- insert multiple values",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc'),('c', 2, 'abc'),('d', 4, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc'),('e', 5, 'abc'),('f', 6, 'abc')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table user --- insert multiple values",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc'),('c', 2, 'abc'),('d', 4, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('f', 6, 'abc')",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table user --- insert multiple values",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc'),('c', 2, 'abc'),('d', 4, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# multiQuery in Transaction --- table auto",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x');insert into auto (id,ai,email) values(1,1,'x');insert into auto (id,ai,email) values(3,3,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# multiQuery in Transaction --- table auto",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x');insert into auto (id,ai,email) values(4,4,'x');insert into auto (id,ai,email) values(3,3,'x')",
+      "insert into auto (id,ai,email) values(5,5,'x');insert into auto (id,ai,email) values(1,1,'x');insert into auto (id,ai,email) values(6,6,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# multiQuery and single sql in Transaction --- table auto",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x');insert into auto (id,ai,email) values(4,4,'x');insert into auto (id,ai,email) values(3,3,'x')",
+      "insert into auto (id,ai,email) values(5,5,'x');",
+      "insert into auto (id,ai,email) values(1,1,'x');"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# multiQuery in Transaction --- table user",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc');INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc');INSERT INTO user (name,costly,textcol2) VALUES('d', 4, 'abc'),('a', 1, 'abc'); "
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# multiQuery in Transaction --- table user",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc');INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc');INSERT INTO user (name,costly,textcol2) VALUES('d', 4, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc');INSERT INTO user (name,costly,textcol2) VALUES ('e', 5, 'abc')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# multiQuery and single sql in Transaction --- table user",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc');INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc');INSERT INTO user (name,costly,textcol2) VALUES('d', 4, 'abc') ",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('e', 5, 'abc')",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc');"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  },
+  {
+    "comment": "# multiQuery without Transaction --- table auto",
+    "initSql": [
+      "delete from auto",
+      "insert into auto (id,ai,email) values(1,1,'x')"
+    ],
+    "needTransaction": false,
+    "executeSqls": [
+      "insert into auto (id,ai,email) values(2,2,'x');insert into auto (id,ai,email) values(1,1,'x');insert into auto (id,ai,email) values(3,3,'x')"
+    ],
+    "errorMsg": "Duplicate entry '1' for key ",
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id,ai from auto"
+    ]
+  },
+  {
+    "comment": "# multiQuery without Transaction --- table user",
+    "initSql": [
+      "delete from user",
+      "INSERT INTO user (name,costly,textcol2) VALUES ('a', 1, 'abc') "
+    ],
+    "needTransaction": false,
+    "executeSqls": [
+      "INSERT INTO user (name,costly,textcol2) VALUES ('b', 3, 'abc');INSERT INTO user (name,costly,textcol2) VALUES ('c', 2, 'abc');INSERT INTO user (name,costly,textcol2) VALUES('d', 4, 'abc'),('a', 1, 'abc'); "
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select costly from user"
+    ]
+  }
+]

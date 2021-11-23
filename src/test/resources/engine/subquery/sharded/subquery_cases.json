@@ -1,0 +1,1047 @@
+[
+  {
+    "comment": "# scatter aggregate in a subquery",
+    "fields": [
+      {
+        "name": "cnt",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": false,
+    "query": "select cnt from (select count(*) as cnt from user) t",
+    "verifyResult": [
+      {
+        "cnt": 5
+      }
+    ]
+  },
+  {
+    "comment": "# information_schema query using database() func",
+    "fields": [
+      {
+        "name": "cnt",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": false,
+    "skipResultCheck": true,
+    "query": "SELECT INDEX_LENGTH FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'USER'",
+    "verifyResult": [
+      {
+        "cnt": 16384
+      }
+    ]
+  },
+  {
+    "comment": "# subquery of information_schema with itself",
+    "fields": [
+      {
+        "name": "pluginName",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "skipResultCheck": true,
+    "query": "select PLUGIN_NAME pluginName from information_schema.PLUGINS where PLUGIN_NAME in (select PLUGIN_NAME from information_schema.PLUGINS) and PLUGIN_NAME IN ('mysql_native_password','sha256_password')",
+    "verifyResult": [
+      {
+        "pluginName": "mysql_native_password"
+      },
+      {
+        "pluginName": "sha256_password"
+      }
+    ]
+  },
+  {
+    "comment": "# subquery",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_extra join user u where u.name in (select name from user where user.name = u.name and user_extra.extra_id = user.predef1) and u.name in (user_extra.extra_id, 1)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  ensure subquery reordering gets us a better plan",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_extra join user u where u.name in (select costly from user where user.name = 105) and u.name = 105",
+    "verifyResult": [
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  nested subquery",
+    "fields": [
+      {
+        "name": "u.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.id from user_extra join user u where u.name in (select predef2 from user where user.name = u.name and user_extra.extra_id = user.predef1 and user.name in (select extra_id from user_extra where user_extra.user_id = user.name)) and u.name in (user_extra.extra_id, 1)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# Correlated subquery in where clause",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user where user.predef1 in (select user_extra.extra_id from user_extra where user_extra.user_id = user.name)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same int val",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user where name = 105 and user.predef1 in (select user_extra.extra_id from user_extra where user_extra.user_id = 105)",
+    "verifyResult": [
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same str val",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user where name = '103' and user.predef1 in (select user_extra.extra_id from user_extra where user_extra.user_id = '103')",
+    "verifyResult": [
+      {
+        "userId": 3
+      }
+    ]
+  },
+  {
+    "comment": "# outer and inner subquery route by same outermost column value",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user uu where name in (select name from user where name = uu.name and user.predef1 in (select user_extra.extra_id from user_extra where user_extra.user_id = uu.name))",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in IN clause.",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user where name in (select costly from user)",
+    "verifyResult": [
+      {
+        "userName": "101"
+      },
+      {
+        "userName": "102"
+      },
+      {
+        "userName": "103"
+      },
+      {
+        "userName": "104"
+      },
+      {
+        "userName": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in NOT IN clause.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select id, name from user where id not in (select id from user where id = 72 or id = 13)",
+    "verifyResult": [
+      {
+        "userId": 1,
+        "userName": "101"
+      },
+      {
+        "userId": 2,
+        "userName": "102"
+      },
+      {
+        "userId": 3,
+        "userName": "103"
+      },
+      {
+        "userId": 4,
+        "userName": "104"
+      },
+      {
+        "userId": 5,
+        "userName": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard subquery in EXISTS clause.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user where exists (select predef1 from user)",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "#  cross-shard subquery as expression",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from music where user_id = (select user_id from music)",
+    "verifyResult": [
+      {
+        "userId": 101
+      }
+    ]
+  },
+  {
+    "comment": "#  multi-level pullout",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from music where user_id = (select user_id from music where user_id in (select user_id from music))",
+    "verifyResult": [
+      {
+        "userId": 101
+      }
+    ]
+  },
+  {
+    "comment": "# database() call in where clause.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user where database()",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# Select with equals null",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from music where id = null",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# index hints, make sure they are not stripped.",
+    "fields": [
+      {
+        "name": "user.costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user use index(user_costly_uindex)",
+    "verifyResult": [
+      {
+        "userCostly": 101
+      },
+      {
+        "userCostly": 102
+      },
+      {
+        "userCostly": 103
+      },
+      {
+        "userCostly": 104
+      },
+      {
+        "userCostly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery",
+    "fields": [
+      {
+        "name": "user.costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select id, textcol1 from user where name = 5) as t",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# subquery with join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select name from user where name = 105 ) as t join user_extra on t.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery with join, and aliased references",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select user.name from user where user.name = 105 ) as t join user_extra on t.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery in RHS of join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from user_extra join ( select name from user where name = 105 ) as t on t.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# subquery in FROM with cross-shard join",
+    "fields": [
+      {
+        "name": "t.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.name from ( select name from user where name = 105 ) as t join user_extra on t.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "# merge subqueries with single-shard routes",
+    "fields": [
+      {
+        "name": "u.predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "e.extra_id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.predef1, e.extra_id from ( select predef1 from user where name = 105 ) as u join ( select extra_id from user_extra where user_id = 105 ) as e",
+    "verifyResult": [
+      {
+        "userPredef1": 105,
+        "userExtraExtraId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  wire-up on within cross-shard subquery",
+    "fields": [
+      {
+        "name": "t.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select t.id from ( select user.id, user.predef2 from user join user_extra on user_extra.extra_id = user.costly ) as t",
+    "verifyResult": [
+      {
+        "userId": 1
+      },
+      {
+        "userId": 2
+      },
+      {
+        "userId": 3
+      },
+      {
+        "userId": 4
+      },
+      {
+        "userId": 5
+      }
+    ]
+  },
+  {
+    "comment": "# subquery with join primitive (FROM)",
+    "fields": [
+      {
+        "name": "user_extra.id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "t.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id, t.id from ( select user.id from user join user_extra on user.id < 3) as t",
+    "verifyResult": [
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      },
+      {
+        "userExtraId": 1,
+        "userId": 1
+      },
+      {
+        "userExtraId": 2,
+        "userId": 2
+      }
+    ]
+  },
+  {
+    "comment": "#  order by on a cross-shard subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from ( select user.name, user.costly from user join user_extra ) as t order by name",
+    "verifyResult": [
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 101
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  HAVING uses subquery",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user having name in ( select costly from user )",
+    "verifyResult": [
+      {
+        "userName": 101
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY after pull-out subquery",
+    "fields": [
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol1 from user where textcol1 in ( select textcol1 from user ) order by textcol1",
+    "verifyResult": [
+      {
+        "userTextcol1": "user.textcol1_1"
+      },
+      {
+        "userTextcol1": "user.textcol1_2"
+      },
+      {
+        "userTextcol1": "user.textcol1_3"
+      },
+      {
+        "userTextcol1": "user.textcol1_4"
+      },
+      {
+        "userTextcol1": "user.textcol1_5"
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY NULL after pull-out subquery",
+    "fields": [
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol2 from user where textcol2 in ( select textcol2 from user ) order by null",
+    "verifyResult": [
+      {
+        "userTextcol2": "user.textcol2_1"
+      },
+      {
+        "userTextcol2": "user.textcol2_2"
+      },
+      {
+        "userTextcol2": "user.textcol2_3"
+      },
+      {
+        "userTextcol2": "user.textcol2_4"
+      },
+      {
+        "userTextcol2": "user.textcol2_5"
+      }
+    ]
+  },
+  {
+    "comment": "#  ORDER BY RAND() after pull-out subquery",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select costly from user where costly in ( select costly from user ) order by rand()",
+    "verifyResult": [
+      {
+        "userCostly": 101
+      },
+      {
+        "userCostly": 102
+      },
+      {
+        "userCostly": 103
+      },
+      {
+        "userCostly": 104
+      },
+      {
+        "userCostly": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  Order by subquery column",
+    "fields": [
+      {
+        "name": "u.name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select u.name from user u join ( select user_id from user_extra where user_id = 105 ) eu on u.name = eu.user_id where u.name = 105 order by eu.user_id",
+    "verifyResult": [
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select textcol2 from user where textcol2 in ( select textcol2 from user ) order by textcol2 limit 1",
+    "verifyResult": [
+      {
+        "userTextcol2": "user.textcol2_1"
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery, name is shard key",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user where name in ( select name from user ) order by name",
+    "verifyResult": [
+      {
+        "userName": 101
+      },
+      {
+        "userName": 102
+      },
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery, name is shard key",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user where name in ( select name from user ) order by name limit 2,2",
+    "verifyResult": [
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery, name is shard key",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select name from user where name in ( select name from user where id > 2) order by name",
+    "verifyResult": [
+      {
+        "userName": 103
+      },
+      {
+        "userName": 104
+      },
+      {
+        "userName": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "ue.user_id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "user_extra.id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from user_extra group by user_id having sum(id) > 50",
+    "verifyResult": [
+      {
+        "userId": 100,
+        "userExtraUserId": 101,
+        "userExtraId": 101
+      },
+      {
+        "userId": 200,
+        "userExtraUserId": 102,
+        "userExtraId": 102
+      },
+      {
+        "userId": 300,
+        "userExtraUserId": 103,
+        "userExtraId": 103
+      },
+      {
+        "userId": 400,
+        "userExtraUserId": 104,
+        "userExtraId": 104
+      },
+      {
+        "userId": 500,
+        "userExtraUserId": 105,
+        "userExtraId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select * from user_extra group by user_id having sum(id) > 500) as id",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery, user_id is shard key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_id from user_extra where exists (select user_id from user_extra where user_id >101)",
+    "verifyResult": [
+      {
+        "userId": 101
+      },
+      {
+        "userId": 102
+      },
+      {
+        "userId": 103
+      },
+      {
+        "userId": 104
+      },
+      {
+        "userId": 105
+      }
+    ]
+  },
+  {
+    "comment": "#  scatter limit after pullout subquery",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from user_extra where exists (select id from user_extra where id >91)",
+    "verifyResult": [
+      {
+        "userId": 100
+      },
+      {
+        "userId": 200
+      },
+      {
+        "userId": 300
+      },
+      {
+        "userId": 400
+      },
+      {
+        "userId": 500
+      }
+    ]
+  },
+  {
+    "comment": "# subquery",
+    "query": "select cnt from (select count(*) as cnt from user and user_extra) t",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select u.id from user_extra join user u where u.name in (select name from user and user_extra where user.name = u.name and user_extra.extra_id = user.predef1) and u.name in (user_extra.extra_id, 1)",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select u.id from user_extra join user u where u.name in (select predef2 from user where user.name = u.name and user_extra.extra_id = user.predef1 and user.name in (select extra_id from user_extra and user where user_extra.user_id = user.name)) and u.name in (user_extra.extra_id, 1)",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select id from user where user.predef1 in (select user_extra.extra_id from user_extra and user where user_extra.user_id = user.name)",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select id from user where name = 105 and user.predef1 in (select user_extra.extra_id from user_extra and user where user_extra.user_id = 105)",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select id from user uu where name in (select name from user and user_metadata where name = uu.name and user.predef1 in (select user_extra.extra_id from user_extra where user_extra.user_id = uu.name))",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# subquery",
+    "query": "select id from user uu where name in (select name from user where name = uu.name and user.predef1 in (select user_extra.extra_id from user_extra and user where user_extra.user_id = uu.name))",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  }
+]

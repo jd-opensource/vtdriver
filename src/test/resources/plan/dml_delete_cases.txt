@@ -1,0 +1,200 @@
+# delete table not found
+"delete from nouser"
+"Not found defaultKeyspace"
+
+# delete unsharded
+"delete from unsharded"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from unsharded",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from unsharded"
+  }
+}
+
+# multi-table delete with comma join
+"delete a from unsharded_a a, unsharded_b b where a.id = b.id and b.val = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete a from unsharded_a a, unsharded_b b where a.id = b.id and b.val = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete a from unsharded_a as a, unsharded_b as b where a.id = b.id and b.val = 1"
+  }
+}
+
+# multi-table delete with ansi join
+"delete a from unsharded_a a join unsharded_b b on a.id = b.id where b.val = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete a from unsharded_a a join unsharded_b b on a.id = b.id where b.val = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete a from unsharded_a as a join unsharded_b as b on a.id = b.id where b.val = 1"
+  }
+}
+
+#delete with join from subquery
+"delete foo from unsharded as foo left join (select id from unsharded where col is not null order by col desc limit 10) as keepers on foo.id = keepers.id where keepers.id is null and foo.col is not null and foo.col < 1000"
+{
+  "QueryType": "DELETE",
+  "Original": "delete foo from unsharded as foo left join (select id from unsharded where col is not null order by col desc limit 10) as keepers on foo.id = keepers.id where keepers.id is null and foo.col is not null and foo.col \u003c 1000",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete foo from unsharded as foo left join ( select id from unsharded where col is not null order by col desc limit 10 ) keepers on foo.id = keepers.id where keepers.id is null and foo.col is not null and foo.col \u003c 1000"
+  }
+}
+
+# delete from, no owned vindexes
+"delete from music_extra where user_id = 1"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from music_extra where user_id = 1",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from music_extra where user_id = 1",
+    "TableName": "music_extra",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# delete from with no where clause
+"delete from user_extra"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user_extra",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from user_extra",
+    "TableName": "user_extra"
+  }
+}
+
+# delete with non-comparison expr
+"delete from user_extra where user_id between 1 and 2"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user_extra where user_id between 1 and 2",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from user_extra where user_id between 1 and 2",
+    "TableName": "user_extra"
+  }
+}
+
+# delete from with no index match
+"delete from user_extra where name = 'jose'"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user_extra where name = 'jose'",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from user_extra where name = 'jose'",
+    "TableName": "user_extra"
+  }
+}
+
+# delete from with primary id in through IN clause
+"delete from user_extra where user_id in (1, 2)"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from user_extra where user_id in (1, 2)",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "In",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from user_extra where user_id in (1, 2)",
+    "TableName": "user_extra",
+    "Values": [
+      [
+        1,
+        2
+      ]
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# unsharded delete where inner query references outer query
+"delete from unsharded where col = (select id from unsharded_a where id = unsharded.col)"
+{
+  "QueryType": "DELETE",
+  "Original": "delete from unsharded where col = (select id from unsharded_a where id = unsharded.col)",
+  "Instructions": {
+    "OperatorType": "Delete",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "delete from unsharded where col = ( select id from unsharded_a where id = unsharded.col )"
+  }
+}
+

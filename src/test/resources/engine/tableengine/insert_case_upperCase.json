@@ -1,0 +1,788 @@
+[
+  {
+    "comment": "# Column 'f_key' specified twice (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID,F_KEY,F_TINYINT,F_BIT,F_KEY) VALUES(1,'11',0,TRUE,'12')",
+    "insertVar": [],
+    "exception": "java.sql.SQLSyntaxErrorException",
+    "errorMessage": "Column 'f_key' specified twice"
+  },
+  {
+    "comment": "# insert no column list for sharded table_engine_test table  (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST VALUES(1, '2', 3, TRUE)",
+    "insertVar": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "no column list"
+  },
+  {
+    "comment": "# insert no column list for sharded table_engine_test table (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST VALUES(1, '2', 3, TRUE),(2, '3', 4, TRUE),(5, '6', 7, TRUE)",
+    "insertVar": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "no column list"
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID,F_KEY,F_TINYINT,F_BIT) VALUES (1, 'aaa', 1, FALSE)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaa",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO :KS.TABLE_ENGINE_TEST(ID,F_KEY,F_TINYINT,F_BIT) VALUES (1, 'aaa', 1, FALSE)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaa",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT) VALUES (100, 'bbb', 22)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select id, f_key, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 100,
+        "f_key": "bbb",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT) VALUES (100, 'ccc', 12),(200, 'ddd',34),(300, 'eee',56)",
+    "rowCount": 3,
+    "foundRows": 3,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "ccc",
+        "_long": 1
+      },
+      {
+        "f_key": "ddd",
+        "_long": 1
+      },
+      {
+        "f_key": "eee",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_BIT) VALUES (100, 'a', true),(999, 'b', 1),(222, 'c', 0)",
+    "rowCount": 3,
+    "foundRows": 3,
+    "insertVar": [],
+    "verifySql": "select f_key, f_bit, count(*) from table_engine_test group by f_key, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "a",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "b",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "c",
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID,F_KEY) VALUES (1,'aaaa'),(2,'bbbb'),(3,'cccc')",
+    "rowCount": 3,
+    "foundRows": 3,
+    "insertVar": [],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaaa",
+        "_long": 1
+      },
+      {
+        "f_key": "bbbb",
+        "_long": 1
+      },
+      {
+        "f_key": "cccc",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert ignore sharded (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key) values (1, 'key')"
+    ],
+    "query": "INSERT IGNORE INTO TABLE_ENGINE_TEST(ID,F_KEY) VALUES (1, 'key')",
+    "rowCount": 0,
+    "foundRows": 0,
+    "insertVar": [],
+    "verifySql": "select id, f_key, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "key",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint) values(1, 'key', 1)"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT) VALUES(2, 'key2', 3) ON DUPLICATE KEY UPDATE F_TINYINT = 2",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select id, f_key, f_tinyint, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "key",
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "id": 2,
+        "f_key": "key2",
+        "f_tinyint": 3,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key with table.column (UpperCase) ",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint) values(1, 'key', 1)"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT) VALUES(2, 'key2', 3) ON DUPLICATE KEY UPDATE TABLE_ENGINE_TEST.F_TINYINT = 2",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select id, f_key, f_tinyint, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "key",
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "id": 2,
+        "f_key": "key2",
+        "f_tinyint": 3,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key, to same shard (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key) values(1, 'shard1')"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES(1,'shard1') ON DUPLICATE KEY UPDATE F_BIT = false, f_tinyint = 123",
+    "rowCount": 2,
+    "foundRows": 2,
+    "insertVar": [],
+    "verifySql": "select id, f_key, f_tinyint, f_bit, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "shard1",
+        "f_tinyint": 123,
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key, to same shard (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint) values(1, 'shard1', 123)"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES(1,'shard1') ON DUPLICATE KEY UPDATE F_TINYINT = 123",
+    "rowCount": 0,
+    "foundRows": 1,
+    "insertVar": [],
+    "verifySql": "select id, f_key, f_tinyint, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "shard1",
+        "f_tinyint": 123,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with default seq (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES (1, 'f_key')",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select id, f_key, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "f_key",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES (1, ?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      "bindVar1"
+    ],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bindVar1",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES (?, ?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      1,
+      "bindVar2"
+    ],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bindVar2",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with non vindex bool value (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_BIT, F_KEY) VALUES (1 ,false, '')",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_bit, f_key, count(*) from table_engine_test group by f_bit, f_key",
+    "fields": [
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "",
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# replace sharded (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint, f_bit) values (1, 'key1', 12, true)"
+    ],
+    "query": "REPLACE INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT, F_BIT) VALUES (?, ?, ?, ?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      2,
+      "key2",
+      13,
+      true
+    ],
+    "verifySql": "select id, f_key, f_tinyint, f_bit, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "key1",
+        "f_tinyint": 12,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "id": 2,
+        "f_key": "key2",
+        "f_tinyint": 13,
+        "f_bit": true,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# replace into (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key, f_tinyint, f_bit) values (1, 'key', 12, true)"
+    ],
+    "query": "REPLACE INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT, F_BIT) VALUES (1, 'key', 13, false)",
+    "rowCount": 2,
+    "foundRows": 2,
+    "verifySql": "select id, f_key, f_tinyint, f_bit, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "key",
+        "f_tinyint": 13,
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY, F_TINYINT, F_BIT) VALUES (?,?,?,?),(?,?,?,?),(?,?,?,?),(?,?,?,?)",
+    "rowCount": 4,
+    "foundRows": 4,
+    "insertVar": [
+      1,
+      "name1",
+      11,
+      true,
+      2,
+      "name2",
+      12,
+      true,
+      3,
+      "name3",
+      13,
+      false,
+      4,
+      "name4",
+      14,
+      false
+    ],
+    "verifySql": "select id, f_key, f_tinyint, f_bit, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "name1",
+        "f_tinyint": 11,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "id": 2,
+        "f_key": "name2",
+        "f_tinyint": 12,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "id": 3,
+        "f_key": "name3",
+        "f_tinyint": 13,
+        "f_bit": false,
+        "_long": 1
+      },
+      {
+        "id": 4,
+        "f_key": "name4",
+        "f_tinyint": 14,
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key, to different shards (UpperCase)",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id, f_key) values(1, 'toshard1')"
+    ],
+    "query": "INSERT INTO TABLE_ENGINE_TEST(ID, F_KEY) VALUES(1,'toshard2') ON DUPLICATE KEY UPDATE F_BIT = FALSE, f_tinyint = 123",
+    "rowCount": 1,
+    "foundRows": 1,
+    "shardFlag": true,
+    "verifySql": "select id, f_key, f_tinyint, f_bit, count(*) from table_engine_test group by id, f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "toshard1",
+        "f_tinyint": null,
+        "f_bit": null,
+        "_long": 1
+      },
+      {
+        "id": 1,
+        "f_key": "toshard2",
+        "f_tinyint": null,
+        "f_bit": null,
+        "_long": 1
+      }
+    ]
+  }
+]

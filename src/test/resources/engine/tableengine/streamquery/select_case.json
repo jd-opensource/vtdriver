@@ -1,0 +1,12 @@
+[
+  {
+    "comment": "# '*' expression for simple route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "query": "select table_engine_test.* from table_engine_test",
+    "fields": [
+    ]
+  }
+]

@@ -1,0 +1,122 @@
+/*
+Copyright 2021 JD Project Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package com.jd.jdbc.vitess;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import testsuite.TestSuite;
+import testsuite.internal.TestSuiteShardSpec;
+import testsuite.internal.testcase.TestSuiteCase;
+
+public class TransactionTest extends TestSuite {
+    Connection conn;
+
+    private List<TransactionTestCase> transactionTestCaseList;
+
+    @Before
+    public void testLoadDriver() throws Exception {
+        conn = getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+    }
+
+    @After
+    public void after() throws SQLException {
+        if (this.conn != null) {
+            this.conn.close();
+        }
+    }
+
+    @Test
+    public void test() throws SQLException, IOException {
+        this.transactionTestCaseList = iterateExecFile("src/test/resources/transaction/transaction.json", TransactionTestCase.class);
+        testTx();
+    }
+
+    private void testTx() throws SQLException {
+        for (int index = 0; index < transactionTestCaseList.size(); index++) {
+            TransactionTestCase testCase = transactionTestCaseList.get(index);
+            try (Statement stmt = conn.createStatement()) {
+                for (String init : testCase.initSql) {
+                    stmt.executeUpdate(init);
+                }
+            }
+            printComment(testCase.getComment());
+            if (testCase.getNeedTransaction()) {
+                conn.setAutoCommit(false);
+            }
+            try (Statement stmt = conn.createStatement()) {
+                for (String executeSql : testCase.executeSqls) {
+                    printNormal("No." + (index + 1) + " " + executeSql);
+                    stmt.executeUpdate(executeSql);
+                }
+                if (testCase.getNeedTransaction()) {
+                    conn.commit();
+                    conn.setAutoCommit(true);
+                }
+            } catch (Exception e) {
+                Assert.assertTrue(printFail("[Failed]"), e.getMessage().contains(testCase.errorMsg));
+                if (testCase.getNeedTransaction()) {
+                    conn.rollback();
+                    conn.setAutoCommit(true);
+                }
+            }
+            try (Statement stmt = conn.createStatement()) {
+                for (String sql : testCase.verfiySql) {
+                    ResultSet rs = stmt.executeQuery(sql);
+                    while (rs.next()) {
+                        for (int i = 0; i < testCase.verfiyResult.length; i++) {
+                            Object[] expectArray = testCase.verfiyResult[i];
+                            for (int j = 0; j < expectArray.length; j++) {
+                                if (expectArray[j] instanceof Integer) {
+                                    Assert.assertEquals(printFail("Failed"), expectArray[j], rs.getInt(j + 1));
+                                }
+                            }
+                        }
+                    }
+                }
+                printOk("No." + (index + 1) + " [Successed] \n");
+            }
+        }
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class TransactionTestCase extends TestSuiteCase {
+        private List<String> initSql;
+
+        private Boolean needTransaction;
+
+        private List<String> executeSqls;
+
+        private Object[][] verfiyResult;
+
+        private List<String> verfiySql;
+
+        private String errorMsg;
+    }
+}

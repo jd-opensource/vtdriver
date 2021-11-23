@@ -1,0 +1,514 @@
+# simple insert, no values
+"insert into unsharded values()"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded values()",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded values ()",
+    "TableName": "unsharded"
+  }
+}
+
+# simple insert unsharded
+"insert into unsharded values(1, 2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded values(1, 2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded values (1, 2)",
+    "TableName": "unsharded"
+  }
+}
+
+# simple upsert unsharded
+"insert into unsharded values(1, 2) on duplicate key update x = 3"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded values(1, 2) on duplicate key update x = 3",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded values (1, 2) on duplicate key update x = 3",
+    "TableName": "unsharded"
+  }
+}
+
+# unsharded insert, no col list with auto-inc and authoritative column list
+"insert into unsharded_authoritative values(1,1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded_authoritative values(1,1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded_authoritative (col1, col2) values (:__seq0, 1)",
+    "TableName": "unsharded_authoritative"
+  }
+}
+
+# insert unsharded, invalid value for auto-inc
+"insert into unsharded_auto(id, val) values(18446744073709551616, 'aa')"
+"could not compute value for vindex or auto-inc column: wrong data type int64 for [49, 56, 52, 52, 54, 55, 52, 52, 48, 55, 51, 55, 48, 57, 53, 53, 49, 54, 49, 54]"
+
+# insert unsharded, column present
+"insert into unsharded_auto(id, val) values(1, 'aa')"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded_auto(id, val) values(1, 'aa')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded_auto (id, val) values (:__seq0, 'aa')",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# insert unsharded, column absent
+"insert into unsharded_auto(val) values('aa')"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded_auto(val) values('aa')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded_auto (val, id) values ('aa', :__seq0)",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# insert unsharded, column absent
+"insert into unsharded_auto(val) values(false)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded_auto(val) values(false)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded_auto (val, id) values (false, :__seq0)",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# insert unsharded, multi-val
+"insert into unsharded_auto(id, val) values(1, 'aa'), (null, 'bb')"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded_auto(id, val) values(1, 'aa'), (null, 'bb')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded_auto (id, val) values (:__seq0, 'aa'), (:__seq1, 'bb')",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# unsharded insert subquery in insert value
+"insert into unsharded values((select 1 from dual), 1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded values((select 1 from dual), 1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded values ( (select 1 from dual) , 1)",
+    "TableName": "unsharded"
+  }
+}
+
+# insert with mimatched column list
+"insert into user(id) values (1, 2)"
+"column list doesn't match values"
+
+# insert no column list for sharded authoritative table
+"insert into authoritative values(1, 2, 3)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into authoritative values(1, 2, 3)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into authoritative (user_id, col1, col2) values (:_user_id_0, 2, 3)",
+    "TableName": "authoritative"
+  }
+}
+
+# insert sharded, no values
+"insert into user values()"
+"no column list"
+
+# insert with one vindex
+"insert into user(id) values (1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(id) values (1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (id, name) values (:__seq0, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert ignore sharded
+"insert ignore into user(id) values (1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert ignore into user(id) values (1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "ShardedIgnore",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert ignore into user (id, name) values (:__seq0, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert on duplicate key
+"insert into user(id) values(1) on duplicate key update col = 2"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(id) values(1) on duplicate key update col = 2",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "ShardedIgnore",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (id, name) values (:__seq0, :_name_0) on duplicate key update col = 2",
+    "TableName": "user"
+  }
+}
+
+# insert with one vindex and bind var
+"insert into user(id) values (:aa)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(id) values (:aa)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (id, name) values (:__seq0, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert with non vindex
+"insert into user(nonid) values (2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(nonid) values (2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (nonid, id, name) values (2, :__seq0, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert with default seq
+"insert into user(id, nonid) values (default, 2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(id, nonid) values (default, 2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (id, nonid, name) values (:__seq0, 2, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert with non vindex bool value
+"insert into user(nonid) values (true)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(nonid) values (true)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (nonid, id, name) values (true, :__seq0, :_name_0)",
+    "TableName": "user"
+  }
+}
+
+# insert with all vindexes supplied
+"insert into user(nonid, name, id) values (2, 'foo', 1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(nonid, name, id) values (2, 'foo', 1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (nonid, name, id) values (2, :_name_0, :__seq0)",
+    "TableName": "user"
+  }
+}
+
+# insert for non-vindex autoinc
+"insert into user_extra(nonid) values (2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user_extra(nonid) values (2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user_extra (nonid, extra_id, user_id) values (2, :__seq0, :_user_id_0)",
+    "TableName": "user_extra"
+  }
+}
+
+# insert for non-vindex autoinc, invalid value
+"insert into user_extra(nonid, extra_id) values (2, 18446744073709551616)"
+"could not compute value for vindex or auto-inc column: wrong data type int64 for [49, 56, 52, 52, 54, 55, 52, 52, 48, 55, 51, 55, 48, 57, 53, 53, 49, 54, 49, 54]
+
+# insert invalid index value
+"insert into music_extra(music_id, user_id) values(1, 18446744073709551616)"
+"could not compute value for vindex or auto-inc column: wrong data type int64 for [49, 56, 52, 52, 54, 55, 52, 52, 48, 55, 51, 55, 48, 57, 53, 53, 49, 54, 49, 54]
+
+# insert invalid index value
+"insert into music_extra(music_id, user_id) values(1, id)"
+"could not compute value for vindex or auto-inc column: expression is too complex id"
+
+# insert invalid table
+"insert into noexist(music_id, user_id) values(1, 18446744073709551616)"
+"not found defaultkeyspace"
+
+# insert with multiple rows
+"insert into user(id) values (1), (2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into user(id) values (1), (2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user (id, name) values (:__seq0, :_name_0), (:__seq1, :_name_1)",
+    "TableName": "user"
+  }
+}
+
+# insert into a vindex not allowed
+"insert into user_index(id) values(1)"
+"not found defaultkeyspace"
+
+# simple replace unsharded
+"replace into unsharded values(1, 2)"
+{
+  "QueryType": "INSERT",
+  "Original": "replace into unsharded values(1, 2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "replace into unsharded values (1, 2)",
+    "TableName": "unsharded"
+  }
+}
+
+# replace unsharded with select
+"replace into unsharded select id from unsharded_auto"
+{
+  "QueryType": "INSERT",
+  "Original": "replace into unsharded select id from unsharded_auto",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "replace into unsharded select id from unsharded_auto",
+    "TableName": "unsharded"
+  }
+}
+
+# replace unsharded, invalid value for auto-inc
+"replace into unsharded_auto(id, val) values(18446744073709551616, 'aa')"
+"could not compute value for vindex or auto-inc column: wrong data type int64 for [49, 56, 52, 52, 54, 55, 52, 52, 48, 55, 51, 55, 48, 57, 53, 53, 49, 54, 49, 54]
+
+# replace unsharded, column present
+"replace into unsharded_auto(id, val) values(1, 'aa')"
+{
+  "QueryType": "INSERT",
+  "Original": "replace into unsharded_auto(id, val) values(1, 'aa')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "replace into unsharded_auto (id, val) values (:__seq0, 'aa')",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# replace unsharded, column absent
+"replace into unsharded_auto(val) values('aa')"
+{
+  "QueryType": "INSERT",
+  "Original": "replace into unsharded_auto(val) values('aa')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "replace into unsharded_auto (val, id) values ('aa', :__seq0)",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# replace unsharded, multi-val
+"replace into unsharded_auto(id, val) values(1, 'aa'), (null, 'bb')"
+{
+  "QueryType": "INSERT",
+  "Original": "replace into unsharded_auto(id, val) values(1, 'aa'), (null, 'bb')",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "replace into unsharded_auto (id, val) values (:__seq0, 'aa'), (:__seq1, 'bb')",
+    "TableName": "unsharded_auto"
+  }
+}
+
+# replace invalid table
+"replace into noexist(music_id, user_id) values(1, 18446744073709551616)"
+"not found defaultkeyspace"

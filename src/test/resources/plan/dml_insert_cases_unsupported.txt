@@ -1,0 +1,228 @@
+# sharded upsert with sharding key set to vindex column
+"insert into music(user_id, id) values(1, 2) on duplicate key update user_id = values(user_id)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into music(user_id, id) values(1, 2) on duplicate key update user_id = values(user_id)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "ShardedIgnore",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into music(user_id, id) values (:_user_id_0, :_id_0) on duplicate key update user_id = values(user_id)",
+    "TableName": "music"
+  }
+}
+
+# sharded bulk upsert with sharding key set to vindex column
+"insert into music(user_id, id) values (1, 2), (3,4) on duplicate key update user_id = values(user_id)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into music(user_id, id) values (1, 2), (3,4) on duplicate key update user_id = values(user_id)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "ShardedIgnore",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into music(user_id, id) values (:_user_id_0, :_id_0), (:_user_id_1, :_id_1) on duplicate key update user_id = values(user_id)",
+    "TableName": "music"
+  }
+}
+
+# insert unsharded with select
+"insert into unsharded select id from unsharded_auto"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded select id from unsharded_auto",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded select id from unsharded_auto",
+    "TableName": "unsharded"
+  }
+}
+
+# insert unsharded with select with join
+"insert into unsharded select id from unsharded join unsharded_auto"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded select id from unsharded join unsharded_auto",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded select id from unsharded join unsharded_auto",
+    "TableName": "unsharded"
+  }
+}
+
+# insert into a routed table
+"insert into route1(id) values (1)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into route1(id) values (1)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into user(id, Name, Costly) values (:_Id_0, :_Name_0, :_Costly_0)",
+    "TableName": "user"
+  }
+}
+
+# unsharded insert from union
+"insert into unsharded select 1 from dual union select 1 from dual"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded select 1 from dual union select 1 from dual",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded select 1 from dual union select 1 from dual",
+    "TableName": "unsharded"
+  }
+}
+
+# insert with query timeout
+"insert /*vt+ QUERY_TIMEOUT_MS=1 */ into user(id) values (1), (2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert /*vt+ QUERY_TIMEOUT_MS=1 */ into user(id) values (1), (2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert /*vt+ QUERY_TIMEOUT_MS=1 */ into user(id, Name, Costly) values (:_Id_0, :_Name_0, :_Costly_0), (:_Id_1, :_Name_1, :_Costly_1)",
+    "QueryTimeout": 1,
+    "TableName": "user"
+  }
+}
+
+# insert with multiple rows - multi-shard autocommit
+"insert /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ into user(id) values (1), (2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ into user(id) values (1), (2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": true,
+    "Query": "insert /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ into user(id, Name, Costly) values (:_Id_0, :_Name_0, :_Costly_0), (:_Id_1, :_Name_1, :_Costly_1)",
+    "TableName": "user"
+  }
+}
+
+# insert a row in a multi column vindex table
+"insert multicolvin (column_a, column_b, column_c, kid) VALUES (1,2,3,4)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert multicolvin (column_a, column_b, column_c, kid) VALUES (1,2,3,4)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into multicolvin(column_a, column_b, column_c, kid) values (:_column_a_0, :_column_b_0, :_column_c_0, :_kid_0)",
+    "TableName": "multicolvin"
+  }
+}
+
+# insert for overlapped vindex columns
+"insert overlap_vindex (kid, column_a, column_b) VALUES (1,2,3)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert overlap_vindex (kid, column_a, column_b) VALUES (1,2,3)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into overlap_vindex(kid, column_a, column_b) values (:_kid_0, :_column_a_0, 3)",
+    "TableName": "overlap_vindex"
+  }
+}
+
+# insert multiple rows in a multi column vindex table
+"insert multicolvin (column_a, column_b, column_c, kid) VALUES (1,2,3,4), (5,6,7,8)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert multicolvin (column_a, column_b, column_c, kid) VALUES (1,2,3,4), (5,6,7,8)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Sharded",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into multicolvin(column_a, column_b, column_c, kid) values (:_column_a_0, :_column_b_0, :_column_c_0, :_kid_0), (:_column_a_1, :_column_b_1, :_column_c_1, :_kid_1)",
+    "TableName": "multicolvin"
+  }
+}
+
+# insert using last_insert_id
+"insert into unsharded values(last_insert_id(), 2)"
+{
+  "QueryType": "INSERT",
+  "Original": "insert into unsharded values(last_insert_id(), 2)",
+  "Instructions": {
+    "OperatorType": "Insert",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "insert into unsharded values (:__lastInsertId, 2)",
+    "TableName": "unsharded"
+  }
+}

@@ -1,0 +1,142 @@
+# Reason: Druid unsupported ::list
+# Single table in clause list arg
+"select id from user where name in ::list"
+{
+  "QueryType": "SELECT",
+  "Original": "select id from user where name in ::list",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectIN",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id from user where 1 != 1",
+    "Query": "select id from user where name in ::__vals",
+    "Table": "user",
+    "Values": [
+      "::list"
+    ],
+    "Vindex": "name_user_map"
+  }
+}
+
+# Reason: multiple keyspace
+# Unsharded route
+"select unsharded.id from user join unsharded where unsharded.id = user.id"
+{
+  "QueryType": "SELECT",
+  "Original": "select unsharded.id from user join unsharded where unsharded.id = user.id",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [1],
+    "TableName": "user_unsharded",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.id from user where 1 != 1",
+        "Query": "select user.id from user",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectUnsharded",
+        "Keyspace": {
+          "Name": "main",
+          "Sharded": false
+        },
+        "FieldQuery": "select unsharded.id from unsharded where 1 != 1",
+        "Query": "select unsharded.id from unsharded where unsharded.id = :user_id",
+        "Table": "unsharded"
+      }
+    ]
+  }
+}
+
+# Reason: routing rules
+# routing rules subquery merge
+"select col from user where id = (select id from route1 where route1.id = user.id)"
+{
+  "QueryType": "SELECT",
+  "Original": "select col from user where id = (select id from route1 where route1.id = user.id)",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select col from user where 1 != 1",
+    "Query": "select col from user where id = (select id from user as route1 where route1.id = user.id)",
+    "Table": "user"
+  }
+}
+
+# Reason: routing rules
+# routing rules subquery pullout
+"select col from user where id = (select id from route2)"
+{
+  "QueryType": "SELECT",
+  "Original": "select col from user where id = (select id from route2)",
+  "Instructions": {
+    "OperatorType": "Subquery",
+    "Variant": "PulloutValue",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectUnsharded",
+        "Keyspace": {
+          "Name": "main",
+          "Sharded": false
+        },
+        "FieldQuery": "select id from unsharded as route2 where 1 != 1",
+        "Query": "select id from unsharded as route2",
+        "Table": "unsharded"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select col from user where 1 != 1",
+        "Query": "select col from user where id = :__sq1",
+        "Table": "user",
+        "Values": [
+          ":__sq1"
+        ],
+        "Vindex": "user_index"
+      }
+    ]
+  }
+}
+
+# Reason: routing rules
+# routing rules: choose the redirected table
+"select col from route1 where id = 1"
+{
+  "QueryType": "SELECT",
+  "Original": "select col from route1 where id = 1",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectEqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select col from user as route1 where 1 != 1",
+    "Query": "select col from user as route1 where id = 1",
+    "Table": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}

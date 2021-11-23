@@ -1,0 +1,205 @@
+[
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from unsharded;",
+      "insert into unsharded (`predef1`,`predef2`) values(1,1),(2,2);"
+    ],
+    "deleteSql": "delete from :ks.unsharded",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      0
+    ],
+    "verifySql": [
+      "select count(*) from unsharded"
+    ]
+  },
+  {
+    "comment": "# delete unsharded",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded (`predef1`,`predef2`) values(1,1),(2,2);"
+    ],
+    "deleteSql": "delete from unsharded",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      0
+    ],
+    "verifySql": [
+      "select count(*) from unsharded"
+    ]
+  },
+  {
+    "comment": "# multi-table delete with comma join",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(3, 'aab'),(4, 'aa')"
+    ],
+    "deleteSql": "delete a from unsharded_authoritative a, unsharded_auto b where a.col1 = b.id and b.val = 'aa'",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      3,
+      3
+    ],
+    "verifySql": [
+      "select count(*) from unsharded_authoritative",
+      "select count(*) from unsharded_auto"
+    ]
+  },
+  {
+    "comment": "# multi-table delete with comma join & explicit keyspace reference",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(3, 'aab'),(4, 'aa')"
+    ],
+    "deleteSql": "delete a from :ks.unsharded_authoritative a, unsharded_auto b where a.col1 = b.id and b.val = 'aa'",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      3,
+      3
+    ],
+    "verifySql": [
+      "select count(*) from unsharded_authoritative",
+      "select count(*) from unsharded_auto"
+    ]
+  },
+  {
+    "comment": "# multi-table delete with ansi join",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4),(6,6)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(2, 'cc'),(3, 'aab'),(4, 'aa')"
+    ],
+    "deleteSql": "delete a from unsharded_authoritative a join unsharded_auto b on :ks.a.col1 = b.id where :ks.b.val = 'aa'",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      4,
+      4
+    ],
+    "verifySql": [
+      "select count(*) from unsharded_authoritative",
+      "select count(*) from unsharded_auto"
+    ]
+  },
+  {
+    "comment": "#delete with join from subquery",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "insert into unsharded_authoritative (col1, col2) values(1,3),(2,4),(3,4),(4,4),(5,null),(6,6),(null,7),(7,11),(8,90),(9,2000),(null,2000),(null,666)"
+    ],
+    "deleteSql": "delete foo from unsharded_authoritative as foo left join (select col1 from unsharded_authoritative where col2 is not null order by col2 desc limit 10) as keepers on foo.col1 = keepers.col1 where keepers.col1 is null and foo.col2 is not null and foo.col2 < 1000",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      9
+    ],
+    "verifySql": [
+      "select count(*) from unsharded_authoritative"
+    ]
+  },
+  {
+    "comment": "# unsharded delete where inner query references outer query",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4),(6,6)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(2, 'cc'),(3, 'aab'),(4, 'aa')"
+    ],
+    "deleteSql": "delete from unsharded_authoritative where col1 = (select id from unsharded_auto where id = unsharded_authoritative.col1)",
+    "deleteUpdateCount": 4,
+    "verifyResult": [
+      2
+    ],
+    "verifySql": [
+      "select count(*) from unsharded_authoritative"
+    ]
+  },
+  {
+    "comment": "# delete from, no owned vindexes",
+    "initSql": [
+      "delete from music",
+      "INSERT INTO `music` (`id`, `user_id`, `col`) VALUES (1, 1, '1'),(2, 2, '1'),(3, 1, '1'),(4, 2, '1'),(5, 21, '1'),(6, 21, '1');"
+    ],
+    "deleteSql": "delete from music where user_id = 1",
+    "deleteUpdateCount": 2,
+    "verifyResult": [
+      4
+    ],
+    "verifySql": [
+      "select count(*) from music"
+    ]
+  },
+  {
+    "comment": "# delete from with no where clause",
+    "initSql": [
+      "delete from user_unsharded_extra",
+      "insert into user_unsharded_extra(id, user_id, extra_id) VALUES (100, 101, 101),(200, 102, 102),(300, 103, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_unsharded_extra",
+    "deleteUpdateCount": 5,
+    "verifyResult": [
+      0
+    ],
+    "verifySql": [
+      "select count(*) from user_unsharded_extra"
+    ]
+  },
+  {
+    "comment": "# delete with non-comparison expr",
+    "initSql": [
+      "delete from user_unsharded_extra",
+      "insert into user_unsharded_extra(id, user_id, extra_id) VALUES (100, 1, 101),(200, 1, 102),(300, 2, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_unsharded_extra where user_id between 1 and 2",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      2
+    ],
+    "verifySql": [
+      "select count(*) from user_unsharded_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with no index match",
+    "initSql": [
+      "delete from user_unsharded_extra",
+      "insert into user_unsharded_extra(id, user_id, extra_id) VALUES (100, 1, 101),(200, 1, 102),(300, 2, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_unsharded_extra where extra_id = 105",
+    "deleteUpdateCount": 1,
+    "verifyResult": [
+      4
+    ],
+    "verifySql": [
+      "select count(*) from user_unsharded_extra"
+    ]
+  },
+  {
+    "comment": "# delete from with primary id in through IN clause",
+    "initSql": [
+      "delete from user_unsharded_extra",
+      "insert into user_unsharded_extra(id, user_id, extra_id) VALUES (100, 1, 101),(200, 1, 102),(300, 2, 103),(400, 104, 104),(500, 105, 105)"
+    ],
+    "deleteSql": "delete from user_unsharded_extra where user_id in (1, 2)",
+    "deleteUpdateCount": 3,
+    "verifyResult": [
+      2
+    ],
+    "verifySql": [
+      "select count(*) from user_unsharded_extra"
+    ]
+  },
+  {
+    "comment": "# error in from",
+    "initSql": [],
+    "deleteSql": "delete from music and user_extra.Id < 300",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found",
+    "verifyResult": [],
+    "verifySql": []
+  }
+]

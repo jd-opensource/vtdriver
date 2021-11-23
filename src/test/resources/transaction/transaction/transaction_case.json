@@ -1,0 +1,110 @@
+[
+  {
+    "comment": "# in Transaction --- table table_engine_test --- simple insert",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(2,'abc',1,false)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(3,'table',3,true)"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- simple insert",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(2,'abc',1,false)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(3,'table',3,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(2,'abc',1,false),(4,'table',2,true),(5,'success',null,false),(8,'',6,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(3,'table',3,true),(7,'x',10,false),(1,'11',11,true),(9,'33',11,false)"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(2,'abc',1,false),(4,'table',2,true),(5,'success',null,false),(8,'',6,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',11,true)"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(2,'abc',1,false),(4,'table',2,true),(5,'success',null,false),(8,'',6,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(7,'aa',11,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',11,true)"
+    ],
+    "errorMsg": "Duplicate entry '1' for key",
+    "verfiyResult": [
+      [
+        1
+      ]
+    ],
+    "verfiySql": [
+      "select id from table_engine_test"
+    ]
+  }
+]

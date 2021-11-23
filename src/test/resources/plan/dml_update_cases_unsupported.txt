@@ -1,0 +1,532 @@
+# routing rules: updated of a routed table
+"update route1 set a=1 where id=1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update route1 set a=1 where id=1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user as route1 set a = 1 where id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update: routing rules for subquery.
+"update unsharded_a set a=(select a from route2)"
+{
+  "QueryType": "UPDATE",
+  "Original": "update unsharded_a set a=(select a from route2)",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Unsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update unsharded_a set a = (select a from unsharded as route2)"
+  }
+}
+
+# update by primary keyspace id, changing one vindex column
+"update user_metadata set email = 'juan@vitess.io' where user_id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user_metadata set email = 'juan@vitess.io' where user_id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "email_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select user_id, email, address, email = 'juan@vitess.io' from user_metadata where user_id = 1 for update",
+    "Query": "update user_metadata set email = 'juan@vitess.io' where user_id = 1",
+    "TableName": "user_metadata",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+
+# update by primary keyspace id, changing multiple vindex columns
+"update user_metadata set email = 'juan@vitess.io', address = '155 5th street' where user_id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user_metadata set email = 'juan@vitess.io', address = '155 5th street' where user_id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "address_user_map:4",
+      "email_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select user_id, email, address, email = 'juan@vitess.io', address = '155 5th street' from user_metadata where user_id = 1 for update",
+    "Query": "update user_metadata set email = 'juan@vitess.io', address = '155 5th street' where user_id = 1",
+    "TableName": "user_metadata",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+
+# update by primary keyspace id, changing one vindex column, using order by and limit
+"update user_metadata set email = 'juan@vitess.io' where user_id = 1 order by user_id asc limit 10"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user_metadata set email = 'juan@vitess.io' where user_id = 1 order by user_id asc limit 10",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "email_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select user_id, email, address, email = 'juan@vitess.io' from user_metadata where user_id = 1 order by user_id asc limit 10 for update",
+    "Query": "update user_metadata set email = 'juan@vitess.io' where user_id = 1 order by user_id asc limit 10",
+    "TableName": "user_metadata",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update by primary keyspace id, stray where clause
+"update user set val = 1 where id = id2 and id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set val = 1 where id = id2 and id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user set val = 1 where id = id2 and id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update by lookup
+"update music set val = 1 where id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update music set val = 1 where id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update music set val = 1 where id = 1",
+    "TableName": "music",
+    "Values": [
+      1
+    ],
+    "Vindex": "music_user_map"
+  }
+}
+
+# update columns of multi column vindex
+"update multicolvin set column_b = 1, column_c = 2 where kid = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update multicolvin set column_b = 1, column_c = 2 where kid = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "colb_colc_map:4"
+    ],
+    "KsidVindex": "kid_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select kid, column_a, column_b, column_c, column_b = 1 and column_c = 2 from multicolvin where kid = 1 for update",
+    "Query": "update multicolvin set column_b = 1, column_c = 2 where kid = 1",
+    "TableName": "multicolvin",
+    "Values": [
+      1
+    ],
+    "Vindex": "kid_index"
+  }
+}
+
+# update multiple vindexes, with multi column vindex
+"update multicolvin set column_a = 0, column_b = 1, column_c = 2 where kid = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update multicolvin set column_a = 0, column_b = 1, column_c = 2 where kid = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "cola_map:4",
+      "colb_colc_map:5"
+    ],
+    "KsidVindex": "kid_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select kid, column_a, column_b, column_c, column_a = 0, column_b = 1 and column_c = 2 from multicolvin where kid = 1 for update",
+    "Query": "update multicolvin set column_a = 0, column_b = 1, column_c = 2 where kid = 1",
+    "TableName": "multicolvin",
+    "Values": [
+      1
+    ],
+    "Vindex": "kid_index"
+  }
+}
+# update with target destination
+"update `user[-]`.user_extra set val = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update `user[-]`.user_extra set val = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "ByDestination",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user_extra set val = 1",
+    "TableName": "user_extra"
+  }
+}
+
+# update with no primary vindex on where clause (scatter update)   - multi shard autocommit
+"update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */  user_extra set val = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */  user_extra set val = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": true,
+    "Query": "update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ user_extra set val = 1",
+    "TableName": "user_extra"
+  }
+}
+
+# update with no primary vindex on where clause (scatter update)   - query timeout
+"update /*vt+ QUERY_TIMEOUT_MS=1 */  user_extra set val = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update /*vt+ QUERY_TIMEOUT_MS=1 */  user_extra set val = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update /*vt+ QUERY_TIMEOUT_MS=1 */ user_extra set val = 1",
+    "QueryTimeout": 1,
+    "TableName": "user_extra"
+  }
+}
+
+# update vindex value to null
+"update user set name = null where id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set name = null where id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = null from user where id = 1 for update",
+    "Query": "update user set name = null where id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update vindex value to null with multiple primary keyspace id
+"update user set name = null where id in (1, 2, 3)"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set name = null where id in (1, 2, 3)",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "In",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = null from user where id in (1, 2, 3) for update",
+    "Query": "update user set name = null where id in (1, 2, 3)",
+    "TableName": "user",
+    "Values": [
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update vindex value to null without a where clause
+"update user set name = null"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set name = null",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = null from user for update",
+    "Query": "update user set name = null",
+    "TableName": "user"
+  }
+}
+
+# update vindex value to null with complex where clause
+"update user set name = null where id + 1 = 2"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set name = null where id + 1 = 2",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = null from user where id + 1 = 2 for update",
+    "Query": "update user set name = null where id + 1 = 2",
+    "TableName": "user"
+  }
+}
+
+# update multi column vindex, without values for all the vindex columns
+"update multicolvin set column_c = 2 where kid = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update multicolvin set column_c = 2 where kid = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "colb_colc_map:4"
+    ],
+    "KsidVindex": "kid_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select kid, column_a, column_b, column_c, column_c = 2 from multicolvin where kid = 1 for update",
+    "Query": "update multicolvin set column_c = 2 where kid = 1",
+    "TableName": "multicolvin",
+    "Values": [
+      1
+    ],
+    "Vindex": "kid_index"
+  }
+}
+
+# update with binary value
+"update user set name = _binary 'abc' where id = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set name = _binary 'abc' where id = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = _binary 'abc' from user where id = 1 for update",
+    "Query": "update user set name = _binary 'abc' where id = 1",
+    "TableName": "user",
+    "Values": [
+      1
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# update with shard targeting
+"update `user[-]`.user set name = 'myname'"
+{
+  "QueryType": "UPDATE",
+  "Original": "update `user[-]`.user set name = 'myname'",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "ByDestination",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "ChangedVindexValues": [
+      "name_user_map:3"
+    ],
+    "KsidVindex": "user_index",
+    "MultiShardAutocommit": false,
+    "OwnedVindexQuery": "select Id, Name, Costly, name = 'myname' from user for update",
+    "Query": "update user set name = 'myname'",
+    "TableName": "user"
+  }
+}
+
+# update with shard targeting without vindex
+"update `user[-]`.user_extra set val = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update `user[-]`.user_extra set val = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "ByDestination",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user_extra set val = 1",
+    "TableName": "user_extra"
+  }
+}
+
+# update by lookup with IN clause
+"update user_extra set val = 1 where id in (1, 2)"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user_extra set val = 1 where id in (1, 2)",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user_extra set val = 1 where id in (1, 2)",
+    "TableName": "user_extra"
+  }
+}
+
+# scatter update table with owned vindexes without changing lookup vindex
+"update user set val = 1"
+{
+  "QueryType": "UPDATE",
+  "Original": "update user set val = 1",
+  "Instructions": {
+    "OperatorType": "Update",
+    "Variant": "Scatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "TargetTabletType": "MASTER",
+    "MultiShardAutocommit": false,
+    "Query": "update user set val = 1",
+    "TableName": "user"
+  }
+}

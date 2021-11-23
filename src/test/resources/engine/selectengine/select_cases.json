@@ -1,0 +1,482 @@
+[
+  {
+    "comment": "# No column referenced",
+    "initSql": [
+    ],
+    "fields": [
+    ],
+    "skipResultCheck": true,
+    "query": "select 1 from plan_test",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# '*' expression for simple route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 123456)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 123456)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": true,
+    "query": "select plan_test.* from plan_test",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "2",
+        "f_int": "123456"
+      },
+      {
+        "f_tinyint": "3",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "4",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "6",
+        "f_int": "123456"
+      }
+    ]
+  },
+  {
+    "comment": "# unqualified '*' expression for simple route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 123456)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 123456)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "2",
+        "f_int": "123456"
+      },
+      {
+        "f_tinyint": "3",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "4",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "6",
+        "f_int": "123456"
+      }
+    ]
+  },
+  {
+    "comment": "# fully qualified '*' expression for simple route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 123456)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 123456)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": true,
+    "query": "select :ks.plan_test.* from :ks.plan_test",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "2",
+        "f_int": "123456"
+      },
+      {
+        "f_tinyint": "3",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "4",
+        "f_int": "12345"
+      },
+      {
+        "f_tinyint": "6",
+        "f_int": "123456"
+      }
+    ]
+  },
+  {
+    "comment": "# Hex number is not treated as a simple value",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "select * from plan_test where f_tinyint = 0x04",
+    "verifyResult": [
+      {
+        "f_tinyint": "4",
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# sharded limit offset",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 1)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 2)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 3)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 4)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 5)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 6)",
+      "insert into plan_test(f_tinyint, f_int) values (7, 7)",
+      "insert into plan_test(f_tinyint, f_int) values (8, 8)",
+      "insert into plan_test(f_tinyint, f_int) values (9, 9)",
+      "insert into plan_test(f_tinyint, f_int) values (10, 10)",
+      "insert into plan_test(f_tinyint, f_int) values (11, 11)",
+      "insert into plan_test(f_tinyint, f_int) values (12, 12)",
+      "insert into plan_test(f_tinyint, f_int) values (13, 13)",
+      "insert into plan_test(f_tinyint, f_int) values (14, 14)",
+      "insert into plan_test(f_tinyint, f_int) values (15, 15)",
+      "insert into plan_test(f_tinyint, f_int) values (16, 16)",
+      "insert into plan_test(f_tinyint, f_int) values (17, 17)",
+      "insert into plan_test(f_tinyint, f_int) values (18, 18)",
+      "insert into plan_test(f_tinyint, f_int) values (19, 19)",
+      "insert into plan_test(f_tinyint, f_int) values (20, 20)",
+      "insert into plan_test(f_tinyint, f_int) values (21, 21)",
+      "insert into plan_test(f_tinyint, f_int) values (22, 22)",
+      "insert into plan_test(f_tinyint, f_int) values (23, 23)",
+      "insert into plan_test(f_tinyint, f_int) values (24, 24)",
+      "insert into plan_test(f_tinyint, f_int) values (25, 25)",
+      "insert into plan_test(f_tinyint, f_int) values (26, 26)",
+      "insert into plan_test(f_tinyint, f_int) values (27, 27)",
+      "insert into plan_test(f_tinyint, f_int) values (28, 28)",
+      "insert into plan_test(f_tinyint, f_int) values (29, 29)",
+      "insert into plan_test(f_tinyint, f_int) values (30, 30)",
+      "insert into plan_test(f_tinyint, f_int) values (31, 31)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": true,
+    "query": "select f_int from plan_test order by :ks.plan_test.f_int limit 10, 20",
+    "verifyResult": [
+      {
+        "f_int": "11"
+      },
+      {
+        "f_int": "12"
+      },
+      {
+        "f_int": "13"
+      },
+      {
+        "f_int": "14"
+      },
+      {
+        "f_int": "15"
+      },
+      {
+        "f_int": "16"
+      },
+      {
+        "f_int": "17"
+      },
+      {
+        "f_int": "18"
+      },
+      {
+        "f_int": "19"
+      },
+      {
+        "f_int": "20"
+      },
+      {
+        "f_int": "21"
+      },
+      {
+        "f_int": "22"
+      },
+      {
+        "f_int": "23"
+      },
+      {
+        "f_int": "24"
+      },
+      {
+        "f_int": "25"
+      },
+      {
+        "f_int": "26"
+      },
+      {
+        "f_int": "27"
+      },
+      {
+        "f_int": "28"
+      },
+      {
+        "f_int": "29"
+      },
+      {
+        "f_int": "30"
+      }
+    ]
+  },
+  {
+    "comment": "# Sharding Key Condition in Parenthesis",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (4, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (5, 12345, 'abc')"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_varchar"
+      }
+    ],
+    "query": "select * from plan_test where :ks.plan_test.f_varchar ='abc' AND (:ks.plan_test.f_tinyint = 4) limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": "4",
+        "f_int": "12345",
+        "f_varchar": "abc"
+      }
+    ]
+  },
+  {
+    "comment": "# Multiple parenthesized expressions",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (4, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (5, 12345, 'abc')"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_varchar"
+      }
+    ],
+    "query": "select * from plan_test where (f_tinyint = 4) AND (f_varchar ='abc') limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": "4",
+        "f_int": "12345",
+        "f_varchar": "abc"
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Table.Column",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 22222)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "col0_"
+      }
+    ],
+    "query": "select user0_.f_int as col0_ from plan_test user0_ where f_tinyint = 1 order by user0_.f_int desc limit 2",
+    "verifyResult": [
+      {
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Column",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 22222)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "col0_"
+      }
+    ],
+    "query": "select user0_.f_int as col0_ from plan_test user0_ where f_tinyint = 1 order by col0_ desc limit 3",
+    "verifyResult": [
+      {
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# Booleans and parenthesis",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_bit) values (1, 1)",
+      "insert into plan_test(f_tinyint, f_bit) values (2, 1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "query": "select * from plan_test where (f_tinyint = 1) AND f_bit = 1 limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Column as boolean-ish",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (1, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (2, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (3, 1234, 1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "query": "select * from plan_test where (f_tinyint = 1) AND f_bit limit 5",
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "f_tinyint": "1",
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# PK as fake boolean, and column as boolean-ish",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (1, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (2, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (5, 1234, 1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "query": "select * from plan_test where (f_tinyint = 5) AND f_bit = true limit 5",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_tinyint": "5",
+        "f_int": "1234",
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# sql_calc_found_rows without limit",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (1, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (2, 12345, 1)",
+      "insert into plan_test(f_tinyint, f_int, f_bit) values (5, 1234, 1)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "query": "select sql_calc_found_rows * from plan_test where f_tinyint = 1",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345",
+        "f_bit": 1
+      }
+    ]
+  }
+]

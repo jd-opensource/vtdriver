@@ -1,0 +1,50 @@
+[
+  {
+    "comment": "# update success id = 1 in shard -80",
+    "updateSql": "/*shard=-80, set for specific shard*/update user set predef1 = 10 where id = 1",
+    "updateCount": 1,
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# delete fail id = 1 in shard -80",
+    "updateSql": "/*shard=80-, set for specific shard*/delete from user where id = 1",
+    "updateCount": 0,
+    "verfiyResult": [
+      [
+        10
+      ]
+    ],
+    "verfiySql": "select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "comment": "# delete success id = 1 in shard -80",
+    "updateSql": "/*shard=-80, set for specific shard*/delete from user where id = 1",
+    "updateCount": 1,
+    "verfiyResult": [
+    ],
+    "verfiySql": "select predef1 from user where id = 1",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  }
+]

@@ -1,0 +1,398 @@
+[
+  {
+    "comment": "# ORDER BY uses column numbers",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_midint) values (2, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select f_midint from plan_test where f_tinyint = 1 order by 1;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_midint": 111
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY uses column numbers",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 222)",
+      "insert into plan_test(f_tinyint, f_midint) values (2, 111)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 333)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select f_midint from plan_test order by f_midint;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_midint": 111
+      },
+      {
+        "f_midint": 222
+      },
+      {
+        "f_midint": 333
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY on scatter with multiple number column",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (1, 22, 111, 3333)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (2, 11, 222, 2222)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (3, 11, 111, 1111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (4, 11, 111, 4444)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_smallint, f_midint, f_int from plan_test order by f_smallint, f_midint, f_int;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_smallint": 11,
+        "f_midint": 111,
+        "f_int": 1111
+      },
+      {
+        "f_smallint": 11,
+        "f_midint": 111,
+        "f_int": 4444
+      },
+      {
+        "f_smallint": 11,
+        "f_midint": 222,
+        "f_int": 2222
+      },
+      {
+        "f_smallint": 22,
+        "f_midint": 111,
+        "f_int": 3333
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY on scatter with number column, qualified name",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (1, 22, 111, 3333)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (2, 11, 222, 2222)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (3, 11, 111, 1111)",
+      "insert into plan_test(f_tinyint, f_smallint, f_midint, f_int) values (4, 11, 111, 4444)"
+    ],
+    "fields": [
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_smallint, plan_test.f_midint, f_int from plan_test order by f_smallint, f_midint, f_int;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_smallint": 11,
+        "f_midint": 111,
+        "f_int": 1111
+      },
+      {
+        "f_smallint": 11,
+        "f_midint": 111,
+        "f_int": 4444
+      },
+      {
+        "f_smallint": 11,
+        "f_midint": 222,
+        "f_int": 2222
+      },
+      {
+        "f_smallint": 22,
+        "f_midint": 111,
+        "f_int": 3333
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY NULL",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 3333)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1111)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_int from plan_test order by null;",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_int": 3333
+      },
+      {
+        "f_int": 1111
+      },
+      {
+        "f_int": 2222
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY RAND()",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 3333)",
+      "insert into plan_test(f_tinyint, f_midint) values (2, 2222)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 1111)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select f_midint from plan_test order by RAND()",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_midint": 1111
+      },
+      {
+        "f_midint": 2222
+      },
+      {
+        "f_midint": 3333
+      }
+    ]
+  },
+  {
+    "comment": "# Order by, '*' expression",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 3333)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 1111)",
+      "insert into plan_test(f_tinyint, f_midint) values (5, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select :ks.plan_test.* from plan_test where f_tinyint = 5 order by f_midint;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_tinyint": 5,
+        "f_midint": 2222
+      }
+    ]
+  },
+  {
+    "comment": "# Order by, qualified '*' expression",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 3333)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 1111)",
+      "insert into plan_test(f_tinyint, f_midint) values (5, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select plan_test.* from plan_test where f_tinyint = 5 order by f_midint;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_tinyint": 5,
+        "f_midint": 2222
+      }
+    ]
+  },
+  {
+    "comment": "# Order by, qualified '*' expression",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 3333)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 1111)",
+      "insert into plan_test(f_tinyint, f_midint) values (5, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select * from plan_test where f_tinyint = 5 order by plan_test.f_midint;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_tinyint": 5,
+        "f_midint": 2222
+      }
+    ]
+  },
+  {
+    "comment": "# Order by with math functions",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 3333)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 1111)",
+      "insert into plan_test(f_tinyint, f_midint) values (5, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select * from plan_test order by -f_midint;",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "unsupported: in scatter query: complex order by expression",
+    "needSort": false
+  },
+  {
+    "comment": "# Order by with math operations",
+    "initSql": [
+      "delete from user_extra",
+      "insert into user_extra(id, user_id, extra_id) values (3, 5, 5)",
+      "insert into user_extra(id, user_id, extra_id) values (4, 5, 5)",
+      "insert into user_extra(id, user_id, extra_id) values (5, 5, 5)",
+      "insert into user_extra(id, user_id, extra_id) values (6, 5, 5)"
+    ],
+    "fields": [
+      {
+        "name": "f_uint",
+        "alias": "id"
+      },
+      {
+        "name": "f_bigint",
+        "alias": "user_id"
+      }
+    ],
+    "query": "select * from user_extra where user_id = 5 order by id + user_id collate utf8_general_ci desc;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_uint": 6,
+        "f_bigint": 5
+      },
+      {
+        "f_uint": 5,
+        "f_bigint": 5
+      },
+      {
+        "f_uint": 4,
+        "f_bigint": 5
+      },
+      {
+        "f_uint": 3,
+        "f_bigint": 5
+      }
+    ]
+  },
+  {
+    "comment": "# LIMIT",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_bigint) values (1, 3333)",
+      "insert into plan_test(f_tinyint, f_bigint) values (2, 1111)",
+      "insert into plan_test(f_tinyint, f_bigint) values (9, 2222)",
+      "insert into plan_test(f_tinyint, f_bigint) values (10, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select f_bigint from plan_test where f_tinyint = 9 limit 1;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 2222
+      }
+    ]
+  },
+  {
+    "comment": "# limit for scatter",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_bigint) values (1, 3333)",
+      "insert into plan_test(f_tinyint, f_bigint) values (2, 1111)",
+      "insert into plan_test(f_tinyint, f_bigint) values (9, 2222)",
+      "insert into plan_test(f_tinyint, f_bigint) values (10, 2222)"
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "query": "select f_bigint from plan_test limit 1;",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_bigint": 3333
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard expression in parenthesis with limit",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (1, 12345, 'abc')",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (2, 12345, 'xxx')",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (9, 123456, 'abc')",
+      "insert into plan_test(f_tinyint, f_int, f_varchar) values (10, 12345, 'abc')"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_int from plan_test where (f_int = 12345 AND f_varchar ='abc') order by f_int limit 5",
+    "needSort": false,
+    "verifyResult": [
+      {
+        "f_int": 12345
+      },
+      {
+        "f_int": 12345
+      }
+    ]
+  }
+]

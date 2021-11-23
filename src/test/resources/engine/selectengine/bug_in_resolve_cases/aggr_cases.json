@@ -1,0 +1,215 @@
+[
+  {
+    "comment": "# distinct and group by together for scatter route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (3, 1234, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (4, 123, 222)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (5, 123, 333)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_midint"
+      }
+    ],
+    "query": "select distinct f_int, f_midint from plan_test group by f_int",
+    "needSort": true,
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "f_midint": "111"
+      },
+      {
+        "f_int": "1234",
+        "f_midint": "111"
+      },
+      {
+        "f_int": "123",
+        "f_midint": "222"
+      }
+    ]
+  },
+  {
+    "comment": "# scatter aggregate group by select col",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "query": "select f_int from plan_test group by f_int",
+    "verifyResult": [
+      {
+        "f_int": "1234"
+      },
+      {
+        "f_int": "12345"
+      },
+      {
+        "f_int": "12345"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex should use a simple route, even if aggr is complex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "1+count(*)"
+      }
+    ],
+    "query": "select f_tinyint, 1+count(*) from plan_test group by f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "2"
+      },
+      {
+        "f_tinyint": "2",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex should use a simple route, even if aggr is complex",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "1+count(*)"
+      }
+    ],
+    "query": "select f_tinyint, 1+count(*) from plan_test group by f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "2"
+      },
+      {
+        "f_tinyint": "2",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex where alias from select list is used",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 12345, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "alias": "val"
+      },
+      {
+        "name": "count",
+        "alias": "1+count(*)"
+      }
+    ],
+    "query": "select f_tinyint as val, 1+count(*) from plan_test group by val",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "count": "2"
+      },
+      {
+        "f_tinyint": "2",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex where expression is qualified (alias should be ignored)",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (1, 12345, 111)",
+      "insert into plan_test(f_tinyint, f_int, f_midint) values (2, 1234, 222)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "id"
+      },
+      {
+        "name": "count",
+        "alias": "1+count(*)"
+      }
+    ],
+    "query": "select f_int as id, 1+count(*) from plan_test group by plan_test.f_tinyint",
+    "verifyResult": [
+      {
+        "f_int": "12345",
+        "count": "2"
+      },
+      {
+        "f_int": "1234",
+        "count": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# group by a unique vindex where it should skip non-aliased expressions.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 1234)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "1+count(*)"
+      }
+    ],
+    "query": "select *, f_tinyint, 1+count(*) from plan_test group by f_tinyint",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_int": "12345",
+        "f_tinyint": "1",
+        "count": "2"
+      },
+      {
+        "f_tinyint": "2",
+        "f_int": "1234",
+        "f_tinyint": "2",
+        "count": "2"
+      }
+    ]
+  }
+]

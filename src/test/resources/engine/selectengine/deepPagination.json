@@ -1,0 +1,311 @@
+[
+  {
+    "comment": "# invalid order by column numner for scatter",
+    "initSql": [
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "count",
+        "alias": "count(*)"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_midint, count(*) from plan_test group by f_midint order by 5 limit 10",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "column number out of range"
+  },
+  {
+    "comment": "# scatter aggregate with memory sort and limit",
+    "initSql": [
+      "DELETE FROM plan_test;",
+      "INSERT INTO plan_test (f_tinyint, f_smallint, f_int) VALUES (1,2,111),(2,2,111),(3,2,111),(4,4,555),(5,4,555);"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      },
+      {
+        "name": "f_smallint"
+      },
+      {
+        "name": "count",
+        "alias": "k"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_int, f_smallint, count(*) k from plan_test group by f_int order by k desc,f_int limit 10",
+    "verifyResult": [
+      {
+        "f_int": 111,
+        "f_smallint": 2,
+        "count": 3
+      },
+      {
+        "f_int": 555,
+        "f_smallint": 4,
+        "count": 2
+      }
+    ]
+  },
+  {
+    "comment": "# sharded limit offset",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_int) values (1, 1),(2, 2),(3, 3);",
+      "insert into plan_test (f_tinyint, f_int) VALUES (4, 4),(5, 5),(6, 6);",
+      "insert into plan_test (f_tinyint, f_int) VALUES (7, 7),(8, 8),(9, 9);"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_int from plan_test order by f_int limit 3, 3",
+    "verifyResult": [
+      {
+        "f_int": 4
+      },
+      {
+        "f_int": 5
+      },
+      {
+        "f_int": 6
+      }
+    ]
+  },
+  {
+    "comment": "# Sharding Key Condition in Parenthesis",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_varchar) values (1, 'abc'),(2, 'abc'),(3, 'xxx');",
+      "insert into plan_test (f_tinyint, f_varchar) VALUES (4, 'abc'),(5, 'abc'),(6, 'xxx');"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_varchar"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test where f_varchar ='abc' AND (f_tinyint = 4) limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": 4,
+        "f_varchar": "abc"
+      }
+    ]
+  },
+  {
+    "comment": "# Multiple parenthesized expressions",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_varchar) values (1, 'abc'),(2, 'abc'),(3, 'xxx');",
+      "insert into plan_test (f_tinyint, f_varchar) VALUES (4, 'abc'),(5, 'abc'),(6, 'xxx');"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_varchar"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test where (f_tinyint = 4) AND (f_varchar ='abc') limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": 4,
+        "f_varchar": "abc"
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Table.Column",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test (f_tinyint, f_int) values (1, 1),(2, 2),(3, 3)"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "col0_"
+      }
+    ],
+    "needSort": false,
+    "query": "select user0_.f_int as col0_ from plan_test user0_ where f_tinyint = 1 order by user0_.f_int desc limit 2",
+    "verifyResult": [
+      {
+        "f_int": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Column Aliasing with Column",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_int) VALUES (1, 1),(2, 2),(3, 3);"
+    ],
+    "fields": [
+      {
+        "name": "f_int",
+        "alias": "col0_"
+      }
+    ],
+    "needSort": false,
+    "query": "select user0_.f_int as col0_ from plan_test user0_ where f_tinyint = 1 order by col0_ desc limit 3",
+    "verifyResult": [
+      {
+        "f_int": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Booleans and parenthesis",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_bit) values (1, 1),(2, 0),(3, 1);",
+      "insert into plan_test (f_tinyint, f_bit) VALUES (4, 0),(5, 1),(6, 1);"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test where (f_tinyint = 1) AND f_bit = true limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Column as boolean-ish",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_bit) values (1, 1),(2, 0),(3, 1);",
+      "insert into plan_test (f_tinyint, f_bit) VALUES (4, 0),(5, 1),(6, 1);"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test where (f_tinyint = 1) AND f_bit limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": 1,
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# PK as fake boolean, and column as boolean-ish",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_bit) values (1, 1),(2, 0),(3, 1);",
+      "insert into plan_test (f_tinyint, f_bit) VALUES (4, 0),(5, 1),(6, 1);"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from plan_test where (f_tinyint = 5) AND f_bit = true limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": 5,
+        "f_bit": 1
+      }
+    ]
+  },
+  {
+    "comment": "# LIMIT",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test (f_tinyint, f_bigint) values (1, 1),(2, 2),(9, 3)"
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_bigint from plan_test where f_tinyint = 9 limit 1;",
+    "verifyResult": [
+      {
+        "f_bigint": 3
+      }
+    ]
+  },
+  {
+    "comment": "# limit for scatter",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test (f_tinyint, f_bigint) values (1, 1),(2, 1),(3, 1)"
+    ],
+    "fields": [
+      {
+        "name": "f_bigint"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_bigint from plan_test limit 1;",
+    "verifyResult": [
+      {
+        "f_bigint": 1
+      }
+    ]
+  },
+  {
+    "comment": "# cross-shard expression in parenthesis with limit",
+    "initSql": [
+      "delete from plan_test;",
+      "insert into plan_test (f_tinyint, f_int, f_varchar) values (1, 12345, 'abc'),(2, 12345, 'abc'),(3, 12345, 'xxx');",
+      "insert into plan_test (f_tinyint, f_int, f_varchar) VALUES (4, 12345, 'abc'),(5, 1234, 'abc'),(6, 12345, 'aaa');",
+      "insert into plan_test (f_tinyint, f_int, f_varchar) VALUES (7, 12345, 'abc'),(8, 12345, 'abc'),(9, 12345, 'xxx');"
+    ],
+    "fields": [
+      {
+        "name": "f_int"
+      }
+    ],
+    "needSort": true,
+    "query": "select f_int from plan_test where (f_int = 12345 AND f_varchar ='abc') order by f_int limit 5",
+    "verifyResult": [
+      {
+        "f_int": 12345
+      },
+      {
+        "f_int": 12345
+      },
+      {
+        "f_int": 12345
+      },
+      {
+        "f_int": 12345
+      },
+      {
+        "f_int": 12345
+      }
+    ]
+  }
+]

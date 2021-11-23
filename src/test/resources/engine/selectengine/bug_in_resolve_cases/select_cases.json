@@ -1,0 +1,28 @@
+[
+  {
+    "comment": "# Booleans and parenthesis",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_bit) values (1, true)",
+      "insert into plan_test(f_tinyint, f_bit) values (2, true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint"
+      },
+      {
+        "name": "f_timestamp"
+      },
+      {
+        "name": "f_bit"
+      }
+    ],
+    "query": "select * from plan_test where (f_tinyint = 1) AND f_bit = true limit 5",
+    "verifyResult": [
+      {
+        "f_tinyint": "1",
+        "f_bit": true
+      }
+    ]
+  }
+]

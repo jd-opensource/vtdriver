@@ -1,0 +1,506 @@
+[
+  {
+    "comment": "# update by primary keyspace id, stray where clause with conversion error",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where predef1 = 18446 and predef1 = 1",
+    "skipResultCheck": true
+  },
+  {
+    "comment": "# explicit keyspace reference",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update :ks.unsharded set predef2 = 1",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update unsharded",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set :ks.unsharded.predef2 = 1",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where :ks.unsharded.predef1 = 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with alias",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded as unsharded_alias set predef2 = 1 where :ks.unsharded_alias.predef1 = 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with parenthesized expression",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where (predef1 = 1)",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# subqueries in unsharded update",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded",
+      "insert into unsharded_authoritative (col1, col2) values(1,1)",
+      "insert into unsharded(predef1,predef2) values(1,11), (2,11)"
+    ],
+    "updateSql": "update unsharded set predef2 = (select col1 from unsharded_authoritative limit 1)",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# unsharded union in subquery of unsharded update",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded",
+      "insert into unsharded_authoritative (col1, col2) values(1,1)",
+      "insert into unsharded(predef1,predef2) values(1,11), (2,11)"
+    ],
+    "updateSql": "update unsharded set predef2 = (select col1 from unsharded_authoritative union select col1 from unsharded_authoritative)",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# unsharded join in subquery of unsharded update",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded",
+      "insert into unsharded_authoritative (col1, col2) values(1,1)",
+      "insert into unsharded(predef1,predef2) values(1,11), (2,11)"
+    ],
+    "updateSql": "update unsharded set predef2 = (select a.col1 from unsharded_authoritative a join unsharded_authoritative b on a.col1 = b.col1)",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with join subquery",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "insert into unsharded_authoritative (col1, col2) values(1,3),(2,4),(3,4),(4,4),(5,null),(6,6),(null,7),(7,11),(8,90),(9,2000),(null,2000),(null,666)"
+    ],
+    "updateSql": "update unsharded_authoritative as foo left join (select col1 from unsharded_authoritative where col2 is not null order by col2 desc limit 10) as keepers on foo.col1 = keepers.col1 set foo.col1 = 100 where keepers.col1 is null and foo.col2 is not null and foo.col2 < 1000",
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifySql": [
+      "select col2 from unsharded_authoritative where col1 = 100"
+    ],
+    "verifyResult": [
+      [
+        {
+          "col2": 3
+        },
+        {
+          "col2": 7
+        },
+        {
+          "col2": 666
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id with multi-part where clause with parens",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where (predef2 = 0 and predef1 = 1)",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id, changing same vindex twice",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 0, predef2 = 1 where predef1 = 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id, changing one vindex column, using order by and limit",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where predef2 = 0 order by predef1 asc limit 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update by primary keyspace id, stray where clause",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,1), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 3 where predef1 = predef2 and predef1 = 1",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 3
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update multi-table ansi join",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4),(6,6)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(2, 'cc'),(3, 'aab'),(4, 'aa')"
+    ],
+    "updateSql": "update unsharded_authoritative a join unsharded_auto b on a.col1 = b.id set b.val = 'foo' where b.val = 'aa'",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select id from unsharded_auto where val = 'foo'"
+    ],
+    "verifyResult": [
+      [
+        {
+          "id": 1
+        },
+        {
+          "id": 4
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update multi-table comma join",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4),(6,6)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(2, 'cc'),(3, 'aab'),(4, 'aa')"
+    ],
+    "updateSql": "update unsharded_authoritative a, unsharded_auto b set b.val = 'foo' where a.col1 = b.id and b.val = 'aa'",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select id from unsharded_auto where val = 'foo'"
+    ],
+    "verifyResult": [
+      [
+        {
+          "id": 1
+        },
+        {
+          "id": 4
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with non-comparison expr",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where predef1 between 1 and 2",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with primary id through IN clause",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where predef1 in (1, 2)",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update with where clause with parens",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,2)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where (predef2 = 2 or predef1 = 1)",
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 1
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# unsharded update where inner query references outer query",
+    "initSql": [
+      "delete from unsharded_authoritative",
+      "delete from unsharded_auto",
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0)",
+      "insert into unsharded_authoritative (col1, col2) values(11,22),(1,3),(2,4),(3,4),(4,4),(6,6)",
+      "insert into unsharded_auto(id, val) values(1, 'aa'),(2, 'cc'),(3, 'aab'),(4, 'aa')"
+    ],
+    "updateSql": "update unsharded_authoritative set col1 = (select id from unsharded_auto where id = unsharded_authoritative.col1) where col1 = (select predef1 from unsharded)",
+    "updateCount": 1,
+    "affectedRows": 0,
+    "verifySql": [
+      "select col1, col2 from unsharded_authoritative"
+    ],
+    "verifyResult": [
+      [
+        {
+          "col1": 11,
+          "col2": 22
+        },
+        {
+          "col1": 1,
+          "col2": 3
+        },
+        {
+          "col1": 2,
+          "col2": 4
+        },
+        {
+          "col1": 3,
+          "col2": 4
+        },
+        {
+          "col1": 4,
+          "col2": 4
+        },
+        {
+          "col1": 6,
+          "col2": 6
+        }
+      ]
+    ]
+  },
+  {
+    "comment": "# update vindex value to null with complex where clause",
+    "initSql": [
+      "delete from unsharded",
+      "insert into unsharded(predef1,predef2) values(1,0), (2,0)"
+    ],
+    "updateSql": "update unsharded set predef2 = 1 where predef1 + 1 = 2",
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifySql": [
+      "select predef2 from unsharded"
+    ],
+    "verifyResult": [
+      [
+        {
+          "predef2": 1
+        },
+        {
+          "predef2": 0
+        }
+      ]
+    ]
+  }
+]

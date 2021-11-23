@@ -1,0 +1,184 @@
+[
+  {
+    "comment": "# No where clause",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'12',1,false),(3,'24',0,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "0"
+      }
+    ]
+  },
+  {
+    "comment": "# Single table unique vindex route",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'23',0,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test where table_engine_test.f_key = '11'",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "1"
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints, SelectIN is the best constraint",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true),(4,'34',2,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test where table_engine_test.f_bit=true and table_engine_test.f_key in ('22', '34')",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints and boolean, SelectIN is the best constraint.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true),(4,'34',2,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test where case f_tinyint when 0 then true else false end and table_engine_test.f_key in ('22', '34')",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints, SelectEqualUnique is the best constraint, order reversed.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'21',0,true),(4,'34',2,true)"
+    ],
+    "query": "select f_tinyint from table_engine_test where table_engine_test.id in (2,3,4) and table_engine_test.f_key = '21'",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      }
+    ]
+  },
+  {
+    "comment": "# Route with OR and AND clause, must parenthesize correctly. order needed; if not ordered, it may report fail.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true),(4,'32',2,true),(5, '47', 3, false)"
+    ],
+    "query": "select f_tinyint from table_engine_test where table_engine_test.f_key = '11' or table_engine_test.id in (2,3,4) and table_engine_test.f_key in ('32','22')",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# Route with OR and AND clause, must parenthesize correctly. order needed; if not ordered, it may report fail.",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true),(4,'32',2,true),(5, '47', 3, false)"
+    ],
+    "query": "select f_tinyint from table_engine_test where table_engine_test.f_key = '11' or table_engine_test.id in (3,4,5) and table_engine_test.f_key in ('32','22')",
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "0"
+      },
+      {
+        "f_tinyint": "2"
+      }
+    ]
+  },
+  {
+    "comment": "# SELECT with IS NULL. ",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'22',0,true),(4,'32',null,true),(5, '47', 3, false),(6, '74', 3, false),(7, 'abc', 4, false)"
+    ],
+    "query": "select f_key from table_engine_test where f_tinyint is null;",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "32"
+      }
+    ]
+  }
+]

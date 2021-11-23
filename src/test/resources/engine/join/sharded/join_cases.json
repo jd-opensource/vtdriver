@@ -1,0 +1,1505 @@
+[
+  {
+    "comment": "# Multi-table unique vindex constraint",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.name = user_extra.user_id where user.name = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unique vindex constraint on right table",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.name = user_extra.user_id where user_extra.user_id = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unique vindex constraint on left table of left join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user left join user_extra on user.name = user_extra.user_id where user.name = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table unique vindex constraint on left-joined right table",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user left join user_extra on user.name = user_extra.user_id where user_extra.user_id = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-route unique vindex constraint",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.costly = user_extra.extra_id where user.name = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-route unique vindex route on both routes",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.costly = user_extra.extra_id where user.name = 105 and user_extra.user_id = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-route with cross-route constraint",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.costly = user_extra.extra_id where user_extra.user_id = user.costly",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-route with non-route constraint, should use first route.",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra on user.costly = user_extra.extra_id where 1 = 1",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 300
+      },
+      {
+        "id": 400
+      },
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Case preservation test",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.Id from user join user_extra on user.nAME = user_extra.User_Id where user.Name = 105",
+    "verifyResult": [
+      {
+        "id": 500
+      }
+    ]
+  },
+  {
+    "comment": "# Multi-table, multi-chunk",
+    "fields": [
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select music.col from user join music where music.id < 104",
+    "verifyResult": [
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      }
+    ]
+  },
+  {
+    "comment": "# ',' join",
+    "fields": [
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select music.col from user, music where user.id < 3",
+    "verifyResult": [
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_4"
+      },
+      {
+        "textCol1": "col_5"
+      },
+      {
+        "textCol1": "col_1"
+      },
+      {
+        "textCol1": "col_2"
+      },
+      {
+        "textCol1": "col_3"
+      },
+      {
+        "textCol1": "col_4"
+      },
+      {
+        "textCol1": "col_5"
+      }
+    ]
+  },
+  {
+    "comment": "# mergeable sharded join on unique vindex",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# mergeable sharded join on unique vindex (parenthesized ON clause)",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on (user.name = user_extra.user_id)",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# mergeable sharded join on unique vindex, with a stray condition",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.costly between 100 and 200 and user.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# mergeable sharded join on unique vindex, swapped operands",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user_extra.user_id = user.name",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# mergeable sharded join on unique vindex, and condition",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.name = 105 and user.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# sharded join on unique vindex, inequality",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.name < user_extra.user_id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 101
+      }
+    ]
+  },
+  {
+    "comment": "# sharded join, non-col reference RHS",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.name = 105",
+    "verifyResult": [
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# sharded join, non-col reference LHS",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on 105 = user.name",
+    "verifyResult": [
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# sharded join, non-vindex col",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.costly = user_extra.extra_id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# col refs should be case-insensitive",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly from user join user_extra on user.NAME = user_extra.User_Id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# order by on a cross-shard query. Note: this happens only when an order by column is from the second table",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "alias": "aliasint2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "col",
+        "alias": "aliasstr1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as aliasint1, user.predef2 aliasint2, music.col aliasstr1 from user, music where user.name = music.user_id and user.name = 101 order by aliasstr1",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "aliasInt2": 101,
+        "aliasStr1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# Order by for join, with mixed cross-shard ordering",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as aliasint1, user.predef2, music.col from user join music on user.name = music.id where user.name = 101 order by 1 asc, 3 desc, 2 asc",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# non-ambiguous symbol reference",
+    "fields": [
+      {
+        "name": "predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.predef1, user_extra.extra_id from user join user_extra having user_extra.extra_id = 102",
+    "verifyResult": [
+      {
+        "id": 102,
+        "predef1": 101
+      },
+      {
+        "id": 102,
+        "predef1": 102
+      },
+      {
+        "id": 102,
+        "predef1": 103
+      },
+      {
+        "id": 102,
+        "predef1": 104
+      },
+      {
+        "id": 102,
+        "predef1": 105
+      }
+    ]
+  },
+  {
+    "comment": "# HAVING multi-route",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.predef1 as aliasint1, user.predef2, user_extra.extra_id from user join user_extra having 1 = 1 and aliasint1 = 101 and aliasint1 = user.predef2 and user_extra.extra_id = 101",
+    "verifyResult": [
+      {
+        "id": 101,
+        "aliasInt1": 101,
+        "predef2": 101
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY NULL for join",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as a, user.predef2, music.col from user join music on user.name = music.id where user.name = 101 order by null",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY non-key column for join",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as aliasint1, user.predef2, music.col from user join music on user.name = music.id where user.name = 101 order by aliasint1",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY non-key column for implicit join",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as aliasint1, user.predef2, music.col from user, music where user.name = music.id and user.name = 101 order by aliasint1",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# ORDER BY RAND() for join",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as a, user.predef2, music.col from user join music on user.name = music.id where user.name = 101 order by RAND()",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# limit for joins. Can't push down the limit because result counts get multiplied by join operations.",
+    "fields": [
+      {
+        "name": "predef1",
+        "alias": "aliasint1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      }
+    ],
+    "needSort": false,
+    "query": "select user.predef1 as a, user.predef2, music.col from user join music on user.name = music.id where user.name = 101 order by RAND()",
+    "verifyResult": [
+      {
+        "aliasInt1": 101,
+        "predef2": 101,
+        "textCol1": "col_1"
+      }
+    ]
+  },
+  {
+    "comment": "# select * from intermixing of authoritative table with non-authoritative results in no expansion",
+    "fields": [
+      {
+        "name": "userid",
+        "javaType": "Integer"
+      },
+      {
+        "name": "aliasStr1",
+        "javaType": "String"
+      },
+      {
+        "name": "aliasInt1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "name",
+        "javaType": "String"
+      },
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "predef2",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      },
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from authoritative join user on authoritative.user_id = user.name",
+    "verifyResult": [
+      {
+        "id": 1,
+        "userId": 101,
+        "costly": 101,
+        "aliasInt1": 101,
+        "predef1": 101,
+        "predef2": 101,
+        "name": "101",
+        "aliasStr1": "101",
+        "textCol1": "user.textcol1_1",
+        "textCol2": "user.textcol2_1"
+      },
+      {
+        "id": 2,
+        "userId": 102,
+        "costly": 102,
+        "aliasInt1": 102,
+        "predef1": 102,
+        "predef2": 102,
+        "name": "102",
+        "aliasStr1": "102",
+        "textCol1": "user.textcol1_2",
+        "textCol2": "user.textcol2_2"
+      },
+      {
+        "id": 3,
+        "userId": 103,
+        "costly": 103,
+        "aliasInt1": 103,
+        "predef1": 103,
+        "predef2": 103,
+        "name": "103",
+        "aliasStr1": "103",
+        "textCol1": "user.textcol1_3",
+        "textCol2": "user.textcol2_3"
+      },
+      {
+        "id": 4,
+        "userId": 104,
+        "costly": 104,
+        "aliasInt1": 104,
+        "predef1": 104,
+        "predef2": 104,
+        "name": "104",
+        "aliasStr1": "104",
+        "textCol1": "user.textcol1_4",
+        "textCol2": "user.textcol2_4"
+      },
+      {
+        "id": 5,
+        "userId": 105,
+        "costly": 105,
+        "aliasInt1": 105,
+        "predef1": 105,
+        "predef2": 105,
+        "name": "105",
+        "aliasStr1": "105",
+        "textCol1": "user.textcol1_5",
+        "textCol2": "user.textcol2_5"
+      }
+    ]
+  },
+  {
+    "comment": "# select * from join of authoritative tables",
+    "fields": [
+      {
+        "name": "a.user_id",
+        "alias": "userid",
+        "javaType": "Integer"
+      },
+      {
+        "name": "a.col1",
+        "alias": "textCol1",
+        "javaType": "String"
+      },
+      {
+        "name": "a.col2",
+        "alias": "predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "b.user_id",
+        "alias": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "b.col1",
+        "alias": "textCol2",
+        "javaType": "String"
+      },
+      {
+        "name": "b.col2",
+        "alias": "predef2",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select * from authoritative a join authoritative b on a.user_id=b.user_id",
+    "verifyResult": [
+      {
+        "id": 101,
+        "userId": 101,
+        "predef1": 101,
+        "predef2": 101,
+        "textCol1": "101",
+        "textCol2": "101"
+      },
+      {
+        "id": 102,
+        "userId": 102,
+        "predef1": 102,
+        "predef2": 102,
+        "textCol1": "102",
+        "textCol2": "102"
+      },
+      {
+        "id": 103,
+        "userId": 103,
+        "predef1": 103,
+        "predef2": 103,
+        "textCol1": "103",
+        "textCol2": "103"
+      },
+      {
+        "id": 104,
+        "userId": 104,
+        "predef1": 104,
+        "predef2": 104,
+        "textCol1": "104",
+        "textCol2": "104"
+      },
+      {
+        "id": 105,
+        "userId": 105,
+        "predef1": 105,
+        "predef2": 105,
+        "textCol1": "105",
+        "textCol2": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# select authoritative.* with intermixing still expands",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      },
+      {
+        "name": "userid",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textCol1",
+        "javaType": "String"
+      },
+      {
+        "name": "predef1",
+        "javaType": "Integer"
+      },
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.name, a.*, user.costly from authoritative a join user on a.user_id = user.name",
+    "verifyResult": [
+      {
+        "userId": 101,
+        "costly": 101,
+        "predef1": 101,
+        "name": "101",
+        "textCol1": "101"
+      },
+      {
+        "userId": 102,
+        "costly": 102,
+        "predef1": 102,
+        "name": "102",
+        "textCol1": "102"
+      },
+      {
+        "userId": 103,
+        "costly": 103,
+        "predef1": 103,
+        "name": "103",
+        "textCol1": "103"
+      },
+      {
+        "userId": 104,
+        "costly": 104,
+        "predef1": 104,
+        "name": "104",
+        "textCol1": "104"
+      },
+      {
+        "userId": 105,
+        "costly": 105,
+        "predef1": 105,
+        "name": "105",
+        "textCol1": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# auto-resolve anonymous columns for simple route",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select costly from user join user_extra on user.name = user_extra.user_id",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# Auto-resolve should work if unique vindex columns are referenced",
+    "fields": [
+      {
+        "name": "name",
+        "javaType": "String"
+      },
+      {
+        "name": "userid",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select name, user_id from user join user_extra where user_id < 103",
+    "verifyResult": [
+      {
+        "userId": 101,
+        "name": "101"
+      },
+      {
+        "userId": 101,
+        "name": "102"
+      },
+      {
+        "userId": 101,
+        "name": "103"
+      },
+      {
+        "userId": 101,
+        "name": "104"
+      },
+      {
+        "userId": 101,
+        "name": "105"
+      },
+      {
+        "userId": 102,
+        "name": "101"
+      },
+      {
+        "userId": 102,
+        "name": "102"
+      },
+      {
+        "userId": 102,
+        "name": "103"
+      },
+      {
+        "userId": 102,
+        "name": "104"
+      },
+      {
+        "userId": 102,
+        "name": "105"
+      }
+    ]
+  },
+  {
+    "comment": "# RHS route referenced",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user_extra.id from user join user_extra where user_extra.id < 300",
+    "verifyResult": [
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      },
+      {
+        "id": 100
+      },
+      {
+        "id": 200
+      }
+    ]
+  },
+  {
+    "comment": "# Both routes referenced",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly, user_extra.id from user join user_extra where user_extra.id < 300 and user.costly < 104",
+    "verifyResult": [
+      {
+        "id": 200,
+        "costly": 102
+      },
+      {
+        "id": 100,
+        "costly": 101
+      },
+      {
+        "id": 100,
+        "costly": 103
+      },
+      {
+        "id": 200,
+        "costly": 101
+      },
+      {
+        "id": 200,
+        "costly": 103
+      },
+      {
+        "id": 100,
+        "costly": 102
+      }
+    ]
+  },
+  {
+    "comment": "# Expression with single-route reference",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.costly, user_extra.id + user_extra.extra_id from user join user_extra where user.costly < 103",
+    "verifyResult": [
+      {
+        "id": 302,
+        "costly": 102
+      },
+      {
+        "id": 403,
+        "costly": 102
+      },
+      {
+        "id": 504,
+        "costly": 102
+      },
+      {
+        "id": 605,
+        "costly": 102
+      },
+      {
+        "id": 201,
+        "costly": 102
+      },
+      {
+        "id": 302,
+        "costly": 101
+      },
+      {
+        "id": 403,
+        "costly": 101
+      },
+      {
+        "id": 504,
+        "costly": 101
+      },
+      {
+        "id": 605,
+        "costly": 101
+      },
+      {
+        "id": 201,
+        "costly": 101
+      }
+    ]
+  },
+  {
+    "comment": "# Jumbled references",
+    "fields": [
+      {
+        "name": "textcol1",
+        "javaType": "String"
+      },
+      {
+        "name": "id",
+        "javaType": "Integer"
+      },
+      {
+        "name": "textcol2",
+        "javaType": "String"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.textcol1, user_extra.id, user.textcol2 from user join user_extra where user_extra.id < 300",
+    "verifyResult": [
+      {
+        "id": 100,
+        "textCol1": "user.textcol1_1",
+        "textCol2": "user.textcol2_1"
+      },
+      {
+        "id": 100,
+        "textCol1": "user.textcol1_2",
+        "textCol2": "user.textcol2_2"
+      },
+      {
+        "id": 100,
+        "textCol1": "user.textcol1_3",
+        "textCol2": "user.textcol2_3"
+      },
+      {
+        "id": 100,
+        "textCol1": "user.textcol1_4",
+        "textCol2": "user.textcol2_4"
+      },
+      {
+        "id": 100,
+        "textCol1": "user.textcol1_5",
+        "textCol2": "user.textcol2_5"
+      },
+      {
+        "id": 200,
+        "textCol1": "user.textcol1_1",
+        "textCol2": "user.textcol2_1"
+      },
+      {
+        "id": 200,
+        "textCol1": "user.textcol1_2",
+        "textCol2": "user.textcol2_2"
+      },
+      {
+        "id": 200,
+        "textCol1": "user.textcol1_3",
+        "textCol2": "user.textcol2_3"
+      },
+      {
+        "id": 200,
+        "textCol1": "user.textcol1_4",
+        "textCol2": "user.textcol2_4"
+      },
+      {
+        "id": 200,
+        "textCol1": "user.textcol1_5",
+        "textCol2": "user.textcol2_5"
+      }
+    ]
+  },
+  {
+    "comment": "# for update",
+    "fields": [
+      {
+        "name": "costly",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "startTx": true,
+    "noStream": true,
+    "query": "select user.costly from user join user_extra for update",
+    "verifyResult": [
+      {
+        "costly": 101
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 101
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 102
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 103
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 104
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      },
+      {
+        "costly": 105
+      }
+    ]
+  },
+  {
+    "comment": "# Case preservation",
+    "fields": [
+      {
+        "name": "Costly",
+        "javaType": "Integer"
+      },
+      {
+        "name": "Id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select user.Costly, user_extra.Id from user join user_extra where user.Costly < 103 and user_extra.Id < 300",
+    "verifyResult": [
+      {
+        "id": 200,
+        "costly": 101
+      },
+      {
+        "id": 100,
+        "costly": 101
+      },
+      {
+        "id": 200,
+        "costly": 102
+      },
+      {
+        "id": 100,
+        "costly": 102
+      }
+    ]
+  },
+  {
+    "comment": "# simple",
+    "query": "select user_extra.id from user.name = user_extra.user_id where user.name = 105",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# simple",
+    "query": "select * from user and user_extra",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# join",
+    "query": "select user_extra.id from user join user_extra and user.name = user_extra.user_id where user.name = 105",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  },
+  {
+    "comment": "# join",
+    "query": "select user_extra.id from user and music join user_extra on user.name = user_extra.user_id where user.name = 105",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "Table name is not found"
+  }
+]

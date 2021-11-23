@@ -1,0 +1,353 @@
+[
+  {
+    "comment": "# No where clause",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (6, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (9, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test;",
+    "needSort": true,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": "1"
+      },
+      {
+        "f_tinyint": "2"
+      },
+      {
+        "f_tinyint": "4"
+      },
+      {
+        "f_tinyint": "6"
+      },
+      {
+        "f_tinyint": "9"
+      }
+    ]
+  },
+  {
+    "comment": "# Query that always return empty",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint) values (1)",
+      "insert into plan_test(f_tinyint, f_umidint) values (2, 123456)",
+      "insert into plan_test(f_tinyint, f_umidint) values (4, 123456)",
+      "insert into plan_test(f_tinyint) values (6)",
+      "insert into plan_test(f_tinyint, f_umidint) values (9, 123456)"
+    ],
+    "query": "select f_tinyint from plan_test where f_umidint = null",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# Single table unique vindex route",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_tinyint = 5",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 5
+      }
+    ]
+  },
+  {
+    "comment": "# Single table unique vindex route, but complex expr",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 12345)",
+      "insert into plan_test(f_tinyint, f_int) values (10, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test where :ks.plan_test.f_tinyint = 5+5",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 10
+      }
+    ]
+  },
+  {
+    "comment": "# Single table complex in clause",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_varchar, f_text) values (1, 'aa', 'aa')",
+      "insert into plan_test(f_tinyint, f_varchar, f_text) values (2, 'aa', 'cc')",
+      "insert into plan_test(f_tinyint, f_varchar, f_text) values (3, 'bb', 'aa')",
+      "insert into plan_test(f_tinyint, f_varchar, f_text) values (4, 'bb', 'bb')"
+    ],
+    "query": "select f_tinyint from plan_test where f_varchar in (f_text, 'bb');",
+    "needSort": true,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 3
+      },
+      {
+        "f_tinyint": 4
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints, SelectIN is the best constraint",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 12345)",
+      "insert into plan_test(f_tinyint, f_midint) values (2, 123456)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 12345)",
+      "insert into plan_test(f_tinyint, f_midint) values (6, 12346)",
+      "insert into plan_test(f_tinyint, f_midint) values (9, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_midint = 123456 and plan_test.f_tinyint in (1, 2);",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints and boolean, SelectIN is the best constraint.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_varchar) values (1, 'foo')",
+      "insert into plan_test(f_tinyint, f_varchar) values (2, 'aaa')",
+      "insert into plan_test(f_tinyint, f_varchar) values (3, 'bbb')",
+      "insert into plan_test(f_tinyint, f_varchar) values (4, 'foo')",
+      "insert into plan_test(f_tinyint, f_varchar) values (6, 'aaa')"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_varchar = case plan_test.f_varchar when 'foo' then true else false end and plan_test.f_tinyint in (1, 2);",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Route with multiple route constraints, SelectEqualUnique is the best constraint, order reversed.",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint, f_varchar) values (1, 123456, 'abc')",
+      "insert into plan_test(f_tinyint, f_midint, f_varchar) values (11, 123456, 'abc')",
+      "insert into plan_test(f_tinyint, f_midint, f_varchar) values (12, 123456, 'abc')"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_midint = 123456 and plan_test.f_tinyint in (1, 11) and plan_test.f_varchar = 'abc' and plan_test.f_tinyint = 1;",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Route with OR and AND clause, must parenthesize correctly. order needed; if not ordered, it may report fail",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_varchar) values (1, 'xxx')",
+      "insert into plan_test(f_tinyint, f_varchar) values (2, 'abc')",
+      "insert into plan_test(f_tinyint, f_varchar) values (8, 'xxx')",
+      "insert into plan_test(f_tinyint, f_varchar) values (9, 'abc')"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_tinyint = 1 or plan_test.f_varchar = 'abc' and plan_test.f_tinyint in (1, 2, 8);",
+    "needSort": true,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# Route with OR and AND clause, must parenthesize correctly. ",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_varchar) values (1, 'xxx')",
+      "insert into plan_test(f_tinyint, f_varchar) values (2, 'abc')",
+      "insert into plan_test(f_tinyint, f_varchar) values (8, 'xxx')",
+      "insert into plan_test(f_tinyint, f_varchar) values (9, 'abc')"
+    ],
+    "query": "select f_tinyint from plan_test where plan_test.f_tinyint = 1 or plan_test.f_varchar = 'abc' and plan_test.f_tinyint in (1, 2);",
+    "needSort": true,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      },
+      {
+        "f_tinyint": 2
+      }
+    ]
+  },
+  {
+    "comment": "# SELECT with IS NULL. ",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_umidint) values (1, 12345)",
+      "insert into plan_test(f_tinyint) values (2)",
+      "insert into plan_test(f_tinyint, f_umidint) values (3, 12345)",
+      "insert into plan_test(f_tinyint) values (4)"
+    ],
+    "query": "select f_tinyint from plan_test where f_umidint is null;",
+    "needSort": true,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 2
+      },
+      {
+        "f_tinyint": 4
+      }
+    ]
+  },
+  {
+    "comment": "# Single table with unique vindex match and null match. ",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_umidint) values (1, 12345)",
+      "insert into plan_test(f_tinyint) values (2)",
+      "insert into plan_test(f_tinyint, f_umidint) values (3, 12345)",
+      "insert into plan_test(f_tinyint) values (4)"
+    ],
+    "query": "select f_tinyint from plan_test where f_tinyint = 4 and f_umidint is null;",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 4
+      }
+    ]
+  },
+  {
+    "comment": "# Single table with unique vindex match and IN (null).",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_umidint) values (1, 123456)",
+      "insert into plan_test(f_tinyint) values (2)",
+      "insert into plan_test(f_tinyint, f_umidint) values (3, 123456)",
+      "insert into plan_test(f_tinyint) values (4)"
+    ],
+    "query": "select f_tinyint from plan_test where f_midint = 123456 and f_tinyint IN (null);",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# Single table with unique vindex match and IN (null, 1, 2).",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 123456)",
+      "insert into plan_test(f_tinyint) values (2)",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 123456)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test where f_midint = 123456 and f_tinyint IN (null, 1, 2);",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_tinyint": 1
+      }
+    ]
+  },
+  {
+    "comment": "# Single table with unique vindex match and IN (null, 1, 2).",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint) values (1, 123456)",
+      "insert into plan_test(f_tinyint) values (2)",
+      "insert into plan_test(f_tinyint, f_midint) values (3, 123456)",
+      "insert into plan_test(f_tinyint, f_midint) values (4, 12345)"
+    ],
+    "query": "select f_tinyint from plan_test where f_midint = 123456 and f_tinyint NOT IN (null, 1, 2);",
+    "needSort": false,
+    "fields": [
+      {
+        "name": "f_tinyint"
+      }
+    ],
+    "verifyResult": [
+    ]
+  }
+]

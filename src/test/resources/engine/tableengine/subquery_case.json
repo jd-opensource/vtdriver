@@ -1,0 +1,83 @@
+[
+  {
+    "comment": "# scatter aggregate in a subquery",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "cnt",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select cnt from (select count(*) as cnt from table_engine_test) t",
+    "verifyResult": [
+      {
+        "cnt": 3
+      }
+    ]
+  },
+  {
+    "comment": "#pullout subquery with split table",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true)"
+    ],
+    "fields": [
+      {
+        "name": "f_tinyint",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from table_engine_test t where t.f_key in (select f_key from table_engine_test WHERE f_key in ('11', '22')) and t.id=2",
+    "verifyResult": [
+    ],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  },
+  {
+    "comment": "# scatter aggregate in a subquery",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true), (4, '55', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select id, f_key from table_engine_test where f_key in ('11', '22', '55')) t",
+    "verifyResult": [
+      {
+        "id": 2
+      },
+      {
+        "id": 3
+      },
+      {
+        "id": 4
+      }
+    ]
+  },
+  {
+    "comment": "# subquery with join, and aliased references",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'abc',0,true),(2,'11',1,false),(3,'22',0,true), (4, '55', 1, false)"
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select id from (select id, f_key from table_engine_test where f_key in ('11', '22', '55')) t join user on t.id=user.id",
+    "verifyResult": [],
+    "exception": "java.sql.SQLFeatureNotSupportedException"
+  }
+]

@@ -1,0 +1,81 @@
+[
+  {
+    "verfiyResult": [
+      [
+        20
+      ]
+    ],
+    "verfiySql": "/*shard=-80, set for specific shard*/select count(*) from user",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "verfiyResult": [
+      [
+        30
+      ]
+    ],
+    "verfiySql": "/*shard=80-, set for specific shard*/select count(distinct(id)) from user",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "verfiyResult": [
+      [
+        50
+      ]
+    ],
+    "verfiySql": "select count(*) from user",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "verfiyResult": [
+      [
+        22
+      ],
+      [
+        44
+      ]
+    ],
+    "verfiySql": "/*shard=80-, set for specific shard*/select id from user where id = 1 union all (select user_id as id from user_metadata order by id limit 1,2) order by id",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  },
+  {
+    "verfiyResult": [
+      [
+        1
+      ],
+      [
+        55
+      ],
+      [
+        66
+      ]
+    ],
+    "verfiySql": "/*shard=-80, set for specific shard*/select id from user where id = 1 union all (select user_id as id from user_metadata order by id limit 1,2) order by id",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ]
+  }
+]

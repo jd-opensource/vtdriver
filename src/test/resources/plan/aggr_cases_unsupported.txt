@@ -1,0 +1,75 @@
+# Reason: multiple keyspace
+# aggregate on RHS subquery (tests symbol table merge)
+"select user.a, t.b from user join (select count(*) b from unsharded) as t"
+{
+  "QueryType": "SELECT",
+  "Original": "select user.a, t.b from user join (select count(*) b from unsharded) as t",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-1,1],
+    "TableName": "user_unsharded",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.a from user where 1 != 1",
+        "Query": "select user.a from user",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectUnsharded",
+        "Keyspace": {
+          "Name": "main",
+          "Sharded": false
+        },
+        "FieldQuery": "select t.b from (select count(*) as b from unsharded where 1 != 1) as t where 1 != 1",
+        "Query": "select t.b from (select count(*) as b from unsharded) as t",
+        "Table": "unsharded"
+      }
+    ]
+  }
+}
+
+# Reason: routing rules
+# routing rules for aggregates
+"select id, count(*) from route2 group by id"
+{
+  "QueryType": "SELECT",
+  "Original": "select id, count(*) from route2 group by id",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectUnsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "FieldQuery": "select id, count(*) from unsharded as route2 where 1 != 1 group by id",
+    "Query": "select id, count(*) from unsharded as route2 group by id",
+    "Table": "unsharded"
+  }
+}
+
+# Reason: reference table
+# order by on a reference table
+"select col from ref order by col"
+{
+  "QueryType": "SELECT",
+  "Original": "select col from ref order by col",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectReference",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select col from ref where 1 != 1",
+    "Query": "select col from ref order by col asc",
+    "Table": "ref"
+  }
+}

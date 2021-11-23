@@ -1,0 +1,289 @@
+[
+  {
+    "comment": "# insert no column list for sharded authoritative table",
+    "insertSql": "insert into authoritative(user_id, col1, col2) values(1, 2, 3)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from authoritative"
+  },
+  {
+    "comment": "# insert no column list for sharded authoritative table",
+    "insertSql": "insert into authoritative(user_id, col1, col2) values(22,33,44),(333,444,555),(4444,5555,6666)",
+    "insertVar": [],
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifyResult": [
+      [
+        4
+      ]
+    ],
+    "verifySql": "select count(*) from authoritative"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(id, name) values (null, 'aaa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        1
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(id, name) values (100, 'bbb')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        2
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(id, name) values (null, 'ccc'),(null, 'ddd'),(null, 'eee')",
+    "insertVar": [],
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifyResult": [
+      [
+        5
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(id, name) values (null, 'a'),(999, 'b'),(null, 'c')",
+    "insertVar": [],
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifyResult": [
+      [
+        8
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(name) values ('aaaa')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        9
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "insertSql": "insert into user(name) values ('aaaa'),('bbbb'),('cccc')",
+    "insertVar": [],
+    "updateCount": 3,
+    "affectedRows": 3,
+    "verifyResult": [
+      [
+        12
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert ignore sharded",
+    "insertSql": "insert ignore into user(id) values (1)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        13
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert ignore sharded",
+    "insertSql": "insert ignore into user(id) values (1)",
+    "insertVar": [],
+    "updateCount": 0,
+    "affectedRows": 0,
+    "verifyResult": [
+      [
+        13
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert on duplicate key",
+    "insertSql": "insert into user(id) values(1) on duplicate key update predef1 = 11",
+    "insertVar": [],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        13
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert on duplicate key",
+    "insertSql": "insert into user(id) values(1) on duplicate key update predef1 = 111, predef2 = 222",
+    "insertVar": [],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        13
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with default seq",
+    "insertSql": "insert into user(id, name) values (default, 'ZS')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        14
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "insertSql": "insert into user(id,name) values (null, ?)",
+    "insertVar": [
+      "bindVar1"
+    ],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        15
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "insertSql": "insert into user(id,name) values (?, ?)",
+    "insertVar": [
+      null,
+      "bindVar2"
+    ],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        16
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with non vindex bool value",
+    "insertSql": "insert into user(predef1, textcol1) values (true, false)",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        17
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# replace sharded",
+    "insertSql": "replace into user(costly, textcol1, textcol2) values (123, 'textcol1', 'textcol2')",
+    "insertVar": [],
+    "updateCount": 1,
+    "affectedRows": 1,
+    "verifyResult": [
+      [
+        18
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# replace sharded",
+    "insertSql": "replace into user(costly, textcol1, textcol2) values (?, ?, ?)",
+    "insertVar": [
+      123,
+      "textcol11",
+      "textcol22"
+    ],
+    "updateCount": 2,
+    "affectedRows": 2,
+    "verifyResult": [
+      [
+        18
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "insertSql": "insert into user(id,name,textcol1,textcol2) values (?,?,?,?),(?,?,?,?),(?,?,?,?),(?,?,?,?)",
+    "insertVar": [
+      null,
+      "name1",
+      "textcol1",
+      "textcol2",
+      null,
+      "name11",
+      "textcol11",
+      "textcol22",
+      null,
+      "name111",
+      "textcol111",
+      "textcol222",
+      null,
+      "name1111",
+      "textcol1111",
+      "textcol2222"
+    ],
+    "updateCount": 4,
+    "affectedRows": 4,
+    "verifyResult": [
+      [
+        22
+      ]
+    ],
+    "verifySql": "select count(*) from user"
+  },
+  {
+    "comment": "# insert duplicate PK",
+    "insertSql": "insert into user(id, name) values (100, 'abc')",
+    "insertVar": [],
+    "exception": "java.sql.SQLIntegrityConstraintViolationException",
+    "errorMessage": "Duplicate entry"
+  },
+  {
+    "comment": "# insert duplicate PK and no shard key",
+    "insertSql": "insert into user(id) values (100)",
+    "insertVar": [],
+    "exception": "java.sql.SQLIntegrityConstraintViolationException",
+    "errorMessage": "Duplicate entry"
+  }
+]
