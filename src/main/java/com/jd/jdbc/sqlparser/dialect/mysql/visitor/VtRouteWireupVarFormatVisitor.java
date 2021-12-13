@@ -73,7 +73,7 @@ public class VtRouteWireupVarFormatVisitor extends MySqlASTVisitorAdapter {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
