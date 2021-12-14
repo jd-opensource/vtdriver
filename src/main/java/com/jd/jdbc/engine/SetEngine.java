@@ -22,7 +22,7 @@ import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqltypes.VtResultSet;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -45,12 +45,12 @@ public class SetEngine extends BasePrimitiveEngine implements PrimitiveEngine {
     }
 
     @Override
-    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor cursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) {
+    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor cursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) {
         return null;
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         return null;
     }
 

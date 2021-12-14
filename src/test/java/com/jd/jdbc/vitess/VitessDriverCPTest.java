@@ -18,11 +18,11 @@ package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.Connection;
 import java.sql.Statement;
@@ -71,7 +71,7 @@ public class VitessDriverCPTest extends TestSuite {
         Date date = new Date();
         System.out.println(date);
         psmt.setTimestamp(1, new Timestamp(date.getTime()));
-        Query.BindVariable bindVariable = psmt.getClientPreparedQueryBindings().get(0).getBindVariableMap().get("0");
+        BindVariable bindVariable = psmt.getClientPreparedQueryBindings().get(0).getBindVariableMap().get("0");
         Destination[] destinations = new BinaryHash().map(new VtValue[] {VtValue.newVtValue(bindVariable)});
         Resolver.ResolveDestinationResult rdr = connection.getResolver().resolveDestinations(null, connection.getDefaultKeyspace(),
             Topodata.TabletType.MASTER, null, Arrays.asList(destinations));

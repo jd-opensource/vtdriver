@@ -23,6 +23,8 @@ import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.queryservice.StreamIterator;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import io.vitess.proto.Query;
@@ -51,11 +53,11 @@ public interface Vcursor {
      * @param canAutocommit
      * @return
      */
-    ExecuteMultiShardResponse executeMultiShard(List<ResolvedShard> rss, List<Query.BoundQuery> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException;
+    ExecuteMultiShardResponse executeMultiShard(List<ResolvedShard> rss, List<BoundQuery> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException;
 
-    IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(List<ResolvedShard> rss, List<List<Query.BoundQuery>> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException;
+    IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(List<ResolvedShard> rss, List<List<BoundQuery>> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException;
 
-    List<StreamIterator> streamExecuteMultiShard(List<ResolvedShard> rss, List<Query.BoundQuery> queries) throws SQLException;
+    List<StreamIterator> streamExecuteMultiShard(List<ResolvedShard> rss, List<BoundQuery> queries) throws SQLException;
 
     /**
      * Resolver methods, from key.Destination to srvtopo.ResolvedShard.
@@ -80,7 +82,7 @@ public interface Vcursor {
      */
     Resolver.AllShardResult getAllShards(String keyspace, Topodata.TabletType tabletType) throws SQLException;
 
-    VtRowList executeStandalone(String sql, Map<String, Query.BindVariable> bindVars, ResolvedShard resolvedShard, boolean canAutocommit) throws SQLException;
+    VtRowList executeStandalone(String sql, Map<String, BindVariable> bindVars, ResolvedShard resolvedShard, boolean canAutocommit) throws SQLException;
 
     Boolean getRollbackOnPartialExec();
 

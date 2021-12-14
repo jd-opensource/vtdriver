@@ -25,6 +25,8 @@ import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.vitess.Config;
 import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import io.grpc.ManagedChannel;
@@ -109,36 +111,36 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     }
 
     @Override
-    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
+    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().execute(context, target, sql, bindVariables, transactionId, reservedId, options);
     }
 
     @Override
-    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options)
+    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().streamExecute(context, target, sql, bindVariables, transactionId, options);
     }
 
     @Override
-    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
+    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().executeBatch(context, target, queries, asTransaction, transactionId, options);
     }
 
     @Override
-    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
+    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
         return getNativeQueryService().beginExecuteBatch(context, target, queries, asTransaction, options);
     }
 
     @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                                  Query.ExecuteOptions options) throws Exception {
         return null;
     }
 
     @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                        Query.ExecuteOptions options) throws Exception {
         return null;
     }
@@ -151,7 +153,7 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     }
 
     @Override
-    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedId,
+    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long reservedId,
                                          Query.ExecuteOptions options) throws SQLException {
         return getNativeQueryService().beginExecute(context, target, preQueries, sql, bindVariables, reservedId, options);
     }

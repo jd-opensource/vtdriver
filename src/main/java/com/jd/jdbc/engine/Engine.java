@@ -27,6 +27,8 @@ import com.jd.jdbc.sqlparser.ast.SQLObject;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.tindexes.ActualTable;
@@ -146,11 +148,11 @@ public class Engine {
      * @param canAutocommit
      * @return
      */
-    public static IExecute.ExecuteMultiShardResponse execShard(Vcursor vcursor, SQLObject query, Map<String, Query.BindVariable> bindVariableMap, ResolvedShard rs, boolean rollbackOnError,
+    public static IExecute.ExecuteMultiShardResponse execShard(Vcursor vcursor, SQLObject query, Map<String, BindVariable> bindVariableMap, ResolvedShard rs, boolean rollbackOnError,
                                                                boolean canAutocommit) throws SQLException {
         boolean autocommit = canAutocommit && vcursor.autocommitApproval();
         String charEncoding = vcursor.getCharEncoding();
-        List<Query.BoundQuery> queries = getQueries(query, new ArrayList<Map<String, Query.BindVariable>>() {{
+        List<BoundQuery> queries = getQueries(query, new ArrayList<Map<String, BindVariable>>() {{
             add(bindVariableMap);
         }}, charEncoding);
         return vcursor.executeMultiShard(
@@ -166,13 +168,13 @@ public class Engine {
      * @param charEncoding
      * @return
      */
-    public static List<Query.BoundQuery> getQueries(SQLObject query, List<Map<String, Query.BindVariable>> bindVariableMapList, String charEncoding) {
-        List<Query.BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
-        for (Map<String, Query.BindVariable> bindVariableMap : bindVariableMapList) {
+    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, String charEncoding) {
+        List<BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
+        for (Map<String, BindVariable> bindVariableMap : bindVariableMapList) {
             StringBuilder realQueryOutput = new StringBuilder();
             VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(realQueryOutput, bindVariableMap, charEncoding);
             query.accept(vtRestoreVisitor);
-            queries.add(Query.BoundQuery.newBuilder().setSql(realQueryOutput.toString()).build());
+            queries.add(new BoundQuery(realQueryOutput.toString()));
         }
         return queries;
     }
@@ -184,13 +186,13 @@ public class Engine {
      * @param charEncoding
      * @return
      */
-    public static List<Query.BoundQuery> getQueries(SQLObject query, List<Map<String, Query.BindVariable>> bindVariableMapList, Map<String, String> switchTables, String charEncoding) {
-        List<Query.BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
-        for (Map<String, Query.BindVariable> bindVariableMap : bindVariableMapList) {
+    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, Map<String, String> switchTables, String charEncoding) {
+        List<BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
+        for (Map<String, BindVariable> bindVariableMap : bindVariableMapList) {
             StringBuilder realQueryOutput = new StringBuilder();
             VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(realQueryOutput, bindVariableMap, switchTables, charEncoding);
             query.accept(vtRestoreVisitor);
-            queries.add(Query.BoundQuery.newBuilder().setSql(realQueryOutput.toString()).build());
+            queries.add(new BoundQuery(realQueryOutput.toString()));
         }
         return queries;
     }
@@ -200,12 +202,12 @@ public class Engine {
      * @param mapVals
      * @return
      */
-    public static List<Map<String, Query.BindVariable>> shardVars(Map<String, Query.BindVariable> bindVariableMap, List<List<Query.Value>> mapVals) {
-        List<Map<String, Query.BindVariable>> shardVarList = new ArrayList<>();
+    public static List<Map<String, BindVariable>> shardVars(Map<String, BindVariable> bindVariableMap, List<List<Query.Value>> mapVals) {
+        List<Map<String, BindVariable>> shardVarList = new ArrayList<>();
         for (List<Query.Value> mapVal : mapVals) {
-            Map<String, Query.BindVariable> newbv = new LinkedHashMap<>(16, 1);
+            Map<String, BindVariable> newbv = new LinkedHashMap<>(16, 1);
             newbv.putAll(bindVariableMap);
-            newbv.put(LIST_VAR_NAME, Query.BindVariable.newBuilder().setType(Query.Type.TUPLE).addAllValues(mapVal).build());
+            newbv.put(LIST_VAR_NAME, new BindVariable(mapVal, Query.Type.TUPLE));
             shardVarList.add(newbv);
         }
         return shardVarList;
@@ -233,10 +235,10 @@ public class Engine {
         }
     }
 
-    public static VtResultSet getTableBatchExecuteResult(IContext ctx, PrimitiveEngine executeEngine, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap,
+    public static VtResultSet getTableBatchExecuteResult(IContext ctx, PrimitiveEngine executeEngine, Vcursor vcursor, Map<String, BindVariable> bindVariableMap,
                                                          TableDestinationResponse resolvedShardsEqual) throws SQLException {
         List<List<ActualTable>> tableDestinations = resolvedShardsEqual.getTables();
-        List<Map<String, Query.BindVariable>> values = resolvedShardsEqual.getTableVarList();
+        List<Map<String, BindVariable>> values = resolvedShardsEqual.getTableVarList();
         List<PrimitiveEngine> sourceList = new ArrayList<>();
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
         Map<String, LogicTable> shardTableLTMap = new HashMap<>();
@@ -449,6 +451,6 @@ public class Engine {
     public static class TableDestinationResponse {
         private final List<List<ActualTable>> tables;
 
-        private final List<Map<String, Query.BindVariable>> tableVarList;
+        private final List<Map<String, BindVariable>> tableVarList;
     }
 }

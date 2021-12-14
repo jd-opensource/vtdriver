@@ -16,9 +16,8 @@ limitations under the License.
 
 package com.jd.jdbc.vitess.mysql;
 
-import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
-import com.jd.jdbc.sqltypes.SqlTypes;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.mysql.cj.ClientPreparedQueryBindValue;
 import com.mysql.cj.ClientPreparedQueryBindings;
 import com.mysql.cj.Session;
@@ -48,14 +47,13 @@ public class VitessQueryBindVariable {
         this.charEncoding = encoding;
     }
 
-    public Map<String, Query.BindVariable> getBindVariableMap() {
-        Map<String, Query.BindVariable> bindVariableMap = new LinkedHashMap<>();
-
+    public Map<String, BindVariable> getBindVariableMap() {
         ClientPreparedQueryBindValue[] bindValues = this.inner.getBindValues();
-        for (int i = 0; i < bindValues.length; i++) {
-            bindVariableMap.put(String.valueOf(i), (Query.BindVariable) bindValues[i].value);
-        }
 
+        Map<String, BindVariable> bindVariableMap = new LinkedHashMap<>(bindValues.length);
+        for (int i = 0; i < bindValues.length; i++) {
+            bindVariableMap.put(String.valueOf(i), (BindVariable) bindValues[i].value);
+        }
         return bindVariableMap;
     }
 
@@ -252,40 +250,39 @@ public class VitessQueryBindVariable {
         this.convertToBindVariable(parameterIndex, Query.Type.TIMESTAMP);
     }
 
-    private void convertToBindVariable(int parameterIndex, Query.Type type) throws SQLException {
+    private void convertToBindVariable(int parameterIndex, Query.Type type) {
         this.convertToBindVariable(parameterIndex, type, null);
     }
 
-    private void convertToBindVariable(int parameterIndex, Query.Type type, byte[] bytes) throws SQLException {
+    private void convertToBindVariable(int parameterIndex, Query.Type type, byte[] bytes) {
         ClientPreparedQueryBindValue bindValue = this.inner.getBindValues()[parameterIndex];
         if (bindValue.isNull()) {
-            bindValue.value = SqlTypes.NULL_BIND_VARIABLE;
+            bindValue.value = BindVariable.NULL_BIND_VARIABLE;
             return;
         }
 
-        Query.BindVariable.Builder builder = Query.BindVariable.newBuilder().setType(type);
-        Query.BindVariable bindVariable;
+        BindVariable bindVariable;
         switch (type) {
             case NULL_TYPE:
-                bindVariable = builder.build();
+                bindVariable = BindVariable.NULL_BIND_VARIABLE;
                 break;
             case BLOB:
             case TEXT:
-                bindVariable = builder.setValue(ByteString.copyFrom(this.inner.getBytesRepresentation(parameterIndex))).build();
+                bindVariable = new BindVariable(this.inner.getBytesRepresentation(parameterIndex), type);
                 break;
             case BINARY:
             case VARBINARY:
-                bindVariable = builder.setValue(ByteString.copyFrom(bytes)).build();
+                bindVariable = new BindVariable(bytes, type);
                 break;
             case DATE:
             case TIME:
             case TIMESTAMP:
                 // DATE、TIME、TIMESTAMP类型需去除mysql驱动添加的单引号'
                 byte[] bytes1 = Arrays.copyOfRange(bindValue.getByteValue(), 1, bindValue.getByteValue().length - 1);
-                bindVariable = builder.setValue(ByteString.copyFrom(bytes1)).build();
+                bindVariable = new BindVariable(bytes1, type);
                 break;
             default:
-                bindVariable = builder.setValue(ByteString.copyFrom(bindValue.getByteValue())).build();
+                bindVariable = new BindVariable(bindValue.getByteValue(), type);
                 break;
         }
         bindValue.value = bindVariable;

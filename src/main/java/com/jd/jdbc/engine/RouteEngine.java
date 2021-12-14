@@ -33,6 +33,8 @@ import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.SingleColumn;
@@ -168,13 +170,13 @@ public class RouteEngine implements PrimitiveEngine {
     }
 
     @Override
-    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         VtResultSet vtResultSet = this.exec(vcursor, bindVariableMap, wantFields);
         return new ExecuteMultiShardResponse(vtResultSet.truncate(this.truncateColumnCount));
     }
 
     @Override
-    public ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         if (this.orderBy == null || this.orderBy.isEmpty()) {
             return new ExecuteMultiShardResponse(vtResultSet.truncate(this.truncateColumnCount));
         }
@@ -183,24 +185,24 @@ public class RouteEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
         String charEncoding = vcursor.getCharEncoding();
         if (paramsResponse == null) {
             return null;
         }
-        List<Query.BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
+        List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
         return new IExecute.ResolvedShardQuery(paramsResponse.getResolvedShardList(), queries);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Map<String, String> switchTableMap) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
         String charEncoding = vcursor.getCharEncoding();
         if (paramsResponse == null) {
             return null;
         }
-        List<Query.BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), switchTableMap, charEncoding);
+        List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), switchTableMap, charEncoding);
         return new IExecute.ResolvedShardQuery(paramsResponse.getResolvedShardList(), queries);
     }
 
@@ -218,7 +220,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         return this.streamExec(vcursor, bindVariableMap, wantFields);
     }
 
@@ -231,7 +233,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(this.keyspace.getName(), null, new ArrayList<Destination>() {{
             add(new DestinationAnyShard());
         }});
@@ -254,7 +256,7 @@ public class RouteEngine implements PrimitiveEngine {
         return false;
     }
 
-    private VtResultSet exec(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private VtResultSet exec(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
         String charEncoding = vcursor.getCharEncoding();
         // No route
@@ -264,7 +266,7 @@ public class RouteEngine implements PrimitiveEngine {
             }
             return new VtResultSet();
         }
-        List<Query.BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
+        List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
         ExecuteMultiShardResponse executeMultiShardResponse = vcursor.executeMultiShard(paramsResponse.getResolvedShardList(), queries, false, false);
 
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
@@ -282,7 +284,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private IExecute.VtStream streamExec(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private IExecute.VtStream streamExec(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
         String charEncoding = vcursor.getCharEncoding();
         List<StreamIterator> iteratorList = null;
@@ -295,7 +297,7 @@ public class RouteEngine implements PrimitiveEngine {
 
         // No route
         if (paramsResponse != null && !paramsResponse.getResolvedShardList().isEmpty()) {
-            List<Query.BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
+            List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
             iteratorList = vcursor.streamExecuteMultiShard(paramsResponse.getResolvedShardList(), queries);
         }
 
@@ -308,7 +310,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private ParamsResponse getResolveDestinationResult(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ParamsResponse getResolveDestinationResult(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         ParamsResponse paramsResponse;
         switch (routeOpcode) {
             case SelectDBA:
@@ -344,7 +346,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private ParamsResponse paramsAllShard(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ParamsResponse paramsAllShard(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(
             this.keyspace.getName(), null, new ArrayList<Destination>() {{
                 add(new DestinationAllShard());
@@ -358,7 +360,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    public ParamsResponse paramsSystemQuery(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public ParamsResponse paramsSystemQuery(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         String keyspace = "";
         boolean schemaExists = false;
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
@@ -399,7 +401,7 @@ public class RouteEngine implements PrimitiveEngine {
                 throw new SQLException("failed to find information about keyspace `" + keyspace + "`");
             }
         }
-        return new ParamsResponse(destinations, new ArrayList<Map<String, Query.BindVariable>>() {{
+        return new ParamsResponse(destinations, new ArrayList<Map<String, BindVariable>>() {{
             add(bindVariableMap);
         }});
     }
@@ -409,7 +411,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private ParamsResponse paramsAnyShard(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ParamsResponse paramsAnyShard(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(
             this.keyspace.getName(), null, new ArrayList<Destination>() {{
                 add(new DestinationAnyShard());
@@ -423,7 +425,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private ParamsResponse paramsSelectEqual(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ParamsResponse paramsSelectEqual(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         VtValue value = this.vtPlanValueList.get(0).resolveValue(bindVariableMap);
         Resolver.ResolveDestinationResult resolveDestinationResult = Engine.resolveShards(vcursor, this.vindex,
             this.keyspace, new ArrayList<VtValue>() {{
@@ -438,7 +440,7 @@ public class RouteEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private ParamsResponse paramsSelectIn(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ParamsResponse paramsSelectIn(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         List<VtValue> keys = this.vtPlanValueList.get(0).resolveList(bindVariableMap);
         Resolver.ResolveDestinationResult resolveDestinationResult = Engine.resolveShards(vcursor, this.vindex, this.keyspace, keys);
         List<ResolvedShard> rss = resolveDestinationResult.getResolvedShards();
@@ -514,6 +516,6 @@ public class RouteEngine implements PrimitiveEngine {
     public static class ParamsResponse {
         private List<ResolvedShard> resolvedShardList;
 
-        private List<Map<String, Query.BindVariable>> shardVarList;
+        private List<Map<String, BindVariable>> shardVarList;
     }
 }

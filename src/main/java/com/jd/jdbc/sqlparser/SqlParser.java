@@ -67,6 +67,7 @@ import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtSqlStatementType;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
@@ -293,7 +294,7 @@ public class SqlParser {
      * @return
      * @throws SQLException
      */
-    public static PrepareAstResult prepareAst(final SQLStatement stmt, final Map<String, Query.BindVariable> bindVariableMap, String charEncoding) throws SQLException {
+    public static PrepareAstResult prepareAst(final SQLStatement stmt, final Map<String, BindVariable> bindVariableMap, String charEncoding) throws SQLException {
         SmartNormalizer.SmartNormalizerResult normalizerResult = SmartNormalizer.normalize(stmt, bindVariableMap, charEncoding);
         RewriteAstResult rewriteAstResult = rewriteAst(normalizerResult.getStmt(), normalizerResult, charEncoding);
         return new PrepareAstResult(rewriteAstResult.getAst(), rewriteAstResult.getBindVarNeeds(), normalizerResult.getBindVariableMap());
@@ -316,7 +317,7 @@ public class SqlParser {
             log.error("Rewrited SQL: " + SQLUtils.toMySqlString(stmt, SQLUtils.NOT_FORMAT_OPTION));
             throw new SQLException("Rewrite SQL error!");
         }
-        Map<String, Query.BindVariable> bindVariableMap = normalizerResult.getBindVariableMap();
+        Map<String, BindVariable> bindVariableMap = normalizerResult.getBindVariableMap();
         if (stmt instanceof SQLSelectStatement) {
             SQLSelectQuery selectQuery = ((SQLSelectStatement) stmt).getSelect().getQuery();
             CheckNodeTypesVisitor visitor = new CheckNodeTypesVisitor(Sets.newHashSet(CheckNodeTypesVisitor.CheckNodeType.SUBQUERY, CheckNodeTypesVisitor.CheckNodeType.UNION));
@@ -334,23 +335,23 @@ public class SqlParser {
      * @param originBindVariableMap
      * @return
      */
-    private static Map<String, Query.BindVariable> combineRepeatBindVars(final List<SQLVariantRefExpr> varRefList, final Map<String, Query.BindVariable> originBindVariableMap, String charEncoding)
+    private static Map<String, BindVariable> combineRepeatBindVars(final List<SQLVariantRefExpr> varRefList, final Map<String, BindVariable> originBindVariableMap, String charEncoding)
         throws SQLException {
         Map<String, Integer> vals = new HashMap<>();
-        Map<String, Query.BindVariable> bindVariableMap = new HashMap<>();
+        Map<String, BindVariable> bindVariableMap = new HashMap<>();
         int refIndex = 0;
         for (SQLVariantRefExpr varRef : varRefList) {
             int originKey = varRef.getIndex();
             if (!originBindVariableMap.containsKey(String.valueOf(originKey))) {
                 throw new SQLException(String.format("Missing bind variable, missing key %d", originKey));
             }
-            Query.BindVariable bindVar = originBindVariableMap.get(String.valueOf(originKey));
+            BindVariable bindVar = originBindVariableMap.get(String.valueOf(originKey));
             String valueStr;
             if (bindVar.getType() == Query.Type.VARBINARY) {
-                String s = StringUtils.toString(bindVar.getValue().toByteArray(), charEncoding);
+                String s = StringUtils.toString(bindVar.getValue(), charEncoding);
                 valueStr = s + "::" + bindVar.getType();
             } else {
-                valueStr = new String(bindVar.getValue().toByteArray(), 0, bindVar.getValue().size()) + "::" + bindVar.getType();
+                valueStr = new String(bindVar.getValue(), 0, bindVar.getValue().length) + "::" + bindVar.getType();
             }
 
             if (vals.containsKey(valueStr)) {
@@ -560,6 +561,6 @@ public class SqlParser {
 
         private final BindVarNeeds bindVarNeeds;
 
-        private final Map<String, Query.BindVariable> bindVariableMap;
+        private final Map<String, BindVariable> bindVariableMap;
     }
 }

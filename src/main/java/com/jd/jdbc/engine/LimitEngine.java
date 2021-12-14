@@ -33,8 +33,8 @@ import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
 import com.jd.jdbc.sqltypes.VtStreamResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
-import io.vitess.proto.Query;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -84,7 +84,7 @@ public class LimitEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         Integer count = this.fetchCount(bindVariableMap);
         Integer offset = this.fetchOffset(bindVariableMap);
         // When offset is present, we hijack the limit value so we can calculate
@@ -115,7 +115,7 @@ public class LimitEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet result, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet result, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = this.input.mergeResult(result, bindValues, wantFields);
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
         return getExecuteMultiShardResponse(vtResultSet, fetchCount, fetchOffset);
@@ -141,7 +141,7 @@ public class LimitEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         fetchCount = this.fetchCount(bindValues);
         fetchOffset = this.fetchOffset(bindValues);
         // When offset is present, we hijack the limit value so we can calculate
@@ -154,7 +154,7 @@ public class LimitEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
         fetchCount = this.fetchCount(bindValues);
         fetchOffset = this.fetchOffset(bindValues);
         // When offset is present, we hijack the limit value so we can calculate
@@ -176,7 +176,7 @@ public class LimitEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         Integer count = this.fetchCount(bindValues);
         Integer offset = this.fetchOffset(bindValues);
         // When offset is present, we hijack the limit value so we can calculate
@@ -189,7 +189,7 @@ public class LimitEngine implements PrimitiveEngine {
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         return this.input.getFields(vcursor, bindValues);
     }
 
@@ -208,7 +208,7 @@ public class LimitEngine implements PrimitiveEngine {
      * @return
      * @throws SQLException
      */
-    private Integer fetchCount(Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Integer fetchCount(Map<String, BindVariable> bindVariableMap) throws SQLException {
         if (this.count.isNull()) {
             return 0;
         }
@@ -226,7 +226,7 @@ public class LimitEngine implements PrimitiveEngine {
      * @return
      * @throws SQLException
      */
-    private Integer fetchOffset(Map<String, Query.BindVariable> bindValues) throws SQLException {
+    private Integer fetchOffset(Map<String, BindVariable> bindValues) throws SQLException {
         if (this.offset.isNull()) {
             return 0;
         }

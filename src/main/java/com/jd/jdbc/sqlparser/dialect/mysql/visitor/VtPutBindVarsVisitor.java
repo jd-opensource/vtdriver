@@ -45,6 +45,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.math.BigInteger;
 import java.sql.SQLException;
@@ -59,9 +60,9 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
 
     private static final Integer DEFAULT_VAR_REFINDEX = -1;
 
-    private final Map<String, Query.BindVariable> bindVariableMap;
+    private final Map<String, BindVariable> bindVariableMap;
 
-    public VtPutBindVarsVisitor(final Map<String, Query.BindVariable> bindVariableMap) {
+    public VtPutBindVarsVisitor(final Map<String, BindVariable> bindVariableMap) {
         this.bindVariableMap = bindVariableMap;
     }
 
@@ -204,7 +205,7 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
         List<SQLValuableExpr> valuableExprList = new ArrayList<>();
 
         try {
-            Query.BindVariable bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
+            BindVariable bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
             if (bindVariable == null) {
                 bindVariable = this.bindVariableMap.get(String.valueOf(x.getIndex()));
             }
@@ -283,7 +284,7 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
     }
 
     private SQLValuableExpr getValueableExpr(final SQLVariantRefExpr x) {
-        Query.BindVariable bindVariable;
+        BindVariable bindVariable;
         if (LimitEngine.LIMIT_VAR_REFINDEX == x.getIndex() || LimitEngine.LIMIT_VAR_NAME.equals(x.getName())) {
             bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
         } else if (InsertEngine.Generate.SEQ_VAR_REFINDEX == x.getIndex()) {
@@ -346,7 +347,7 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
                     break;
                 case NULL_TYPE:
                     if (isSeq) {
-                        Query.BindVariable variable = this.bindVariableMap.get(x.getName());
+                        BindVariable variable = this.bindVariableMap.get(x.getName());
                         VtValue value = VtValue.newVtValue(variable);
                         valuableExpr = new SQLIntegerExpr(value.toLong());
 

@@ -31,6 +31,7 @@ import com.jd.jdbc.sqlparser.ast.expr.SQLTimestampExpr;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.mysql.cj.util.DataTypeUtil;
 import io.vitess.proto.Query;
 import java.math.BigDecimal;
@@ -90,14 +91,14 @@ public class VtValue {
         }
     }
 
-    public static VtValue newVtValue(Query.BindVariable bindVariable) throws SQLException {
+    public static VtValue newVtValue(BindVariable bindVariable) throws SQLException {
         if (bindVariable.getType() == Query.Type.TUPLE) {
             throw new SQLException("cannot transfer bind variables to single vtvalue, as its tuple type");
         }
-        return newVtValue(bindVariable.getType(), bindVariable.getValue().toByteArray());
+        return newVtValue(bindVariable.getType(), bindVariable.getValue());
     }
 
-    public static List<VtValue> newVtValueList(Query.BindVariable bindVariable) throws SQLException {
+    public static List<VtValue> newVtValueList(BindVariable bindVariable) throws SQLException {
         if (bindVariable.getType() != Query.Type.TUPLE) {
             throw new SQLException("cannot transfer bind variables to vtvalue list, as it's not tuple type");
         }
@@ -218,7 +219,6 @@ public class VtValue {
                 return vtValue;
             }
             default:
-                //log.warn(String.format("type:%s,val:%s", typ, val));
                 vtValue.vtValue = val;
                 return vtValue;
         }

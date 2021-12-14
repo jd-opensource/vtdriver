@@ -99,7 +99,7 @@ public class ScatterConn {
      * @return
      * @throws Exception
      */
-    public ExecuteMultiShardResponse executeMultiShard(IContext context, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession, Boolean autocommit,
+    public ExecuteMultiShardResponse executeMultiShard(IContext context, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession, Boolean autocommit,
                                                        Boolean ignoreMaxMemoryRows) throws SQLException {
         if (rss.size() != queries.size()) {
             throw new SQLException("BUG: got mismatched number of queries and shards");
@@ -184,7 +184,7 @@ public class ScatterConn {
         return new ExecuteMultiShardResponse(resultSet);
     }
 
-    public IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext context, List<ResolvedShard> rss, List<List<Query.BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
+    public IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext context, List<ResolvedShard> rss, List<List<BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
                                                                           Boolean ignoreMaxMemoryRows, Boolean asTransaction) throws SQLException {
         if (rss.size() != queries.size()) {
             throw new SQLException("BUG: got mismatched number of queries and shards");
@@ -320,7 +320,7 @@ public class ScatterConn {
     }
 
 
-    public List<StreamIterator> streamExecuteMultiShard(IContext context, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession) throws SQLException {
+    public List<StreamIterator> streamExecuteMultiShard(IContext context, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession) throws SQLException {
         if (rss == null || rss.size() == 0) {
             throw new SQLException("ResolvedShard should not empty");
         }

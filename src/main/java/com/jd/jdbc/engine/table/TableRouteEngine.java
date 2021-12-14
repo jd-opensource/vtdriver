@@ -31,6 +31,7 @@ import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.tindexes.TableIndex;
@@ -112,7 +113,7 @@ public class TableRouteEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
         Engine.TableDestinationResponse tableDestinationResponse = this.getResolveDestinationResult(bindVariableMap);
         VtResultSet resultSet = new VtResultSet();
         // No route
@@ -141,7 +142,7 @@ public class TableRouteEngine implements PrimitiveEngine {
         return false;
     }
 
-    private Engine.TableDestinationResponse getResolveDestinationResult(final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Engine.TableDestinationResponse getResolveDestinationResult(final Map<String, BindVariable> bindVariableMap) throws SQLException {
         Engine.TableDestinationResponse tableDestinationResponse;
         switch (this.routeOpcode) {
             case SelectScatter:
@@ -161,9 +162,9 @@ public class TableRouteEngine implements PrimitiveEngine {
         return tableDestinationResponse;
     }
 
-    private Engine.TableDestinationResponse paramsAllShard(final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Engine.TableDestinationResponse paramsAllShard(final Map<String, BindVariable> bindVariableMap) throws SQLException {
         List<List<ActualTable>> allActualTableGroup = this.getAllActualTableGroup(this.logicTables);
-        List<Map<String, Query.BindVariable>> bindVariableList = new ArrayList<>();
+        List<Map<String, BindVariable>> bindVariableList = new ArrayList<>();
         for (int i = 0; i < allActualTableGroup.size(); i++) {
             bindVariableList.add(bindVariableMap);
         }
@@ -197,7 +198,7 @@ public class TableRouteEngine implements PrimitiveEngine {
         return allActualTableGroup;
     }
 
-    private Engine.TableDestinationResponse paramsSelectEqual(final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Engine.TableDestinationResponse paramsSelectEqual(final Map<String, BindVariable> bindVariableMap) throws SQLException {
         VtValue value = this.vtPlanValueList.get(0).resolveValue(bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         for (LogicTable ltb : this.logicTables) {
@@ -211,12 +212,12 @@ public class TableRouteEngine implements PrimitiveEngine {
             new ArrayList<List<ActualTable>>() {{
                 add(actualTables);
             }},
-            new ArrayList<Map<String, Query.BindVariable>>() {{
+            new ArrayList<Map<String, BindVariable>>() {{
                 add(bindVariableMap);
             }});
     }
 
-    private Engine.TableDestinationResponse paramsSelectIn(final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Engine.TableDestinationResponse paramsSelectIn(final Map<String, BindVariable> bindVariableMap) throws SQLException {
         List<VtValue> keys = this.vtPlanValueList.get(0).resolveList(bindVariableMap);
         List<List<ActualTable>> tables = new ArrayList<>();
         List<List<Query.Value>> planValuePerTableGroup = new ArrayList<>();

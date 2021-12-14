@@ -23,6 +23,8 @@ import com.jd.jdbc.discovery.TabletHealthCheck;
 import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import io.grpc.ManagedChannel;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
@@ -54,24 +56,24 @@ public class TabletQueryService extends AbstractTabletQueryService implements IQ
     }
 
     @Override
-    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedID,
+    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables, Long reservedID,
                                          Query.ExecuteOptions options) throws SQLException {
         return null;
     }
 
     @Override
-    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
+    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
         throws SQLException {
         return null;
     }
 
     @Override
-    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options) {
+    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options) {
         return null;
     }
 
     @Override
-    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
+    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
         //not used.
         return null;
@@ -82,42 +84,6 @@ public class TabletQueryService extends AbstractTabletQueryService implements IQ
         Query.StreamHealthRequest.Builder builder = Query.StreamHealthRequest.newBuilder();
         Query.StreamHealthRequest request = builder.build();
         asyncStub.streamHealth(request, responseObserver);
-    }
-
-    @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
-                                                                 Query.ExecuteOptions options) throws Exception {
-        Query.ReserveBeginExecuteRequest.Builder builder = Query.ReserveBeginExecuteRequest.newBuilder();
-        builder.setTarget(target);
-        for (int i = 0; i < preQuries.size(); i++) {
-            builder.setPreQueries(i, preQuries.get(i));
-        }
-        builder.setQuery(Query.BoundQuery.newBuilder().setSql(sql).putAllBindVariables(bindVariables).build());
-        builder.setOptions(options);
-        Query.ReserveBeginExecuteRequest request = builder.build();
-        Query.ReserveBeginExecuteResponse rsp = blockingStub.reserveBeginExecute(request);
-        if (rsp.hasError()) {
-            throw new SQLException(rsp.getError().getMessage());
-        }
-        return rsp;
-    }
-
-    @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
-                                                       Query.ExecuteOptions options) throws Exception {
-        Query.ReserveExecuteRequest.Builder builder = Query.ReserveExecuteRequest.newBuilder();
-        builder.setTarget(target);
-        for (int i = 0; i < preQueries.size(); i++) {
-            builder.setPreQueries(i, preQueries.get(i));
-        }
-        builder.setQuery(Query.BoundQuery.newBuilder().setSql(sql).putAllBindVariables(bindVariables).build());
-        builder.setOptions(options);
-        Query.ReserveExecuteRequest request = builder.build();
-        Query.ReserveExecuteResponse rsp = blockingStub.reserveExecute(request);
-        if (rsp.hasError()) {
-            throw new SQLException(rsp.getError().getMessage());
-        }
-        return rsp;
     }
 
     @Override

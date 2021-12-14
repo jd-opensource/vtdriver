@@ -25,6 +25,7 @@ import com.jd.jdbc.queryservice.VtIterator;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -44,7 +45,7 @@ public class RouteStream implements IExecute.VtStream {
 
     private final RouteEngine routeEngine;
 
-    private final Map<String, Query.BindVariable> bindVariableMap;
+    private final Map<String, BindVariable> bindVariableMap;
 
     Vcursor vcursor;
 
@@ -57,7 +58,7 @@ public class RouteStream implements IExecute.VtStream {
 
     private PriorityQueue<RowWithShard> sortedValues = null;
 
-    public RouteStream(List<StreamIterator> iterators, List<OrderByParams> orderBy, int truncate, RouteEngine routeEngine, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) {
+    public RouteStream(List<StreamIterator> iterators, List<OrderByParams> orderBy, int truncate, RouteEngine routeEngine, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) {
         this.iterators = iterators;
         this.orderBy = orderBy;
         this.comparator = new StreamRowComparator(orderBy);

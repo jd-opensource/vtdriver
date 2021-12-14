@@ -16,9 +16,9 @@ limitations under the License.
 
 package com.jd.jdbc.sqlparser;
 
-import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -57,7 +57,7 @@ public class NormalizeRewritePutTest extends TestSuite {
 
             SqlParser.PrepareAstResult prepareAstResult = SqlParser.prepareAst(stmt, testCase.inBindVariableMap, null);
             SQLStatement resultStmt = prepareAstResult.getAst();
-            Map<String, Query.BindVariable> bindVariableMap = prepareAstResult.getBindVariableMap();
+            Map<String, BindVariable> bindVariableMap = prepareAstResult.getBindVariableMap();
 
             Assert.assertEquals(printFail("Normalize SQL Error!"),
                 testCase.outerSql, SQLUtils.toMySqlString(resultStmt, SQLUtils.NOT_FORMAT_OPTION));
@@ -105,136 +105,132 @@ public class NormalizeRewritePutTest extends TestSuite {
                 "select RES.* from ACT_RU_TIMER_JOB RES where LOCK_OWNER_ is null LIMIT 100 OFFSET 10",
                 "select RES.* from ACT_RU_TIMER_JOB as RES where LOCK_OWNER_ is null limit ? offset ?",
                 "select RES.* from ACT_RU_TIMER_JOB as RES where LOCK_OWNER_ is null limit 100 offset 10",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("100".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("10".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("100".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("10".getBytes(), Query.Type.INT32));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("100".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("10".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("100".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("10".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select col03, col31 from test123 where id = 462 and col01 = 462",
                 "select col03, col31 from test123 where id = ? and col01 = ?",
                 "select col03, col31 from test123 where id = 462 and col01 = 462",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("462".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("462".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select col03, col31 from test_1_2_3 where id = 462 and col01 = 462",
                 "select col03, col31 from test_1_2_3 where id = ? and col01 = ?",
                 "select col03, col31 from test_1_2_3 where id = 462 and col01 = 462",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("462".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("462".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select col03, col31 from 123test where id = 462 and col01 = 462",
                 "select col03, col31 from 123test where id = ? and col01 = ?",
                 "select col03, col31 from 123test where id = 462 and col01 = 462",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("462".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("462".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select col03, col31 from 1_2_3_test where id = 462 and col01 = 462",
                 "select col03, col31 from 1_2_3_test where id = ? and col01 = ?",
                 "select col03, col31 from 1_2_3_test where id = 462 and col01 = 462",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("462".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("462".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("462".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_tinyint = -128 or f_tinyint = 127 or f_u_tinyint = 0 or f_u_tinyint = 255",
                 "select * from normalize_test where f_tinyint = ? or f_tinyint = ? or f_u_tinyint = ? or f_u_tinyint = ?",
                 "select * from normalize_test where f_tinyint = -128 or f_tinyint = 127 or f_u_tinyint = 0 or f_u_tinyint = 255",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("-128".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("127".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("0".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("255".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("-128".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("127".getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable("0".getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable("255".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_smallint = -32768 or f_smallint = 32767 or f_u_smallint = 0 or f_u_smallint = 65535",
                 "select * from normalize_test where f_smallint = ? or f_smallint = ? or f_u_smallint = ? or f_u_smallint = ?",
                 "select * from normalize_test where f_smallint = -32768 or f_smallint = 32767 or f_u_smallint = 0 or f_u_smallint = 65535",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("-32768".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("32767".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("0".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("65535".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("-32768".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("32767".getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable("0".getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable("65535".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_mediumint = -8388608 or f_mediumint = 8388607 or f_u_mediumint = 0 or f_u_mediumint = 16777215",
                 "select * from normalize_test where f_mediumint = ? or f_mediumint = ? or f_u_mediumint = ? or f_u_mediumint = ?",
                 "select * from normalize_test where f_mediumint = -8388608 or f_mediumint = 8388607 or f_u_mediumint = 0 or f_u_mediumint = 16777215",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("-8388608".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("8388607".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("0".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("16777215".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("-8388608".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("8388607".getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable("0".getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable("16777215".getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_int = -2147483648 or f_int = 2147483647 or f_u_int = 0 or f_u_int = 4294967295",
                 "select * from normalize_test where f_int = ? or f_int = ? or f_u_int = ? or f_u_int = ?",
                 "select * from normalize_test where f_int = -2147483648 or f_int = 2147483647 or f_u_int = 0 or f_u_int = 4294967295",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("-2147483648".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("2147483647".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("0".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT64).setValue(ByteString.copyFrom(Long.valueOf(4294967295L).toString().getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("-2147483648".getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable("2147483647".getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable("0".getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable(Long.valueOf(4294967295L).toString().getBytes(), Query.Type.INT64));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_bigint = -9223372036854775808 or f_bigint = 9223372036854775807 or f_u_bigint = 0 or f_u_bigint = 18446744073709551615",
                 "select * from normalize_test where f_bigint = ? or f_bigint = ? or f_u_bigint = ? or f_u_bigint = ?",
                 "select * from normalize_test where f_bigint = -9223372036854775808 or f_bigint = 9223372036854775807 or f_u_bigint = 0 or f_u_bigint = 18446744073709551615",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT64).setValue(ByteString.copyFrom(Long.valueOf(-9223372036854775808L).toString().getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT64).setValue(ByteString.copyFrom(Long.valueOf(9223372036854775807L).toString().getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom("0".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.UINT64).setValue(ByteString.copyFrom(new BigInteger("18446744073709551615").toString(10).getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(Long.valueOf(-9223372036854775808L).toString().getBytes(), Query.Type.INT64));
+                    put("1", new BindVariable(Long.valueOf(9223372036854775807L).toString().getBytes(), Query.Type.INT64));
+                    put("2", new BindVariable("0".getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable(new BigInteger("18446744073709551615").toString(10).getBytes(), Query.Type.UINT64));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_float = 1.2 or f_float = -1.2 or f_float = -3.402823466E+38 or f_float = -1.175494351E-38 or f_u_float = 0.0 or f_u_float = -1.175494351E-38 or f_u_float = -3.402823466E+38",
                 "select * from normalize_test where f_float = ? or f_float = ? or f_float = ? or f_float = ? or f_u_float = ? or f_u_float = ? or f_u_float = ?",
                 "select * from normalize_test where f_float = 1.2 or f_float = -1.2 or f_float = -3.402823466E+38 or f_float = -1.175494351E-38 or f_u_float = 0.0 or f_u_float = -1.175494351E-38 or f_u_float = -3.402823466E+38",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("1.2").toEngineeringString().getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.2").toEngineeringString().getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-3.402823466E+38").toEngineeringString().getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.175494351E-38").toEngineeringString().getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(String.valueOf(0.0).getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.175494351E-38").toEngineeringString().getBytes())).build());
-                    put("6", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-3.402823466E+38").toEngineeringString().getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(new BigDecimal("1.2").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("1", new BindVariable(new BigDecimal("-1.2").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("2", new BindVariable(new BigDecimal("-3.402823466E+38").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("3", new BindVariable(new BigDecimal("-1.175494351E-38").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("4", new BindVariable(String.valueOf(0.0).getBytes(), Query.Type.DECIMAL));
+                    put("5", new BindVariable(new BigDecimal("-1.175494351E-38").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("6", new BindVariable(new BigDecimal("-3.402823466E+38").toEngineeringString().getBytes(), Query.Type.DECIMAL));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_double = 1.2 or f_double = -1.2 or f_double = -1.7976931348623157E+308 or f_double = -2.2250738585072014E-308 or f_u_double = 0.0 or f_u_double = -2.2250738585072014E-308 or f_u_double = -1.7976931348623157E+308",
                 "select * from normalize_test where f_double = ? or f_double = ? or f_double = ? or f_double = ? or f_u_double = ? or f_u_double = ? or f_u_double = ?",
                 "select * from normalize_test where f_double = 1.2 or f_double = -1.2 or f_double = -1.7976931348623157E+308 or f_double = -2.2250738585072014E-308 or f_u_double = 0.0 or f_u_double = -2.2250738585072014E-308 or f_u_double = -1.7976931348623157E+308",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("1.2").toEngineeringString().getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.2").toEngineeringString().getBytes())).build());
-                    put("2",
-                        Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.7976931348623157E+308").toEngineeringString().getBytes())).build());
-                    put("3",
-                        Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-2.2250738585072014E-308").toEngineeringString().getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(String.valueOf(0.0).getBytes())).build());
-                    put("5",
-                        Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-2.2250738585072014E-308").toEngineeringString().getBytes())).build());
-                    put("6",
-                        Query.BindVariable.newBuilder().setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom(new BigDecimal("-1.7976931348623157E+308").toEngineeringString().getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(new BigDecimal("1.2").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("1", new BindVariable(new BigDecimal("-1.2").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("2", new BindVariable(new BigDecimal("-1.7976931348623157E+308").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("3", new BindVariable(new BigDecimal("-2.2250738585072014E-308").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("4", new BindVariable(String.valueOf(0.0).getBytes(), Query.Type.DECIMAL));
+                    put("5", new BindVariable(new BigDecimal("-2.2250738585072014E-308").toEngineeringString().getBytes(), Query.Type.DECIMAL));
+                    put("6", new BindVariable(new BigDecimal("-1.7976931348623157E+308").toEngineeringString().getBytes(), Query.Type.DECIMAL));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_bit = b'110' or f_bit = B'110' or f_bit = 0b110",
@@ -253,122 +249,122 @@ public class NormalizeRewritePutTest extends TestSuite {
                 "select * from normalize_test where f_boolean = ? or f_boolean = ?",
                 "select * from normalize_test where f_boolean = true or f_boolean = false",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.BIT).setValue(ByteString.copyFrom(new byte[] {1})).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.BIT).setValue(ByteString.copyFrom(new byte[] {0})).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(new byte[] {1}, Query.Type.BIT));
+                    put("1", new BindVariable(new byte[] {0}, Query.Type.BIT));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_varchar = 'aa'",
                 "select * from normalize_test where f_varchar = ?",
                 "select * from normalize_test where f_varchar = 'aa'",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_varchar = ?",
                 "select * from normalize_test where f_varchar = ?",
                 "select * from normalize_test where f_varchar = 'aa'",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_varchar = ? or f_varchar = 'bb' or f_varchar = ?",
                 "select * from normalize_test where f_varchar = ? or f_varchar = ? or f_varchar = ?",
                 "select * from normalize_test where f_varchar = 'aa' or f_varchar = 'bb' or f_varchar = 'cc'",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_varchar = ? or f_varchar = ? or f_varchar = 'cc' or f_varchar = 'dd' or f_varchar = ? or f_varchar = ?",
                 "select * from normalize_test where f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ?",
                 "select * from normalize_test where f_varchar = 'aa' or f_varchar = 'bb' or f_varchar = 'cc' or f_varchar = 'dd' or f_varchar = 'ee' or f_varchar = 'ff'",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ee".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("ee".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("dd".getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ee".getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("dd".getBytes(), Query.Type.VARBINARY));
+                    put("4", new BindVariable("ee".getBytes(), Query.Type.VARBINARY));
+                    put("5", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_varchar = 'aa' or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = 'ee' or f_varchar = ?",
                 "select * from normalize_test where f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ?",
                 "select * from normalize_test where f_varchar = 'aa' or f_varchar = 'bb' or f_varchar = 'cc' or f_varchar = 'dd' or f_varchar = 'ee' or f_varchar = 'ff'",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("dd".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("dd".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("dd".getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ee".getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("dd".getBytes(), Query.Type.VARBINARY));
+                    put("4", new BindVariable("ee".getBytes(), Query.Type.VARBINARY));
+                    put("5", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select 'aa', 'bb', 'cc' from normalize_test",
                 "select ?, ?, ? from normalize_test",
                 "select 'aa', 'bb', 'cc' from normalize_test",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select ?, 'bb', ? from normalize_test",
                 "select ?, ?, ? from normalize_test",
                 "select 'aa', 'bb', 'cc' from normalize_test",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select ?, 'bb', ? from normalize_test where f_varchar = 'dd' or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = 'hh' or f_varchar = ?",
                 "select ?, ?, ? from normalize_test where f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ? or f_varchar = ?",
                 "select 'aa', 'bb', 'cc' from normalize_test where f_varchar = 'dd' or f_varchar = 'ee' or f_varchar = 'ff' or f_varchar = 'gg' or f_varchar = 'hh' or f_varchar = 'ii'",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ee".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("gg".getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ii".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("ee".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
+                    put("4", new BindVariable("gg".getBytes(), Query.Type.VARBINARY));
+                    put("5", new BindVariable("ii".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("aa".getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("dd".getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ee".getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ff".getBytes())).build());
-                    put("6", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("gg".getBytes())).build());
-                    put("7", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("hh".getBytes())).build());
-                    put("8", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("ii".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("aa".getBytes(), Query.Type.VARBINARY));
+                    put("1", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("2", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
+                    put("3", new BindVariable("dd".getBytes(), Query.Type.VARBINARY));
+                    put("4", new BindVariable("ee".getBytes(), Query.Type.VARBINARY));
+                    put("5", new BindVariable("ff".getBytes(), Query.Type.VARBINARY));
+                    put("6", new BindVariable("gg".getBytes(), Query.Type.VARBINARY));
+                    put("7", new BindVariable("hh".getBytes(), Query.Type.VARBINARY));
+                    put("8", new BindVariable("ii".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select a, b from normalize_test order by 1 desc",
@@ -405,73 +401,73 @@ public class NormalizeRewritePutTest extends TestSuite {
                 "select * from normalize_test where f_tinyint in (?, ?, ?) or f_tinyint not in (?, ?, ?)",
                 "select * from normalize_test where f_tinyint in (1, 2, 3) or f_tinyint not in (11, 22, 33)",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(2).getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(3).getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(11).getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(22).getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(33).getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable(String.valueOf(2).getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable(String.valueOf(3).getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable(String.valueOf(11).getBytes(), Query.Type.INT32));
+                    put("4", new BindVariable(String.valueOf(22).getBytes(), Query.Type.INT32));
+                    put("5", new BindVariable(String.valueOf(33).getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_tinyint in (1, a) or f_tinyint not in (11, aa)",
                 "select * from normalize_test where f_tinyint in (?, a) or f_tinyint not in (?, aa)",
                 "select * from normalize_test where f_tinyint in (1, a) or f_tinyint not in (11, aa)",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(11).getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable(String.valueOf(11).getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_tinyint in (1, a, null) or f_tinyint not in (11, aa, null)",
                 "select * from normalize_test where f_tinyint in (?, a, null) or f_tinyint not in (?, aa, null)",
                 "select * from normalize_test where f_tinyint in (1, a, null) or f_tinyint not in (11, aa, null)",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(11).getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable(String.valueOf(11).getBytes(), Query.Type.INT32));
                 }}));
             add(new TestCase(
                 "select * from normalize_test where f_tinyint in (?, ?, 3, ?, ?, a, ?, null, ?) or f_tinyint not in (?, ?, 33, ?, ?, aa, ?, null, ?)",
                 "select * from normalize_test where f_tinyint in (?, ?, ?, ?, ?, a, ?, null, ?) or f_tinyint not in (?, ?, ?, ?, ?, aa, ?, null, ?)",
                 "select * from normalize_test where f_tinyint in (1, 2, 3, 4, 5, a, 'b', null, 'c') or f_tinyint not in (11, 22, 33, 44, 55, aa, 'bb', null, 'cc')",
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(2).getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(4).getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(5).getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("b".getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("c".getBytes())).build());
-                    put("6", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(11).getBytes())).build());
-                    put("7", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(22).getBytes())).build());
-                    put("8", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(44).getBytes())).build());
-                    put("9", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(55).getBytes())).build());
-                    put("10", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("11", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable(String.valueOf(2).getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable(String.valueOf(4).getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable(String.valueOf(5).getBytes(), Query.Type.INT32));
+                    put("4", new BindVariable("b".getBytes(), Query.Type.VARBINARY));
+                    put("5", new BindVariable("c".getBytes(), Query.Type.VARBINARY));
+                    put("6", new BindVariable(String.valueOf(11).getBytes(), Query.Type.INT32));
+                    put("7", new BindVariable(String.valueOf(22).getBytes(), Query.Type.INT32));
+                    put("8", new BindVariable(String.valueOf(44).getBytes(), Query.Type.INT32));
+                    put("9", new BindVariable(String.valueOf(55).getBytes(), Query.Type.INT32));
+                    put("10", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("11", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }},
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                    put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(2).getBytes())).build());
-                    put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(3).getBytes())).build());
-                    put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(4).getBytes())).build());
-                    put("4", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(5).getBytes())).build());
-                    put("5", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("b".getBytes())).build());
-                    put("6", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("c".getBytes())).build());
-                    put("7", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(11).getBytes())).build());
-                    put("8", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(22).getBytes())).build());
-                    put("9", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(33).getBytes())).build());
-                    put("10", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(44).getBytes())).build());
-                    put("11", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(55).getBytes())).build());
-                    put("12", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("bb".getBytes())).build());
-                    put("13", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("cc".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                    put("1", new BindVariable(String.valueOf(2).getBytes(), Query.Type.INT32));
+                    put("2", new BindVariable(String.valueOf(3).getBytes(), Query.Type.INT32));
+                    put("3", new BindVariable(String.valueOf(4).getBytes(), Query.Type.INT32));
+                    put("4", new BindVariable(String.valueOf(5).getBytes(), Query.Type.INT32));
+                    put("5", new BindVariable("b".getBytes(), Query.Type.VARBINARY));
+                    put("6", new BindVariable("c".getBytes(), Query.Type.VARBINARY));
+                    put("7", new BindVariable(String.valueOf(11).getBytes(), Query.Type.INT32));
+                    put("8", new BindVariable(String.valueOf(22).getBytes(), Query.Type.INT32));
+                    put("9", new BindVariable(String.valueOf(33).getBytes(), Query.Type.INT32));
+                    put("10", new BindVariable(String.valueOf(44).getBytes(), Query.Type.INT32));
+                    put("11", new BindVariable(String.valueOf(55).getBytes(), Query.Type.INT32));
+                    put("12", new BindVariable("bb".getBytes(), Query.Type.VARBINARY));
+                    put("13", new BindVariable("cc".getBytes(), Query.Type.VARBINARY));
                 }}));
             add(new TestCase(
                 "select CAST('test' AS CHAR(60))",
                 "select cast(? as CHAR(60))",
                 "select cast('test' as CHAR(60))",
                 Collections.emptyMap(),
-                new LinkedHashMap<String, Query.BindVariable>() {{
-                    put("0", Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom("test".getBytes())).build());
+                new LinkedHashMap<String, BindVariable>() {{
+                    put("0", new BindVariable("test".getBytes(), Query.Type.VARBINARY));
                 }}));
         }};
     }
@@ -484,8 +480,8 @@ public class NormalizeRewritePutTest extends TestSuite {
 
         private final String querySql;
 
-        private final Map<String, Query.BindVariable> inBindVariableMap;
+        private final Map<String, BindVariable> inBindVariableMap;
 
-        private final Map<String, Query.BindVariable> outBindVariableMap;
+        private final Map<String, BindVariable> outBindVariableMap;
     }
 }

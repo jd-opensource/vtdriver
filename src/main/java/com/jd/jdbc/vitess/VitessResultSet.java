@@ -430,10 +430,10 @@ public class VitessResultSet extends AbstractVitessResultSet {
             PropertyDefinitions.ZeroDatetimeBehavior zeroDateTimeBehavior = getZeroDatetimeBehavior();
             return (T) ResultSetUtil.convertValue(row.get(lastReadColumn - 1), type, stz, zeroDateTimeBehavior);
         } else if (type == Time.class
-                || type == Timestamp.class
-                || type == LocalDate.class
-                || type == LocalTime.class
-                || type == LocalDateTime.class) {
+            || type == Timestamp.class
+            || type == LocalDate.class
+            || type == LocalTime.class
+            || type == LocalDateTime.class) {
             TimeZone stz = getServerTimeZone();
             PropertyDefinitions.ZeroDatetimeBehavior zeroDateTimeBehavior = getZeroDatetimeBehavior();
             return (T) ResultSetUtil.convertValue(row.get(lastReadColumn - 1), type, stz, zeroDateTimeBehavior);
