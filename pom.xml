@@ -24,7 +24,7 @@
         <maven-checkstyle-plugin.version>3.1.2</maven-checkstyle-plugin.version>
         <checkstyle.version>8.20</checkstyle.version>
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-        <grpc.version>1.33.0</grpc.version>
+        <grpc.version>1.41.0</grpc.version>
         <protobuf.version>3.5.0</protobuf.version>
         <surefire-junit4.version>3.0.0-M5</surefire-junit4.version>
 
@@ -34,8 +34,7 @@
         <commons-codec.version>1.13</commons-codec.version>
         <hierynomus.version>0.9.0</hierynomus.version>
         <protobuf-java.version>3.11.0</protobuf-java.version>
-        <jetcd-core.version>0.5.4</jetcd-core.version>
-        <netty.version>4.1.45.Final</netty.version>
+        <jetcd-core.version>0.5.11</jetcd-core.version>
         <jackson.version>2.7.9.7</jackson.version>
         <HikariCP.version>4.0.3</HikariCP.version>
         <snakeyaml.version>1.23</snakeyaml.version>
@@ -85,11 +84,6 @@
             <groupId>io.etcd</groupId>
             <artifactId>jetcd-core</artifactId>
             <version>${jetcd-core.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport-native-epoll</artifactId>
-            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>io.prometheus</groupId>
