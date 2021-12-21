@@ -31,6 +31,8 @@ public class Constant {
 
     public static final String DRIVER_PROPERTY_ROLE_RR = "rr";
 
+    public static final String DRIVER_PROPERTY_SCHEMA = "schema";
+
     public static final String DRIVER_PROPERTY_QUERY_CONSOLIDATOR = "queryConsolidator";
 
     public static final String MYSQL_PROTOCOL_DRIVER_CLASS = "com.mysql.cj.jdbc.Driver";

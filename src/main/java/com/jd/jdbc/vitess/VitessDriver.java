@@ -85,12 +85,12 @@ public class VitessDriver implements java.sql.Driver {
         } catch (SQLException e) {
             throw new RuntimeException("Can't register driver!");
         }
-        monitorServer = MonitorServer.getInstance();
     }
 
     static {
         Map<String, Map<String, LogicTable>> tableIndexesMap = SplitTableUtil.getTableIndexesMap(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH);
         VitessDataSource.setTableIndexesMap(tableIndexesMap);
+        monitorServer = MonitorServer.getInstance();
     }
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -112,7 +112,7 @@ public class VitessDriver implements java.sql.Driver {
         }
 
         try {
-            List<String> keySpaces = Arrays.asList(prop.getProperty("schema").split(","));
+            List<String> keySpaces = Arrays.asList(prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA).split(","));
             SecurityCenter.INSTANCE.addCredential(prop);
             String defaultKeyspace = keySpaces.get(0);
 
@@ -171,7 +171,7 @@ public class VitessDriver implements java.sql.Driver {
             vSchemaManager.initVschema(ksSet);
 
             if (apiServer == null) {
-                String uniquePrefix = "/" + prop.getProperty("host") + "/" + prop.getProperty("schema");
+                String uniquePrefix = "/" + prop.getProperty("host") + "/" + prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
                 apiServer = VtApiServer.getInstance(uniquePrefix);
                 if (apiServer != null) {
                     apiServer.regiest("/vschema/refresh", new VtVschemaRefreshHandler(vSchemaManager));

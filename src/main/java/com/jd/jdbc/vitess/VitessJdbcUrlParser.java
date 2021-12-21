@@ -16,6 +16,7 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
+import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
@@ -60,7 +61,7 @@ public class VitessJdbcUrlParser {
         String path = uri.getPath();
         checkSchema(path);
 
-        parsedProperties.setProperty("schema", path.substring(1));
+        parsedProperties.setProperty(Constant.DRIVER_PROPERTY_SCHEMA, path.substring(1));
 
         String parameters = uri.getQuery();
         parameters = StringUtils.replaceEach(parameters, new String[] {":", "&nbsp;"}, new String[] {"", " "});

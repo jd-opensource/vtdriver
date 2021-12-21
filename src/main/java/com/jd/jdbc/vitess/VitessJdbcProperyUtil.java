@@ -119,7 +119,7 @@ public class VitessJdbcProperyUtil {
     }
 
     public static String getDefaultKeyspace(Properties props) {
-        List<String> keySpaces = Arrays.asList(props.getProperty("schema").split(","));
+        List<String> keySpaces = Arrays.asList(props.getProperty(Constant.DRIVER_PROPERTY_SCHEMA).split(","));
         return keySpaces.get(0);
     }
 

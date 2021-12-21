@@ -62,6 +62,7 @@ public final class MonitorServer {
         HealthCheckCollector.getInstance().register(collectorRegistry);
         SqlErrorCollector.getInstance().register(collectorRegistry);
         SrvKeyspaceCollector.getInstance().register(collectorRegistry);
+        PlanCollector.PlanCacheSizeCollector.getInstance().register(collectorRegistry);
     }
 
     public static MonitorServer getInstance() {
