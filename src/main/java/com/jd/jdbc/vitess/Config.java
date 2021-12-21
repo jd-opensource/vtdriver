@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.util;
+package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import io.vitess.proto.Topodata;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,19 +26,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.EqualsAndHashCode;
+import lombok.Setter;
 
 /**
  * configuration.
  */
 public final class Config {
 
-    private static final Log log = LogFactory.getLog(Config.class);
+    private static final Map<ConfigKey, Properties> PROPERTIES_MAP;
 
-    private static final Map<String, Properties> PROPERTIES_MAP;
-
-    private static final Map<String, InnerCPConfig> INNER_CP_CONFIG_MAP;
-
-    private static final Map<String, String> URL_CONFIG_MAP;
+    private static final Map<ConfigKey, InnerCPConfig> INNER_CP_CONFIG_MAP;
 
     private static final String PREFIX = "vt";
 
@@ -63,40 +62,27 @@ public final class Config {
         FILED_NAMES.add("ValidationTimeout");
         FILED_NAMES.add("ConnectionInitSql");
         FILED_NAMES.add("ConnectionTestQuery");
-        PROPERTIES_MAP = new ConcurrentHashMap<>();
-        INNER_CP_CONFIG_MAP = new ConcurrentHashMap<>();
-        URL_CONFIG_MAP = new ConcurrentHashMap<>();
+        PROPERTIES_MAP = new ConcurrentHashMap<>(16);
+        INNER_CP_CONFIG_MAP = new ConcurrentHashMap<>(16);
     }
 
-    public static void setUrlConfig(final Properties prop, final String keySpace, final String user) {
-        final String key = keySpace + ":" + user;
+    public static void setConfig(final Properties prop, final String keySpace, final String user, final Topodata.TabletType tabletType) {
+        ConfigKey key = buildConfigKey(keySpace, user, tabletType);
         if (!PROPERTIES_MAP.containsKey(key)) {
             PROPERTIES_MAP.put(key, prop);
-        }
-        if (!URL_CONFIG_MAP.containsKey(key)) {
-            StringBuilder joiner = new StringBuilder();
-            int i = 0;
-            for (String pk : prop.stringPropertyNames()) {
-                if (i > 0) {
-                    joiner.append("&");
-                }
-                joiner.append(pk);
-                joiner.append("=");
-                joiner.append(prop.get(pk));
-                i++;
-            }
-            URL_CONFIG_MAP.put(key, joiner.toString());
         }
         if (!INNER_CP_CONFIG_MAP.containsKey(key)) {
             INNER_CP_CONFIG_MAP.put(key, new InnerCPConfig(prop));
         }
     }
 
-    public static String getUrlConfig(final String key) {
-        return URL_CONFIG_MAP.get(key);
+    public static Properties getDataSourceConfig(String keySpace, String user, Topodata.TabletType tabletType) {
+        ConfigKey key = buildConfigKey(keySpace, user, tabletType);
+        return PROPERTIES_MAP.get(key);
     }
 
-    public static Properties getCPConfig(final String key) {
+    public static Properties getConnectionPoolConfig(String keySpace, String user, Topodata.TabletType tabletType) {
+        ConfigKey key = buildConfigKey(keySpace, user, tabletType);
         InnerCPConfig innerCPConfig = INNER_CP_CONFIG_MAP.get(key);
         if (null != innerCPConfig) {
             return innerCPConfig.buildProperties();
@@ -104,7 +90,27 @@ public final class Config {
         return null;
     }
 
-    static class InnerCPConfig {
+    private static ConfigKey buildConfigKey(String keySpace, String user, Topodata.TabletType tabletType) {
+        return new ConfigKey(keySpace, user, tabletType);
+    }
+
+    @EqualsAndHashCode
+    public static class ConfigKey {
+        private final String keySpace;
+
+        private final String user;
+
+        @Setter
+        private Topodata.TabletType tabletType;
+
+        public ConfigKey(String keySpace, String user, Topodata.TabletType tabletType) {
+            this.keySpace = keySpace;
+            this.user = user;
+            this.tabletType = tabletType;
+        }
+    }
+
+    public static class InnerCPConfig {
         private static final Log logger = LogFactory.getLog(InnerCPConfig.class);
 
         private int minimumIdle = 5;
@@ -124,7 +130,7 @@ public final class Config {
         private String connectionTestQuery = "select 1";
 
         public InnerCPConfig(Properties properties) {
-            FILED_NAMES.forEach((s) -> {
+            FILED_NAMES.forEach(s -> {
                 String key = PREFIX + s;
                 Object keyValue = properties.get(key);
                 if (null != keyValue) {
@@ -154,7 +160,7 @@ public final class Config {
             if (validationTimeout > connectionTimeout) {
                 validationTimeout = connectionTimeout >> 1;
             }
-            FILED_NAMES.forEach((s) -> {
+            FILED_NAMES.forEach(s -> {
                 try {
                     Method method = InnerCPConfig.class.getMethod("get" + s);
                     Object value = method.invoke(this);
@@ -230,5 +236,4 @@ public final class Config {
             this.connectionTestQuery = connectionTestQuery;
         }
     }
-
 }

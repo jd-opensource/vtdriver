@@ -21,7 +21,6 @@ package com.jd.jdbc.engine.table;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.jd.jdbc.IExecute;
-import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.InsertEngine;
@@ -29,6 +28,7 @@ import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.engine.SequenceCache;
 import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.planbuilder.MultiQueryPlan;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLInsertStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceStatement;
@@ -42,7 +42,6 @@ import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -134,7 +133,7 @@ public class TableInsertEngine implements PrimitiveEngine {
 
     @Override
     public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
-        if (ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER) {
+        if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("insert is not allowed for read only connection");
         }
         switch (this.insertOpcode) {

@@ -23,18 +23,16 @@ import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.key.DestinationAllShard;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLDeleteStatement;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
-
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 
 @Data
 public class DeleteEngine extends DMLEngine implements PrimitiveEngine {
@@ -58,7 +56,7 @@ public class DeleteEngine extends DMLEngine implements PrimitiveEngine {
 
     @Override
     public ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
-        if (ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER) {
+        if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("delete is not allowed for read only connection");
         }
         switch (super.opcode) {

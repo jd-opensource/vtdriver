@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
+import com.google.common.collect.Lists;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.api.VtApiServer;
 import com.jd.jdbc.api.handler.VtVschemaRefreshHandler;
@@ -43,7 +44,6 @@ import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.Config;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
@@ -116,8 +116,12 @@ public class VitessDriver implements java.sql.Driver {
             SecurityCenter.INSTANCE.addCredential(prop);
             String defaultKeyspace = keySpaces.get(0);
 
-            Config.setUrlConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser());
-
+            String role = prop.getProperty(DRIVER_PROPERTY_ROLE_KEY, DRIVER_PROPERTY_ROLE_RW);
+            if (!prop.containsKey(DRIVER_PROPERTY_ROLE_KEY)) {
+                prop.put(DRIVER_PROPERTY_ROLE_KEY, role);
+            }
+            Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);
+            Config.setConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser(), tabletType);
             TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
             ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "ResilientSrvTopoServer");
 
@@ -142,19 +146,9 @@ public class VitessDriver implements java.sql.Driver {
                 TopologyWatcherManager.INSTANCE.watch(globalContext, cell, ksSet);
             }
 
-            String role = prop.getProperty(DRIVER_PROPERTY_ROLE_KEY, DRIVER_PROPERTY_ROLE_RW);
-            if (!prop.containsKey(DRIVER_PROPERTY_ROLE_KEY)) {
-                prop.put(DRIVER_PROPERTY_ROLE_KEY, role);
-            }
-            List<Topodata.TabletType> tabletTypes = role.equalsIgnoreCase(DRIVER_PROPERTY_ROLE_RW) ?
-                new ArrayList<Topodata.TabletType>() {{
-                    add(Topodata.TabletType.MASTER);
-                }} :
-                new ArrayList<Topodata.TabletType>() {{
-                    add(Topodata.TabletType.REPLICA);
-                    add(Topodata.TabletType.RDONLY);
-                }};
-
+            List<Topodata.TabletType> tabletTypes = role.equalsIgnoreCase(DRIVER_PROPERTY_ROLE_RW)
+                ? Lists.newArrayList(Topodata.TabletType.MASTER)
+                : Lists.newArrayList(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
             tabletGateway.waitForTablets(globalContext, localCell, ksSet, tabletTypes);
             TxConn txConn = new TxConn(tabletGateway, Vtgate.TransactionMode.MULTI);
             ScatterConn scatterConn = ScatterConn.newScatterConn("VttabletCall", txConn, tabletGateway);

@@ -31,6 +31,7 @@ import com.jd.jdbc.planbuilder.MultiQueryPlan;
 import com.jd.jdbc.planbuilder.PlanBuilder;
 import com.jd.jdbc.queryservice.ShardQueryService;
 import com.jd.jdbc.queryservice.StreamIterator;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.Comment;
 import com.jd.jdbc.sqlparser.SQLUtils;
@@ -489,7 +490,7 @@ public class Executor implements IExecute {
         Properties properties = safeSession.getVitessConnection().getProperties();
         Boolean consolidatorFlag = Utils.getBoolean(properties, Constant.DRIVER_PROPERTY_QUERY_CONSOLIDATOR);
         return consolidatorFlag != null && consolidatorFlag && plan.getStatementType() == VtSqlStatementType.StmtSelect
-            && ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER;
+            && RoleUtils.notMaster(ctx);
     }
 
     private ExecuteResponse getConsolidatorResponse(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap, Vcursor vCursor,

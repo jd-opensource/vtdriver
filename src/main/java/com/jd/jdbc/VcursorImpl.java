@@ -23,6 +23,7 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.queryservice.StreamIterator;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.Comment;
 import com.jd.jdbc.sqltypes.VtRowList;
@@ -35,8 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
-
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 
 @Data
 public class VcursorImpl implements Vcursor {
@@ -125,7 +124,7 @@ public class VcursorImpl implements Vcursor {
      */
     @Override
     public Resolver.ResolveDestinationResult resolveDestinations(String keyspace, List<Query.Value> ids, List<Destination> destinations) throws SQLException {
-        return this.resolver.resolveDestinations(this.ctx, keyspace, (Topodata.TabletType) this.ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY), ids, destinations);
+        return this.resolver.resolveDestinations(this.ctx, keyspace, RoleUtils.getTabletType(ctx), ids, destinations);
     }
 
     /**
