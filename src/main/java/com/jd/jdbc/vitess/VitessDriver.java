@@ -131,7 +131,9 @@ public class VitessDriver implements java.sql.Driver {
                 topoServer.getSrvKeyspace(globalContext, localCell, defaultKeyspace);
             } catch (TopoException e) {
                 if (e.getCode() == TopoExceptionCode.NO_NODE) {
-                    localCell = cells.get(1);
+                    if (cells.size() > 1) {
+                        localCell = cells.get(1);
+                    }
                 }
             }
             Set<String> ksSet = new HashSet<>(keySpaces);

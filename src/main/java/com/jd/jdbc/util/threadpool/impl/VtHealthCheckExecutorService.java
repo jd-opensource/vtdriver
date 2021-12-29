@@ -35,7 +35,7 @@ public class VtHealthCheckExecutorService extends AbstractVtExecutorService {
 
     private volatile static ExecutorService executorService;
 
-    public static void initialize(Integer corePoolSize, Integer maximumPoolSize, Integer queueSzie, Long rejectedExecutionTimeoutMillis) {
+    public static void initialize(Integer corePoolSize, Integer maximumPoolSize, Integer queueSize, Long rejectedExecutionTimeoutMillis) {
         if (executorService == null) {
             synchronized (VtHealthCheckExecutorService.class) {
                 if (executorService == null) {
@@ -45,8 +45,8 @@ public class VtHealthCheckExecutorService extends AbstractVtExecutorService {
                     if (maximumPoolSize == null || maximumPoolSize <= 0 || maximumPoolSize < corePoolSize) {
                         maximumPoolSize = DEFAULT_MAXIMUM_POOL_SIZE;
                     }
-                    if (queueSzie == null || queueSzie <= 0) {
-                        queueSzie = DEFAULT_QUEUE_SIZE;
+                    if (queueSize == null || queueSize <= 0) {
+                        queueSize = DEFAULT_QUEUE_SIZE;
                     }
                     if (rejectedExecutionTimeoutMillis == null || rejectedExecutionTimeoutMillis <= 0) {
                         rejectedExecutionTimeoutMillis = DEFAULT_REJECTED_EXECUTION_TIMEOUT_MILLIS;
@@ -56,7 +56,7 @@ public class VtHealthCheckExecutorService extends AbstractVtExecutorService {
                         maximumPoolSize,
                         DEFAULT_KEEP_ALIVE_TIME_MILLIS,
                         TimeUnit.MILLISECONDS,
-                        new LinkedBlockingQueue<>(queueSzie),
+                        new LinkedBlockingQueue<>(queueSize),
                         VtThreadFactoryBuilder.build(QUERY_TASK_NAME_FORMAT),
                         new VtRejectedExecutionHandler(QUERY_TASK_NAME_FORMAT, rejectedExecutionTimeoutMillis));
 

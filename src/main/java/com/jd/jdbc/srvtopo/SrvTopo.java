@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -91,14 +92,14 @@ public class SrvTopo {
      * @return
      * @throws SrvTopoException
      */
-    public static List<Query.Target> findAllTargets(IContext ctx, SrvTopoServer srvTopoServer, String cell, List<String> keyspaceNameList, List<Topodata.TabletType> tabletTypeList)
+    public static List<Query.Target> findAllTargets(IContext ctx, SrvTopoServer srvTopoServer, String cell, Set<String> keyspaceNameSet, List<Topodata.TabletType> tabletTypeList)
         throws InterruptedException, SQLException {
         List<Query.Target> targetList = new CopyOnWriteArrayList<>();
-        CountDownLatch countDownLatch = new CountDownLatch(keyspaceNameList.size());
+        CountDownLatch countDownLatch = new CountDownLatch(keyspaceNameSet.size());
         ReentrantLock lock = new ReentrantLock(true);
         AllErrorRecorder errRecorder = new AllErrorRecorder();
 
-        for (String keyspace : keyspaceNameList) {
+        for (String keyspace : keyspaceNameSet) {
             VtDaemonExecutorService.execute(() -> {
                 try {
                     // Get SrvKeyspace for cell/keyspace.
