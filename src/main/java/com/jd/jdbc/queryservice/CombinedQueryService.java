@@ -43,7 +43,7 @@ import java.util.Properties;
  * QueryService that combines the NativeProtocol and GRPC
  **/
 public class CombinedQueryService implements IQueryService, IHealthCheckQueryService {
-    private final Topodata.Tablet tablet;
+    private Topodata.Tablet tablet;
 
     private final IQueryService tabletQueryService;
 
@@ -51,14 +51,20 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
 
     public CombinedQueryService(ManagedChannel channel, Topodata.Tablet tablet) {
         this.tablet = tablet;
-        tabletQueryService = new TabletQueryService(channel);
-
+        this.tabletQueryService = new TabletQueryService(channel);
         SecurityCenter.Credential credential = SecurityCenter.INSTANCE.getCredential(this.tablet.getKeyspace());
-        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
-        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tablet.getType()) && Objects.equals(tablet.getType(), VitessJdbcProperyUtil.getTabletType(dsProperties))) {
-            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
+        Topodata.TabletType tabletType = tablet.getType();
+        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
+        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tabletType) && Objects.equals(tabletType, VitessJdbcProperyUtil.getTabletType(dsProperties))) {
+            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
             nativeQueryService = new NativeQueryService(tablet, credential.getUser(), credential.getPassword(), dsProperties, properties);
         }
+    }
+
+    @Override
+    public void setTablet(Topodata.Tablet tablet) {
+        this.tablet = tablet;
+        nativeQueryService.setTablet(tablet);
     }
 
     private IQueryService getNativeQueryService() {
@@ -71,7 +77,7 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
                 Topodata.TabletType tabletType = tablet.getType();
                 Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
                 Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
-                if ((properties == null || dsProperties == null) && Objects.equals(Topodata.TabletType.RDONLY, tablet.getType())) {
+                if ((properties == null || dsProperties == null) && Objects.equals(Topodata.TabletType.RDONLY, tabletType)) {
                     properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
                     dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
                 }

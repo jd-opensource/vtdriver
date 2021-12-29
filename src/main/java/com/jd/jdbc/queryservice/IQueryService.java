@@ -26,6 +26,7 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.BoundQuery;
 import io.vitess.proto.Query;
+import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -57,4 +58,7 @@ public interface IQueryService extends IParentQueryService {
                                                 Query.ExecuteOptions options) throws Exception;
 
     Query.ReleaseResponse release(IContext context, Query.Target target, Long transactionID, Long reservedID) throws SQLException;
+
+    default void setTablet(Topodata.Tablet tablet) {
+    }
 }

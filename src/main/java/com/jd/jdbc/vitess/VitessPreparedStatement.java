@@ -57,8 +57,6 @@ import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
-
 public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
     private static final Log LOGGER = LogFactory.getLog(VitessPreparedStatement.class);
 
@@ -88,8 +86,7 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
         this.sqls = split(inputSQL);
 
         for (int i = 0; i < sqls.size(); i++) {
-            try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(this.connection.getDefaultKeyspace(),
-                (Topodata.TabletType) context.getContextValue(DRIVER_PROPERTY_ROLE_KEY))) {
+            try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(this.connection.getDefaultKeyspace(), RoleUtils.getTabletType(context))) {
                 JdbcConnection connectionImpl = innerConnection.getConnectionImpl();
                 String encoding = this.connection.getProperties().getProperty(VitessPropertyKey.CHARACTER_ENCODING.getKeyName());
                 Session session = connectionImpl.getSession();

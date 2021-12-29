@@ -70,13 +70,18 @@ public class NativeQueryService implements IQueryService {
 
     private final StatefulConnectionPool statefulConnectionPool;
 
-    private final Topodata.Tablet tablet;
+    private Topodata.Tablet tablet;
 
     private Histogram.Timer histogramTimer = null;
 
     public NativeQueryService(final Topodata.Tablet tablet, final String user, final String password, final Properties dsProperties, final Properties properties) {
         this.tablet = tablet;
         this.statefulConnectionPool = StatefulConnectionPool.getStatefulConnectionPool(tablet, user, password, dsProperties, properties);
+    }
+
+    @Override
+    public void setTablet(Topodata.Tablet tablet) {
+        this.tablet = tablet;
     }
 
     //currently not in used
