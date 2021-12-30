@@ -93,7 +93,7 @@ public class DMLPlan {
         DMLRoutingResult routingResult = getDMLRouting(where, edml.getTable(), keyspace);
         if (null != rb.getRouteEngine().getTargetDestination()) {
             if (rb.getRouteEngine().getTargetTabletType() != Topodata.TabletType.MASTER) {
-                throw new SQLFeatureNotSupportedException("unsupported: " + dmlType + " statement with a replica target");
+                throw new SQLFeatureNotSupportedException("unsupported: " + dmlType + " statement with a replica or rdonly target");
             }
             edml.setOpcode(DMLOpcode.ByDestination);
             edml.setTargetDestination(rb.getRouteEngine().getTargetDestination());

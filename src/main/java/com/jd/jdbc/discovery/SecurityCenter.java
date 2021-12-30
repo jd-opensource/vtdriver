@@ -23,7 +23,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 public enum SecurityCenter {
     INSTANCE;
@@ -58,19 +59,20 @@ public enum SecurityCenter {
         }
     }
 
-    public Credential getCredential(String keySpace) throws SQLException {
+    public Credential getCredential(String keySpace) {
         Credential credential = keySpaceCredentialMap.get(keySpace);
         if (credential == null || StringUtil.isNullOrEmpty(credential.user) || StringUtil.isNullOrEmpty(credential.password)) {
-            throw new SQLException("no credential found for " + keySpace);
+            throw new IllegalArgumentException("no credential found for " + keySpace);
         }
         return credential;
     }
 
-    @Data
+    @Getter
+    @EqualsAndHashCode
     @AllArgsConstructor
     public class Credential {
-        String user;
+        private String user;
 
-        String password;
+        private String password;
     }
 }

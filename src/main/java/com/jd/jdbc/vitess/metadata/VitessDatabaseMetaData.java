@@ -18,10 +18,10 @@ package com.jd.jdbc.vitess.metadata;
 
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.util.SchemaUtil;
 import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.resultset.DatabaseMetaDataResultSet;
-import io.vitess.proto.Topodata;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -32,7 +32,6 @@ import java.util.Properties;
 import static com.jd.jdbc.common.Constant.DRIVER_MAJOR_VERSION;
 import static com.jd.jdbc.common.Constant.DRIVER_MINOR_VERSION;
 import static com.jd.jdbc.common.Constant.DRIVER_NAME;
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 
 public class VitessDatabaseMetaData extends AbstractDatabaseMetaData {
     private static String version;
@@ -324,7 +323,7 @@ public class VitessDatabaseMetaData extends AbstractDatabaseMetaData {
     }
 
     private InnerConnection getJdbcConnection() throws SQLException {
-        return StatefulConnectionPool.getJdbcConnection(connection.getDefaultKeyspace(), (Topodata.TabletType) connection.getCtx().getContextValue(DRIVER_PROPERTY_ROLE_KEY));
+        return StatefulConnectionPool.getJdbcConnection(connection.getDefaultKeyspace(), RoleUtils.getTabletType(connection.getCtx()));
     }
 
     private DatabaseMetaData getDatabaseMetaData(InnerConnection innerConnection) throws SQLException {

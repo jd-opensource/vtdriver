@@ -23,6 +23,7 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.ast.statement.SQLCommitStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLRollbackStatement;
@@ -35,11 +36,9 @@ import com.jd.jdbc.vitess.metadata.CachedDatabaseMetaData;
 import com.jd.jdbc.vitess.metadata.VitessDatabaseMetaData;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import com.mysql.cj.Session;
-import com.mysql.cj.conf.PropertyKey;
 import com.mysql.cj.jdbc.JdbcConnection;
 import com.mysql.cj.protocol.ServerSession;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import io.vitess.proto.Vtgate;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -59,10 +58,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
-import static com.jd.jdbc.vitess.VitessConnection.ContextKey.CTX_SCATTER_CONN;
-import static com.jd.jdbc.vitess.VitessConnection.ContextKey.CTX_TOPOSERVER;
-import static com.jd.jdbc.vitess.VitessConnection.ContextKey.CTX_TX_CONN;
-import static com.jd.jdbc.vitess.VitessConnection.ContextKey.CTX_VSCHEMA_MANAGER;
 
 public class VitessConnection extends AbstractVitessConnection {
     public static final Integer MAX_MEMORY_ROWS = 300000;
@@ -115,11 +110,10 @@ public class VitessConnection extends AbstractVitessConnection {
         this.vm = vSchemaManager;
         this.ctx = VtContext.withCancel(VtContext.background());
         this.ctx.setContextValue(DRIVER_PROPERTY_ROLE_KEY, VitessJdbcProperyUtil.getTabletType(prop));
-
-        this.ctx.setContextValue(CTX_TOPOSERVER, topoServer);
-        this.ctx.setContextValue(CTX_SCATTER_CONN, resolver.getScatterConn());
-        this.ctx.setContextValue(CTX_TX_CONN, resolver.getScatterConn().getTxConn());
-        this.ctx.setContextValue(CTX_VSCHEMA_MANAGER, this.vm);
+        this.ctx.setContextValue(ContextKey.CTX_TOPOSERVER, topoServer);
+        this.ctx.setContextValue(ContextKey.CTX_SCATTER_CONN, resolver.getScatterConn());
+        this.ctx.setContextValue(ContextKey.CTX_TX_CONN, resolver.getScatterConn().getTxConn());
+        this.ctx.setContextValue(ContextKey.CTX_VSCHEMA_MANAGER, this.vm);
 
         this.ksSet = ksSet;
         this.defaultKeyspace = defaultKeyspace;
@@ -132,7 +126,9 @@ public class VitessConnection extends AbstractVitessConnection {
             .build();
         buildMetaDataInfo();
         buildServerSessionPropertiesMap();
-        log.info("create VitessConnection");
+        if (log.isDebugEnabled()) {
+            log.debug("create VitessConnection");
+        }
     }
 
     public VitessConnection(Resolver resolver, Vtgate.Session session) {
@@ -443,7 +439,7 @@ public class VitessConnection extends AbstractVitessConnection {
             if (vitessMetaDataInfoMap.containsKey(defaultKeyspace)) {
                 return;
             }
-            try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, (Topodata.TabletType) ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY))) {
+            try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, RoleUtils.getTabletType(ctx))) {
                 Connection connection = innerConnection.getConnection();
                 vitessMetaDataInfoMap.putIfAbsent(defaultKeyspace, new CachedDatabaseMetaData(connection.getMetaData()));
             }
@@ -451,12 +447,12 @@ public class VitessConnection extends AbstractVitessConnection {
     }
 
     private void buildServerSessionPropertiesMap() throws SQLException {
-        try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, (Topodata.TabletType) ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY))) {
+        try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, RoleUtils.getTabletType(ctx))) {
             JdbcConnection connectionImpl = innerConnection.getConnectionImpl();
             Session session = connectionImpl.getSession();
             ServerSession serverSession = session.getServerSession();
             serverSessionPropertiesMap.put(VitessPropertyKey.SERVER_TIMEZONE.getKeyName(), serverSession.getServerTimeZone());
-            Integer maxAllowedPacket = connectionImpl.getPropertySet().getIntegerProperty(PropertyKey.maxAllowedPacket).getValue();
+            Integer maxAllowedPacket = connectionImpl.getPropertySet().getIntegerProperty(VitessPropertyKey.MAX_ALLOWED_PACKET.getKeyName()).getValue();
             serverSessionPropertiesMap.put(VitessPropertyKey.MAX_ALLOWED_PACKET.getKeyName(), maxAllowedPacket);
             serverSessionPropertiesMap.put("DEFAULT_TIME_ZONE", TimeZone.getDefault());
         }

@@ -19,11 +19,13 @@ limitations under the License.
 package com.jd.jdbc.queryservice;
 
 import com.jd.jdbc.context.IContext;
+import com.jd.jdbc.discovery.SecurityCenter;
 import com.jd.jdbc.discovery.TabletHealthCheck;
 import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.vitess.Config;
 import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
@@ -32,6 +34,7 @@ import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -40,28 +43,19 @@ import java.util.Properties;
 public class CombinedQueryService implements IQueryService, IHealthCheckQueryService {
     private final Topodata.Tablet tablet;
 
-    private final String user;
-
-    private final String password;
-
-    private final Properties dsProperties;
-
-    private final Properties properties;
-
     private final IQueryService tabletQueryService;
 
     private volatile IQueryService nativeQueryService;
 
-    public CombinedQueryService(ManagedChannel channel, Topodata.Tablet tablet, String user, String password, Properties dsProperties, Properties properties) {
+    public CombinedQueryService(ManagedChannel channel, Topodata.Tablet tablet) {
         this.tablet = tablet;
-        this.user = user;
-        this.password = password;
-        this.dsProperties = dsProperties;
-        this.properties = properties;
         tabletQueryService = new TabletQueryService(channel);
 
-        if (Topodata.TabletType.MASTER.equals(VitessJdbcProperyUtil.getTabletType(dsProperties)) && Topodata.TabletType.MASTER.equals(tablet.getType())) {
-            nativeQueryService = new NativeQueryService(tablet, user, password, dsProperties, properties);
+        SecurityCenter.Credential credential = SecurityCenter.INSTANCE.getCredential(this.tablet.getKeyspace());
+        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
+        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tablet.getType()) && Objects.equals(tablet.getType(), VitessJdbcProperyUtil.getTabletType(dsProperties))) {
+            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
+            nativeQueryService = new NativeQueryService(tablet, credential.getUser(), credential.getPassword(), dsProperties, properties);
         }
     }
 
@@ -71,7 +65,15 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
         }
         synchronized (this) {
             if (nativeQueryService == null) {
-                nativeQueryService = new NativeQueryService(tablet, user, password, dsProperties, properties);
+                SecurityCenter.Credential credential = SecurityCenter.INSTANCE.getCredential(this.tablet.getKeyspace());
+                Topodata.TabletType tabletType = tablet.getType();
+                Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
+                Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
+                if ((properties == null || dsProperties == null) && Objects.equals(Topodata.TabletType.RDONLY, tablet.getType())) {
+                    properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
+                    dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
+                }
+                nativeQueryService = new NativeQueryService(tablet, credential.getUser(), credential.getPassword(), dsProperties, properties);
             }
             return nativeQueryService;
         }

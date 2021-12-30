@@ -226,7 +226,9 @@
         <module name="UpperEll"/>
         <module name="AvoidEscapedUnicodeCharacters"/>
         <module name="DescendantToken"/>
-        <module name="FinalParameters"/>
+        <module name="FinalParameters">
+            <property name="severity" value="info"/>
+        </module>
         <module name="Indentation"/>
         <module name="OuterTypeFilename"/>
         <module name="TodoComment"/>

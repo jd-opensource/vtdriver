@@ -19,7 +19,6 @@ limitations under the License.
 package com.jd.jdbc.engine.table;
 
 import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
-import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.DeleteEngine;
 import com.jd.jdbc.engine.Engine;
@@ -27,11 +26,11 @@ import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.key.DestinationAllShard;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLDeleteStatement;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.Map;
 import lombok.Data;
@@ -58,7 +57,7 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
 
     @Override
     public ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
-        if (ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER) {
+        if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("delete is not allowed for read only connection");
         }
         switch (super.opcode) {
