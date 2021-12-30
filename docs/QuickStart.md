@@ -1,6 +1,6 @@
 ## Quick Start
 
-### 推荐环境：
+### 推荐配置：
 
 以下为搭建Vitess多分片场景的最低配置要求
 
@@ -8,9 +8,69 @@
 | ------ | ------ | ------------- | ------------------ |
 | 2 Core | 4 GB   | 20GB          | Ubuntu 16 / CentOS |
 
-* 如果已有Vitess环境，可参考[VtDriver适配](./VtDriver适配.md)进行环境配置后跳过第一步，根据第二步进行数据源配置
+* 如果已有Vitess环境，可参考[VtDriver适配](./VtDriver适配.md)进行环境配置后跳过第一步，根据第二步进行数据源配置 
 
-### 第一步：搭建Vitess环境
+可以选择以下任意一种方式搭建vtdriver的运行环境:
+
+* [使用 Docker 镜像搭建](#docker)
+* [本地环境搭建](#local)
+
+## <p id="docker">使用 Docker 镜像搭建</p>
+
+#### 1. 下载vtdriver的代码:
+```shell
+git clone git@github.com:vtdriverio/vtdriver.git
+```
+
+#### 2. 切换当前目录到`src/test/resources/vitess_env`, 执行`./setup.sh`:
+```shell
+cd vtdriver/src/test/resource/vitess_env
+./setup.sh
+```
+
+这一步会拉取vitess源码, 构建一个名为`vtdriver-env`的镜像, 里面包含了一个cell、两个Keyspace: 一个单分片的`commerce`和一个两分片`customer`。
+
+请确保`docker`已经正确安装并启动。
+
+#### 3. 启动
+以`host`网络模式启动, 容器共享宿主机的网络环境:
+```shell
+docker run -e HOST_IP=<宿主机IP> -itd --name=vtdriver-env --network=host vitess/vtdriver-env:latest
+```
+
+以`bridge`网络模式启动, 目前只能在宿主机内访问容器服务:
+```shell
+docker run -e HOST_IP=127.0.0.1 -it --name=vtdriver-env -p15000:15000 -p15001:15001 -p15306:15306 -p15991:15991 -p15100:15100 -p15101:15101 -p15102:15102 -p15300:15300 -p15301:15301 -p15302:15302 -p15400:15400 -p15401:15401 -p15402:15402 -p2379:2379 -p17100:17100 -p17101:17101 -p17102:17102 -p17300:17300 -p17301:17301 -p17302:17302 -p17400:17400 -p17401:17401 -p17402:17402 vitess/vtdriver-env:latest
+```
+
+镜像中运行着`VTGATE`进程, 可以在外面访问`http://DOCKER_HOST_IP:15000`或用mysql客户端连接查看是否已经正确启动, 下面是一些对外暴露的端口和配置信息:
+```
+VTGATE
+mysql服务端口: 15306, 账号: mysql_user, 密码: mysql_password
+web端口: 15001
+
+9个tablet web端口:
+15100, 15101, 15102
+15300, 15301, 15302
+15400, 15401, 15402
+
+TABLET
+grpc端口: 15991
+
+MYSQL
+账号vtdriver, 密码vtdriver_password, 9台mysql实例端口分别是:
+customer: 17100, 17101, 17102
+commerce: 17300, 17301, 17302, 17400, 17401, 17402
+尾号0的是master。
+
+ETCD
+etcd端口: 2379
+
+VTCTLD
+web端口: 15000
+```
+
+### <p id="local">本地环境搭建</p>
 
 1. Vitess环境搭建
 
@@ -53,7 +113,7 @@
     ./307_delete_shard_0.sh
     ```
 
-   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/config/ 下的所有文件导入 vtdriver 文件夹
+   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/vitess_env/vtdriver 下的所有文件导入 vtdriver 文件夹
 
    在 vitess/example/local/vtdriver/ 中依次执行init_mysql_user.sh、create_table.sh
 
@@ -70,7 +130,7 @@
      
    * create_table.sh 创建了测试用例中需要的表和对应的vSchema
 
-### 第二步：通过VtDriver链接数据库
+### 通过VtDriver链接数据库
 
 1. Java应用pom中引入VtDriver包
 
