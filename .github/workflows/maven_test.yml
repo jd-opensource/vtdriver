@@ -1,0 +1,49 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  services-test-job:
+    runs-on: ubuntu-20.04
+    container: ubuntu:20.04
+    services:
+      vitess1202:
+        image: wanghy1995/vtdriver-env:latest
+        options: >-
+          --health-cmd "mysqladmin ping -h127.0.0.1 -P15306 -umysql_user -pmysql_password"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 10
+        env:
+          ONE_SHARD_ONLY: true
+          HOST_IP: 127.0.0.1
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - run: apt update
+      - name: install mysql-client
+        run: apt install -y mysql-client
+      - name: Check
+        run: mysql -hvitess1202 -P15306 -umysql_user -pmysql_password
+
+#   maven-test-job:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - uses: actions/checkout@v2
+#     - name: Set up JDK 8
+#       uses: actions/setup-java@v2
+#       with:
+#         java-version: '8'
+#         distribution: 'adopt'
+#         cache: maven
+#     - name: Test with Maven
+#       run: mvn clean test -Dtest=com.jd.jdbc.cache.LRUCacheTest
