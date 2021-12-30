@@ -122,8 +122,8 @@ public class TopoProto {
         if (poolNameMap.containsKey(tablet)) {
             return poolNameMap.get(tablet);
         }
-        String poolName = tablet.getShard() + "@" + TopoProto.tabletAliasString(tablet.getAlias()) + "@" + tablet.getKeyspace();
-        poolNameMap.putIfAbsent(tablet, poolName);
-        return poolName;
+        String shardIp = tablet.getShard() + "@" + tablet.getHostname();
+        poolNameMap.putIfAbsent(tablet, shardIp);
+        return shardIp;
     }
 }

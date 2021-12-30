@@ -16,6 +16,7 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
+import com.jd.jdbc.common.Constant;
 import io.netty.util.internal.StringUtil;
 import java.sql.SQLException;
 import java.util.Map;
@@ -35,7 +36,7 @@ public enum SecurityCenter {
     }
 
     public void addCredential(Properties prop) throws SQLException {
-        String[] keySpaces = prop.getProperty("schema").split(",");
+        String[] keySpaces = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA).split(",");
         for (String keySpace : keySpaces) {
             addCredential(keySpace, prop);
         }

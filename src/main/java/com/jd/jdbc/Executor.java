@@ -94,6 +94,7 @@ public class Executor implements IExecute {
 
     private Executor(Integer planCacheCapacity) {
         this.plans = new LRUCache<>(planCacheCapacity == null ? LRU_CACHE_DEFAULT_CAPACITY : planCacheCapacity > LRU_CACHE_MAX_CAPACITY ? LRU_CACHE_MAX_CAPACITY : planCacheCapacity);
+        PlanCollector.PlanCacheSizeCollector.getInstance().setPlanCache(plans);
     }
 
     /**

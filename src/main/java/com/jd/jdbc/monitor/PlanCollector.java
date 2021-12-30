@@ -16,7 +16,13 @@ limitations under the License.
 
 package com.jd.jdbc.monitor;
 
+import com.jd.jdbc.engine.Plan;
+import com.jd.jdbc.util.cache.lrucache.LRUCache;
+import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
+import io.prometheus.client.GaugeMetricFamily;
+import java.util.Collections;
+import java.util.List;
 
 public class PlanCollector {
 
@@ -38,5 +44,26 @@ public class PlanCollector {
 
     public static Counter getCacheCounter() {
         return CACHE_COUNTER;
+    }
+
+    public static class PlanCacheSizeCollector extends Collector {
+
+        private static final PlanCacheSizeCollector planCacheSizeCollector = new PlanCacheSizeCollector();
+
+        private LRUCache<Plan> planCache;
+
+        public static PlanCacheSizeCollector getInstance() {
+            return planCacheSizeCollector;
+        }
+
+        public void setPlanCache(final LRUCache<Plan> planCache) {
+            this.planCache = planCache;
+        }
+
+        @Override
+        public List<MetricFamilySamples> collect() {
+            GaugeMetricFamily labeledGauge = new GaugeMetricFamily("plan_cache_size", "plan cache size info", planCache.size());
+            return Collections.singletonList(labeledGauge);
+        }
     }
 }
