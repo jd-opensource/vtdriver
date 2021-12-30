@@ -92,32 +92,6 @@ public class VitessJdbcProperyUtil {
         }
     }
 
-    public static Properties getProperties(String configUrl) {
-        Properties properties = new Properties();
-        if (configUrl == null || configUrl.isEmpty()) {
-            return properties;
-        }
-        if (configUrl.startsWith("&")) {
-            configUrl = configUrl.substring(1);
-        }
-        String[] pers = configUrl.split("&");
-        if (pers.length <= 0) {
-            return properties;
-        }
-        for (String per : pers) {
-            if (per == null || per.isEmpty()) {
-                continue;
-            }
-            String[] pi = per.split("=");
-            if (pi.length > 1) {
-                if (null != pi[1] && !pi[1].isEmpty()) {
-                    properties.put(pi[0], pi[1]);
-                }
-            }
-        }
-        return properties;
-    }
-
     public static String getDefaultKeyspace(Properties props) {
         List<String> keySpaces = Arrays.asList(props.getProperty("schema").split(","));
         return keySpaces.get(0);
@@ -125,7 +99,16 @@ public class VitessJdbcProperyUtil {
 
     public static Topodata.TabletType getTabletType(Properties props) {
         String role = props.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
-        return role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW) ? Topodata.TabletType.MASTER : Topodata.TabletType.REPLICA;
+        switch (role.toLowerCase()) {
+            case Constant.DRIVER_PROPERTY_ROLE_RW:
+                return Topodata.TabletType.MASTER;
+            case Constant.DRIVER_PROPERTY_ROLE_RR:
+                return Topodata.TabletType.REPLICA;
+            case Constant.DRIVER_PROPERTY_ROLE_RO:
+                return Topodata.TabletType.RDONLY;
+            default:
+                throw new IllegalArgumentException("'role=" + role + "' " + "error in jdbc url");
+        }
     }
 
     public static String getRole(Properties props) {

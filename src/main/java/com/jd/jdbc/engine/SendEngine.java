@@ -19,11 +19,11 @@ limitations under the License.
 package com.jd.jdbc.engine;
 
 import com.jd.jdbc.IExecute;
-import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.queryservice.StreamIterator;
 import com.jd.jdbc.queryservice.VtIterator;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtResultSet;
@@ -32,7 +32,6 @@ import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.VKeyspace;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
@@ -108,7 +107,7 @@ public class SendEngine implements PrimitiveEngine {
      */
     @Override
     public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
-        if (this.isDML && ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY) != Topodata.TabletType.MASTER) {
+        if (this.isDML && RoleUtils.notMaster(ctx)) {
             throw new SQLException("dml is not allowed for read only connection");
         }
         IExecute.ResolvedShardQuery resolvedShardQuery = this.getResolvedShardQuery(vcursor, bindVariableMap);

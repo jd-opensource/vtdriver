@@ -14,19 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.monitor;
+package com.jd.jdbc.queryservice.util;
 
-import io.prometheus.client.Histogram;
+import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.context.IContext;
+import io.vitess.proto.Topodata;
 
-public class ConnectionCollector {
-    private static final Histogram HISTOGRAM = Histogram.build()
-        .name("Connection_histogram")
-        .labelNames("conn")
-        .help("Connection histogram in seconds.")
-        .buckets(DefaultConfig.BUCKETS)
-        .register(MonitorServer.getCollectorRegistry());
+public class RoleUtils {
+    public static boolean notMaster(IContext ctx) {
+        return getTabletType(ctx) != Topodata.TabletType.MASTER;
+    }
 
-    public static Histogram getConnectionHistogram() {
-        return HISTOGRAM;
+    public static Topodata.TabletType getTabletType(IContext ctx) {
+        return (Topodata.TabletType) ctx.getContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY);
     }
 }

@@ -24,8 +24,7 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.Config;
-import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
+import com.jd.jdbc.vitess.Config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.pool.HikariPool;
 import io.vitess.proto.Topodata;
@@ -133,13 +132,11 @@ public class StatefulConnectionPool {
         return null;
     }
 
-    private static StatefulConnectionPool getStatefulConnectionPool(final String keyspace, final Topodata.Tablet tablet) throws SQLException {
+    private static StatefulConnectionPool getStatefulConnectionPool(final String keyspace, final Topodata.Tablet tablet) {
         String user = SecurityCenter.INSTANCE.getCredential(keyspace).getUser();
         String password = SecurityCenter.INSTANCE.getCredential(keyspace).getPassword();
-        final String key = tablet.getKeyspace() + ":" + user;
-        Properties properties = Config.getCPConfig(key);
-        String url = Config.getUrlConfig(key);
-        Properties dsProperties = VitessJdbcProperyUtil.getProperties(url);
+        Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), user, tablet.getType());
+        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), user, tablet.getType());
         return StatefulConnectionPool.getStatefulConnectionPool(tablet, user, password, dsProperties, properties);
     }
 

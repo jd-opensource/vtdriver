@@ -18,13 +18,10 @@ limitations under the License.
 
 package com.jd.jdbc.queryservice;
 
-import com.jd.jdbc.util.Config;
-import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.vitess.proto.Topodata;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -35,20 +32,15 @@ public class TabletDialer {
      */
     private static final Map<String, IParentQueryService> TABLETQUERYSERVICECACHE = new ConcurrentHashMap<>(128 + 1);
 
-    public static IParentQueryService dial(final Topodata.Tablet tablet, String user, String password) {
+    public static IParentQueryService dial(final Topodata.Tablet tablet) {
         final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
         if (TABLETQUERYSERVICECACHE.containsKey(addr)) {
             return TABLETQUERYSERVICECACHE.get(addr);
         }
 
-        final String key = tablet.getKeyspace() + ":" + user;
-        Properties properties = Config.getCPConfig(key);
-        String url = Config.getUrlConfig(key);
-        Properties dsProperties = VitessJdbcProperyUtil.getProperties(url);
-        final ManagedChannel channel =
-            ManagedChannelBuilder.forTarget(addr).usePlaintext().keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
+        ManagedChannel channel = ManagedChannelBuilder.forTarget(addr).usePlaintext().keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
 
-        IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet, user, password, dsProperties, properties);
+        IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet);
         TABLETQUERYSERVICECACHE.putIfAbsent(addr, combinedQueryService);
         return combinedQueryService;
     }

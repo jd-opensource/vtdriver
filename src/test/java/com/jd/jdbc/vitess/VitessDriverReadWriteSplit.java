@@ -43,12 +43,17 @@ public class VitessDriverReadWriteSplit extends TestSuite {
 
     protected Connection rwConnection;
 
+    protected Connection roConnection;
+
+    protected Connection rtConnection;
+
     @Before
     public void init() throws Exception {
         baseUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
 
         rrConnection = DriverManager.getConnection(baseUrl + "&role=rr");
         rwConnection = DriverManager.getConnection(baseUrl + "&role=rw");
+        roConnection = DriverManager.getConnection(baseUrl + "&role=ro");
     }
 
     @After
@@ -131,5 +136,51 @@ public class VitessDriverReadWriteSplit extends TestSuite {
                 Assert.assertEquals(100, resultSet.getInt(2));
             }
         }
+    }
+
+    @Test
+    public void test09() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = roConnection.createStatement()) {
+            stmt.executeUpdate("delete from test");
+        }
+    }
+
+    @Test
+    public void test10() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = roConnection.createStatement()) {
+            stmt.executeUpdate("insert into test (f_tinyint,f_int) values(1,2)");
+        }
+    }
+
+    @Test
+    public void test11() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = roConnection.createStatement()) {
+            stmt.executeUpdate("update test  set f_int = 100 where f_tinyint = 1");
+        }
+    }
+
+    @Test
+    public void test12() throws SQLException {
+        sleep(10);
+        try (Statement stmt = roConnection.createStatement()) {
+            ResultSet resultSet;
+            resultSet = stmt.executeQuery("select f_tinyint,f_int from test where f_tinyint = 1");
+            while (resultSet.next()) {
+                Assert.assertEquals(100, resultSet.getInt(2));
+            }
+        }
+    }
+
+    @Test
+    public void test13() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("error in jdbc url");
+        rtConnection = DriverManager.getConnection(baseUrl + "&role=rt");
     }
 }

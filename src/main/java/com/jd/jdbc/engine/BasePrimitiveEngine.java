@@ -22,6 +22,7 @@ import com.jd.jdbc.IExecute;
 import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.Destination;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.visitor.VtVisitor;
@@ -29,7 +30,6 @@ import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.vitess.proto.Query;
-import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 
 public abstract class BasePrimitiveEngine implements PrimitiveEngine {
     String keyspaceName;
@@ -86,7 +84,7 @@ public abstract class BasePrimitiveEngine implements PrimitiveEngine {
             return cursor.executeMultiShard(resolveRet.getResolvedShards(), queries, true, autocommit);
         }
 
-        Resolver.AllShardResult resolveRet = cursor.getAllShards(keyspaceName, (Topodata.TabletType) ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY));
+        Resolver.AllShardResult resolveRet = cursor.getAllShards(keyspaceName, RoleUtils.getTabletType(ctx));
         List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
 
         return cursor.executeMultiShard(resolveRet.getResolvedShardList(), queries, true, false);
@@ -102,7 +100,7 @@ public abstract class BasePrimitiveEngine implements PrimitiveEngine {
             return new IExecute.ResolvedShardQuery(resolveRet.getResolvedShards(), queries);
         }
 
-        Resolver.AllShardResult resolveRet = vcursor.getAllShards(keyspaceName, (Topodata.TabletType) ctx.getContextValue(DRIVER_PROPERTY_ROLE_KEY));
+        Resolver.AllShardResult resolveRet = vcursor.getAllShards(keyspaceName, RoleUtils.getTabletType(ctx));
         List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
         return new IExecute.ResolvedShardQuery(resolveRet.getResolvedShardList(), queries);
     }

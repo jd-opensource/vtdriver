@@ -30,7 +30,6 @@ import io.grpc.stub.ClientResponseObserver;
 import io.vitess.proto.Query;
 import io.vitess.proto.Query.StreamHealthResponse;
 import io.vitess.proto.Topodata;
-import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -126,14 +125,8 @@ public class TabletHealthCheck {
 
     private IParentQueryService getTabletQueryServiceLocked() {
         if (this.queryService == null) {
-            SecurityCenter.Credential credential = null;
-            try {
-                credential = SecurityCenter.INSTANCE.getCredential(this.target.getKeyspace());
-                this.queryService = TabletDialer.dial(this.tablet, credential.user, credential.password);
-                log.info("create tablet query service: " + TopoProto.tabletToHumanString(tablet));
-            } catch (SQLException e) {
-                log.error("fail to get credentials for " + this.target.getKeyspace());
-            }
+            this.queryService = TabletDialer.dial(this.tablet);
+            log.info("create tablet query service: " + TopoProto.tabletToHumanString(tablet));
         }
         return this.queryService;
     }

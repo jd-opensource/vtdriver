@@ -35,74 +35,23 @@ import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class RetryTabletQueryService implements IQueryService, IHealthCheckQueryService {
     private static final Log log = LogFactory.getLog(RetryTabletQueryService.class);
 
-    private final Gateway gateway;
+    private static final int RETRY_COUNT = 3;
 
-    private final int retryCount = 3;
+    private final Gateway gateway;
 
     public RetryTabletQueryService(Gateway gateway) {
         this.gateway = gateway;
-    }
-
-    private IInner.InnerResult retry(boolean inTransaction, Query.Target target, IInner inner) throws SQLException {
-
-        if (inTransaction && target.getTabletType() != Topodata.TabletType.MASTER) {
-            throw new SQLException("gateway's query service can only be used for non-transactional queries on replicas");
-        }
-
-        Set<String> invalidTablets = new HashSet<>();
-
-        for (int i = 0; i < retryCount + 1; i++) {
-            List<TabletHealthCheck> tablets = ((TabletGateway) gateway).getHc().getHealthyTabletStatsMaybeStandby(target);
-            if (tablets == null || tablets.size() == 0) {
-                throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". no valid tablet");
-            }
-
-            Collections.shuffle(tablets);
-
-            TabletHealthCheck tablet = null;
-            for (TabletHealthCheck tb : tablets) {
-                if (!invalidTablets.contains(TopoProto.tabletAliasString(tb.getTablet().getAlias()))) {
-                    tablet = tb;
-                    break;
-                }
-            }
-
-            if (tablet == null) {
-                throw new SQLException("no available connection");
-            }
-
-            TabletHealthCheck tabletHealthCheckLastUsed = tablet;
-            if (tabletHealthCheckLastUsed.getQueryService() == null) {
-                invalidTablets.add(TopoProto.tabletAliasString(tabletHealthCheckLastUsed.getTablet().getAlias()));
-                continue;
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("choose tablet " + TopoProto.tabletToHumanString(tabletHealthCheckLastUsed.getTablet()) + " for target: " + HealthCheck.keyFromTarget(target));
-            }
-            IInner.InnerResult ret = inner.run(tabletHealthCheckLastUsed.getQueryService());
-            if (ret.retry) {
-                log.info("retry for target: " + HealthCheck.keyFromTarget(target) + ", as " + TopoProto.tabletToHumanString(tabletHealthCheckLastUsed.getTablet()) + " is unavailable");
-                invalidTablets.add(TopoProto.tabletAliasString(tabletHealthCheckLastUsed.getTablet().getAlias()));
-                continue;
-            }
-
-            return ret;
-        }
-
-        throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". all tablets are tried, no available connection");
-    }
-
-    private boolean canRetry(IContext context, Exception e) {
-        return !context.isDone() && (e instanceof SQLRecoverableException);
     }
 
     @Override
@@ -156,7 +105,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
             log.debug("beginExecute --> " + sql);
         }
 
-        boolean inDedicatedConn = (reservedID != 0);
+        boolean inDedicatedConn = reservedID != 0;
         return (BeginVtResultSet) retry(inDedicatedConn, target, (IQueryService qs) -> {
             try {
                 BeginVtResultSet beginVtResultSet = qs.beginExecute(context, target, preQuries, sql, bindVariables, reservedID, options);
@@ -181,7 +130,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         if (log.isDebugEnabled()) {
             log.debug("execute [" + transactionID + "] --> " + sql);
         }
-        boolean inDedicatedConn = (reservedID != 0 || transactionID != 0);
+        boolean inDedicatedConn = reservedID != 0 || transactionID != 0;
         return (VtResultSet) retry(inDedicatedConn, target, (IQueryService qs) -> {
             try {
                 VtResultSet ret = qs.execute(context, target, sql, bindVariables, transactionID, reservedID, options);
@@ -275,7 +224,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
 
     @Override
     public Query.ReleaseResponse release(IContext context, Query.Target target, Long transactionID, Long reservedID) throws SQLException {
-        boolean inDedicatedConn = (reservedID != 0 || transactionID != 0);
+        boolean inDedicatedConn = reservedID != 0 || transactionID != 0;
         return (Query.ReleaseResponse) retry(inDedicatedConn, target, (IQueryService qs) -> {
             Query.ReleaseResponse ret = qs.release(context, target, transactionID, reservedID);
             return new IInner.InnerResult(false, ret);
@@ -285,5 +234,88 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     @Override
     public void close() {
         //do nothing
+    }
+
+    private boolean canRetry(IContext context, Exception e) {
+        return !context.isDone() && (e instanceof SQLRecoverableException);
+    }
+
+    private IInner.InnerResult retry(boolean inTransaction, Query.Target target, IInner inner) throws SQLException {
+
+        if (inTransaction && target.getTabletType() != Topodata.TabletType.MASTER) {
+            throw new SQLException("gateway's query service can only be used for non-transactional queries on replica and rdonly");
+        }
+
+        Set<String> invalidTablets = new HashSet<>();
+
+        for (int i = 0; i < RETRY_COUNT + 1; i++) {
+            List<TabletHealthCheck> typeTablets = getTabletHealthChecks(target);
+
+            if (typeTablets == null || typeTablets.size() == 0) {
+                throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". no valid tablet");
+            }
+
+            List<TabletHealthCheck> tablets;
+            if (invalidTablets.isEmpty()) {
+                tablets = typeTablets;
+            } else {
+                tablets = new ArrayList<>(typeTablets.size());
+                for (TabletHealthCheck tb : typeTablets) {
+                    if (!invalidTablets.contains(TopoProto.tabletAliasString(tb.getTablet().getAlias()))) {
+                        tablets.add(tb);
+                    }
+                }
+                if (tablets.size() == 0) {
+                    throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". no valid tablet");
+                }
+            }
+
+            TabletHealthCheck tablet = getRandomTablet(tablets);
+            if (tablet == null) {
+                throw new SQLException("no available connection");
+            }
+            if (tablet.getQueryService() == null) {
+                invalidTablets.add(TopoProto.tabletAliasString(tablet.getTablet().getAlias()));
+                continue;
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("choose tablet " + TopoProto.tabletToHumanString(tablet.getTablet()) + " for target: " + HealthCheck.keyFromTarget(target));
+            }
+            IInner.InnerResult ret = inner.run(tablet.getQueryService());
+            if (ret.retry) {
+                log.info("retry for target: " + HealthCheck.keyFromTarget(target) + ", as " + TopoProto.tabletToHumanString(tablet.getTablet()) + " is unavailable");
+                invalidTablets.add(TopoProto.tabletAliasString(tablet.getTablet().getAlias()));
+                continue;
+            }
+            return ret;
+        }
+
+        throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". all tablets are tried, no available connection");
+    }
+
+    private List<TabletHealthCheck> getTabletHealthChecks(Query.Target target) {
+        if (target.getShard().isEmpty()) {
+            target = target.toBuilder().setShard("0").build();
+        }
+        List<TabletHealthCheck> typeTablets;
+        if (Objects.equals(Topodata.TabletType.REPLICA, target.getTabletType())) {
+            typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target);
+            if (typeTablets == null || typeTablets.isEmpty()) {
+                typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target.toBuilder().setTabletType(Topodata.TabletType.RDONLY).build());
+            }
+        } else {
+            typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target);
+        }
+        return typeTablets;
+    }
+
+    private TabletHealthCheck getRandomTablet(List<TabletHealthCheck> tablets) {
+        TabletHealthCheck tablet;
+        if (tablets.size() > 1) {
+            Collections.shuffle(tablets);
+        }
+        tablet = tablets.get(0);
+        return tablet;
     }
 }

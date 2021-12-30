@@ -23,6 +23,7 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
@@ -426,7 +427,7 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
     public ResultSetMetaData getMetaData() throws SQLException {
         synchronized (checkClosed().getConnectionMutex()) {
             try (InnerConnection innerConnection = StatefulConnectionPool
-                .getJdbcConnection(this.connection.getDefaultKeyspace(), (Topodata.TabletType) context.getContextValue(DRIVER_PROPERTY_ROLE_KEY))) {
+                .getJdbcConnection(this.connection.getDefaultKeyspace(), RoleUtils.getTabletType(context))) {
                 PreparedStatement pstmt = innerConnection.getConnection().prepareStatement(inputSQL);
                 return pstmt.getMetaData();
             }
