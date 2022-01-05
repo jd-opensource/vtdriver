@@ -28,34 +28,38 @@ cd vtdriver/src/test/resource/vitess_env
 ./setup.sh
 ```
 
-这一步会拉取vitess源码, 构建一个名为`vtdriver-env`的镜像, 里面包含了一个cell、两个Keyspace: 一个单分片的`commerce`和一个两分片`customer`。
+这一步会拉取vitess源码, 构建一个名为`vtdriver-env`的镜像, 其启动的vitess环境中里面包含了一个cell、两个Keyspace(一个单分片的`commerce`和一个两分片`customer`)。
 
 请确保`docker`已经正确安装并启动。
 
 #### 3. 启动
-以`host`网络模式启动, 容器共享宿主机的网络环境:
+
+如果在本机的docker上搭建环境，且只在本机进行连接测试，运行下面的命令以默认的`bridge`网络模式启动容器即可：
 ```shell
-docker run -e HOST_IP=<宿主机IP> -itd --name=vtdriver-env --network=host vitess/vtdriver-env:latest
+docker run -e HOST_IP=127.0.0.1 -it --name=vtdriver-env -p16100:16100 -p16101:16101 -p16102:16102 -p16300:16300 -p16301:16301 -p16302:16302 -p16400:16400 -p16401:16401 -p16402:16402 -p15000:15000 -p15001:15001 -p15306:15306 -p15100:15100 -p15101:15101 -p15102:15102 -p15300:15300 -p15301:15301 -p15302:15302 -p15400:15400 -p15401:15401 -p15402:15402 -p2379:2379 -p17100:17100 -p17101:17101 -p17102:17102 -p17300:17300 -p17301:17301 -p17302:17302 -p17400:17400 -p17401:17401 -p17402:17402 vitess/vtdriver-env:latest 
+```
+启动之后，可访问`http://127.0.0.1:15000`查看vitess是否被正常启动，正常情况下，简单配置vtdriver项目后即可运行测试用例。
+
+
+如果是在服务器上使用docker搭建，即想要在外部服务器内的docker容器进行访问，则需要以`host`网络模式启动容器, 容器共享服务器的网络环境:
+```shell
+docker run -e HOST_IP=<服务器IP> -itd --name=vtdriver-env --network=host vitess/vtdriver-env:latest
 ```
 
-以`bridge`网络模式启动, 目前只能在宿主机内访问容器服务:
-```shell
-docker run -e HOST_IP=127.0.0.1 -it --name=vtdriver-env -p15000:15000 -p15001:15001 -p15306:15306 -p15991:15991 -p15100:15100 -p15101:15101 -p15102:15102 -p15300:15300 -p15301:15301 -p15302:15302 -p15400:15400 -p15401:15401 -p15402:15402 -p2379:2379 -p17100:17100 -p17101:17101 -p17102:17102 -p17300:17300 -p17301:17301 -p17302:17302 -p17400:17400 -p17401:17401 -p17402:17402 vitess/vtdriver-env:latest
-```
-
-镜像中运行着`VTGATE`进程, 可以在外面访问`http://DOCKER_HOST_IP:15000`或用mysql客户端连接查看是否已经正确启动, 下面是一些对外暴露的端口和配置信息:
+下面是一些对外暴露的端口和配置信息:
 ```
 VTGATE
 mysql服务端口: 15306, 账号: mysql_user, 密码: mysql_password
 web端口: 15001
 
-9个tablet web端口:
+9个tablet的web端口:
 15100, 15101, 15102
 15300, 15301, 15302
 15400, 15401, 15402
-
-TABLET
-grpc端口: 15991
+及其grpc服务端口：
+16100, 16101, 16102
+16300, 16301, 16302
+16400, 16401, 16402
 
 MYSQL
 账号vtdriver, 密码vtdriver_password, 9台mysql实例端口分别是:
@@ -78,7 +82,7 @@ web端口: 15000
 
    * MySQL建议5.7
 
-   * 如果部署的Vitess环境和项目不在同一机器上，在执行101_initial_cluster.sh前，要在vitess/examples/local/env.sh中修改ETCD_SERVER的ip修改为环境所部署机器的ip (
+   * 如果部署的Vitess环境和vtdriver项目不在同一机器上，在执行101_initial_cluster.sh前，要在vitess/examples/local/env.sh中修改ETCD_SERVER的ip修改为环境所部署机器的ip (
    不是127.0.0.1或者localhost)
 
 2. 运行测试用例（可选）
@@ -113,7 +117,7 @@ web端口: 15000
     ./307_delete_shard_0.sh
     ```
 
-   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/vitess_env/vtdriver 下的所有文件导入 vtdriver 文件夹
+   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/config/ 下的所有文件导入 vtdriver 文件夹
 
    在 vitess/example/local/vtdriver/ 中依次执行init_mysql_user.sh、create_table.sh
 
@@ -122,7 +126,7 @@ web端口: 15000
     ./create_table.sh
     ```
    
-   * init_mysql_user.sh 为上述脚本中创建的库设置默认用户，设置 sql_mode
+   * init_mysql_user.sh 为各MySQL服务创建了vtdriver直连所需的默认用户，并设置了 sql_mode
      
      默认用户名：vtdriver
      
