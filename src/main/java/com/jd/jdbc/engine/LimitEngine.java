@@ -99,7 +99,7 @@ public class LimitEngine implements PrimitiveEngine {
             IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindVariableMap, wantFields);
             LimitStream limitStream = new LimitStream(count, offset, vtStream);
             Integer maxRows = (Integer) ctx.getContextValue(VitessPropertyKey.MAX_ROWS.getKeyName());
-            VtRowList vtRowList = new VtStreamResultSet(limitStream).reserve(maxRows);
+            VtRowList vtRowList = new VtStreamResultSet(limitStream, wantFields).reserve(maxRows);
             List<List<VtResultValue>> rows = new ArrayList<>();
             while (vtRowList != null && vtRowList.hasNext()) {
                 List<VtResultValue> next = vtRowList.next();

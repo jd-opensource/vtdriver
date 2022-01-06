@@ -368,7 +368,7 @@ public class Executor implements IExecute {
                 }
                 throw e;
             }
-            return new ExecuteResponse(plan.getStatementType(), new VtStreamResultSet(vtStream).reserve(maxRows));
+            return new ExecuteResponse(plan.getStatementType(), new VtStreamResultSet(vtStream, true).reserve(maxRows));
         };
     }
 

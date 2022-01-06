@@ -163,7 +163,7 @@ public class JoinEngine implements PrimitiveEngine {
                 Map<String, Query.BindVariable> joinVars = new HashMap<>();
                 VtResultSet resultSet = new VtResultSet();
 
-                VtStreamResultSet leftStreamResultSet = new VtStreamResultSet(this.leftStreamResult);
+                VtStreamResultSet leftStreamResultSet = new VtStreamResultSet(this.leftStreamResult, wantFields);
                 while (leftStreamResultSet.hasNext()) {
                     List<VtResultValue> leftRow = leftStreamResultSet.next();
                     for (Map.Entry<String, Integer> var : vars.entrySet()) {
@@ -171,7 +171,7 @@ public class JoinEngine implements PrimitiveEngine {
                     }
                     boolean rowSent = false;
                     this.rightStreamResult = right.streamExecute(ctx, vcursor, combineVars(bindValue, joinVars), wantFields);
-                    VtStreamResultSet rightStreamResultSet = new VtStreamResultSet(rightStreamResult);
+                    VtStreamResultSet rightStreamResultSet = new VtStreamResultSet(rightStreamResult, wantFields);
                     if (wantFields) {
                         // This code is currently unreachable because the first result
                         // will always be just the field info, which will cause the outer

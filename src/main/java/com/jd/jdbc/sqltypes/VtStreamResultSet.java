@@ -41,14 +41,14 @@ public class VtStreamResultSet implements VtRowList {
 
     private int readRows = 0;
 
-    public VtStreamResultSet(IExecute.VtStream vtStream) {
+    public VtStreamResultSet(IExecute.VtStream vtStream, boolean wantFields) {
         this.vtStream = vtStream;
         if (vtStream == null) {
             return;
         }
 
         try {
-            fetched = vtStream.fetch(true);
+            fetched = vtStream.fetch(wantFields);
         } catch (SQLException e) {
             savedException = e;
             return;
