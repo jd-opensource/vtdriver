@@ -179,7 +179,7 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
     public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new IExecute.VtStream() {
-            private final VtStreamResultSet vtStreamResultSet = new VtStreamResultSet(vtStream);
+            private final VtStreamResultSet vtStreamResultSet = new VtStreamResultSet(vtStream, wantFields);
 
             private IExecute.VtStream stream = vtStream;
 

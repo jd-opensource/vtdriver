@@ -197,7 +197,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
                 }
                 this.sourceStreamResultList = new ArrayList<>();
                 for (IExecute.VtStream source : sources) {
-                    VtStreamResultSet sourceStreamResultSet = new VtStreamResultSet(source);
+                    VtStreamResultSet sourceStreamResultSet = new VtStreamResultSet(source, true);
                     if (seenFields == null) {
                         seenFields = sourceStreamResultSet.getFields();
                     } else {

@@ -32,6 +32,8 @@ import static com.jd.jdbc.context.VtContextConstant.STREAM_EXECUTION_CANCELLED;
 public class AllErrorRecorder implements ErrorRecorder {
     private final ConcurrentLinkedQueue<Exception> exceptionQueue = new ConcurrentLinkedQueue<>();
 
+    private SQLException canceledException;
+
     /**
      * @param e
      */
@@ -42,6 +44,7 @@ public class AllErrorRecorder implements ErrorRecorder {
         }
         if (e instanceof SQLException && e.getMessage() != null
             && (e.getMessage().contains(EXECUTION_CANCELLED) || e.getMessage().contains(STREAM_EXECUTION_CANCELLED) || e.getMessage().contains(BEGIN_EXECUTION_CANCELLED))) {
+            canceledException = (SQLException) e;
             return;
         }
         exceptionQueue.add(e);
@@ -52,7 +55,7 @@ public class AllErrorRecorder implements ErrorRecorder {
      */
     @Override
     public Boolean hasErrors() {
-        return !exceptionQueue.isEmpty();
+        return !exceptionQueue.isEmpty() || canceledException != null;
     }
 
     /**
@@ -93,7 +96,7 @@ public class AllErrorRecorder implements ErrorRecorder {
     }
 
     public void throwException() throws SQLException {
-        if (this.hasErrors()) {
+        if (!exceptionQueue.isEmpty()) {
             // throw allErrors.error();
             Exception exception = this.getErrors().peek();
             if (exception instanceof SQLException) {
@@ -101,6 +104,8 @@ public class AllErrorRecorder implements ErrorRecorder {
             } else {
                 throw new SQLException(exception);
             }
+        } else if (canceledException != null) {
+            throw canceledException;
         }
     }
 }
