@@ -168,12 +168,15 @@ public class Engine {
      * @param charEncoding
      * @return
      */
-    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, String charEncoding) {
+    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, String charEncoding) throws SQLException {
         List<BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
         for (Map<String, BindVariable> bindVariableMap : bindVariableMapList) {
             StringBuilder realQueryOutput = new StringBuilder();
             VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(realQueryOutput, bindVariableMap, charEncoding);
             query.accept(vtRestoreVisitor);
+            if (vtRestoreVisitor.getException() != null) {
+                throw vtRestoreVisitor.getException();
+            }
             queries.add(new BoundQuery(realQueryOutput.toString()));
         }
         return queries;
@@ -186,12 +189,15 @@ public class Engine {
      * @param charEncoding
      * @return
      */
-    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, Map<String, String> switchTables, String charEncoding) {
+    public static List<BoundQuery> getQueries(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, Map<String, String> switchTables, String charEncoding) throws SQLException {
         List<BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
         for (Map<String, BindVariable> bindVariableMap : bindVariableMapList) {
             StringBuilder realQueryOutput = new StringBuilder();
             VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(realQueryOutput, bindVariableMap, switchTables, charEncoding);
             query.accept(vtRestoreVisitor);
+            if (vtRestoreVisitor.getException() != null) {
+                throw vtRestoreVisitor.getException();
+            }
             queries.add(new BoundQuery(realQueryOutput.toString()));
         }
         return queries;
