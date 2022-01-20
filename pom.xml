@@ -234,9 +234,6 @@
                         <version>${surefire-junit4.version}</version>
                     </dependency>
                 </dependencies>
-                <configuration>
-                    <skipTests>false</skipTests>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
