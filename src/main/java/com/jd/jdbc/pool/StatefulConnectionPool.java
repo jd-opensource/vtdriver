@@ -24,6 +24,7 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.topoproto.TopoProto;
+import com.jd.jdbc.util.MapUtil;
 import com.jd.jdbc.vitess.Config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.pool.HikariPool;
@@ -70,7 +71,7 @@ public class StatefulConnectionPool {
                 return statefulConnectionPool;
             }
             StatefulConnectionPool pool = new StatefulConnectionPool(tablet, user, password, dsProperties, properties);
-            STATEFUL_CONNECTION_POOL_MAP.computeIfAbsent(tablet.getKeyspace(), map -> new ConcurrentHashMap<>(16)).put(TopoProto.tabletAliasString(tablet.getAlias()), pool);
+            MapUtil.computeIfAbsent(STATEFUL_CONNECTION_POOL_MAP, tablet.getKeyspace(), map -> new ConcurrentHashMap<>(16)).put(TopoProto.tabletAliasString(tablet.getAlias()), pool);
             return pool;
         }
     }

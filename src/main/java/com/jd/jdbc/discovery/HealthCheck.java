@@ -19,10 +19,12 @@ limitations under the License.
 package com.jd.jdbc.discovery;
 
 import com.jd.jdbc.context.IContext;
+import com.jd.jdbc.monitor.HealthCheckCollector;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
+import com.jd.jdbc.util.MapUtil;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
@@ -41,7 +43,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-
 
 /*
 <Effective Java>
@@ -100,7 +101,7 @@ public enum HealthCheck {
      * only a HealthCheck impl in a application.
      */
     HealthCheck() {
-        this.watchTabltHealthCheckStream();
+        this.watchTabletHealthCheckStream();
     }
 
     public static String keyFromTarget(final Query.Target target) {
@@ -145,14 +146,14 @@ public enum HealthCheck {
         this.lock.lock();
         try {
             List<TabletHealthCheck> list = this.healthy.get(keyFromTarget(target));
-            if (null == list) {
+            if (null == list || list.isEmpty()) {
                 return null;
             }
             if (target.getTabletType() == Topodata.TabletType.MASTER) {
                 return list;
             }
 
-            List<TabletHealthCheck> servlist = new ArrayList<>();
+            List<TabletHealthCheck> servlist = new ArrayList<>(list.size());
             list.forEach(entry -> {
                 if (entry.getServing().get()) {
                     servlist.add(entry);
@@ -327,9 +328,7 @@ public enum HealthCheck {
             if (targetChanged) {
                 String oldTargetKey = keyFromTarget(preTarget);
                 this.healthData.get(oldTargetKey).remove(tabletAlias);
-                this.healthData.computeIfAbsent(targetKey, key -> new HashMap<>());
-                Topodata.Tablet tablet = th.getTablet().toBuilder().setType(th.getTarget().getTabletType()).setKeyspace(th.getTarget().getKeyspace()).setShard(th.getTarget().getShard()).build();
-                th.getQueryService().setTablet(tablet);
+                MapUtil.computeIfAbsent(healthData,targetKey, key -> new HashMap<>());
             }
             this.healthData.get(targetKey).put(tabletAlias, th);
             boolean isPrimary = th.getTarget().getTabletType() == Topodata.TabletType.MASTER;
@@ -372,58 +371,70 @@ public enum HealthCheck {
         } finally {
             this.lock.unlock();
             if (targetChanged) {
+                Topodata.Tablet tablet = th.getTablet().toBuilder().setType(th.getTarget().getTabletType()).setKeyspace(th.getTarget().getKeyspace()).setShard(th.getTarget().getShard()).build();
+                th.getQueryService().setTablet(tablet);
                 th.closeNativeQueryService();
             }
         }
     }
 
-    public void watchTabltHealthCheckStream() {
+    public void watchTabletHealthCheckStream() {
         this.streamWatcherTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 long currentTimeMillis = System.currentTimeMillis();
-                healthByAlias.forEach((alias, thc) -> {
-                    if (thc.healthCheckCtxIsCanceled()) {
-                        thc.finalizeConn();
-                        return;
-                    }
-                    //当前时间减去上次返回健康检查包的时间，超过了阈值，认为超时，需要重建healthCheck
-                    if (thc.getLastResponseTimestamp() > 0 && currentTimeMillis - thc.getLastResponseTimestamp() > (thc.getHealthCheckTimeout() * 1000)) {
-                        thc.getServing().set(false);
-                        thc.getRetrying().set(true);
-                        thc.getLastError().set("health check timed out latest " + thc.getLastResponseTimestamp());
-                        thc.startHealthCheckStream();
-                        return;
-                    }
-
-                    TabletHealthCheck.TabletStreamHealthDetailStatus tabletStreamHealthDetailStatus = thc.getTabletStreamHealthDetailStatus().get();
-                    if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE) {
-                        return;
-                    }
-
-                    if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET) {
-                        return;
-                    }
-
-                    if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR) {
-                        thc.getServing().set(false);
-                        thc.getRetrying().set(true);
-                        thc.getLastError().set("health check error :" + tabletStreamHealthDetailStatus.message);
-                        thc.startHealthCheckStream();
-                        return;
-                    }
-
-                    if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE) {
-                        //tabletHealthCheck刚刚加入到healthByAlias,还没收到过任何健康检查消息和信号
-                        return;
-                    }
-
-                    log.error("unreachable, BUG, tablet :" + TopoProto.tabletToHumanString(thc.getTablet()) + ", now ts: " + currentTimeMillis + ", last health check response: "
-                        + thc.getLastResponseTimestamp());
-
-                });
+                try {
+                    doWatchTabletHealthCheckStream(currentTimeMillis);
+                    HealthCheckCollector.getHealthCheckSuccessTimeRecorder().set(currentTimeMillis);
+                } catch (Throwable t) {
+                    HealthCheckCollector.getHealthCheckErrorTimeRecorder().set(currentTimeMillis);
+                    log.error("Unexpected error occur at watchTabletHealthCheckStream, cause: " + t.getMessage(), t);
+                }
             }
         }, 5000, 15000);
+    }
+
+    private void doWatchTabletHealthCheckStream(final long currentTimeMillis) {
+        healthByAlias.forEach((alias, thc) -> {
+            if (thc.healthCheckCtxIsCanceled()) {
+                thc.finalizeConn();
+                return;
+            }
+
+            if (thc.getLastResponseTimestamp() > 0 && currentTimeMillis - thc.getLastResponseTimestamp() > (thc.getHealthCheckTimeout() * 1000)) {
+                thc.getServing().set(false);
+                thc.getRetrying().set(true);
+                thc.getLastError().set("health check timed out latest " + thc.getLastResponseTimestamp());
+                thc.startHealthCheckStream();
+                return;
+            }
+
+            TabletHealthCheck.TabletStreamHealthDetailStatus tabletStreamHealthDetailStatus = thc.getTabletStreamHealthDetailStatus().get();
+            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE) {
+                return;
+            }
+
+            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET) {
+                return;
+            }
+
+            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR) {
+                thc.getServing().set(false);
+                thc.getRetrying().set(true);
+                thc.getLastError().set("health check error :" + tabletStreamHealthDetailStatus.message);
+                thc.startHealthCheckStream();
+                return;
+            }
+
+            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE) {
+                // tabletHealthCheck is added to healthByAlias just recently, no healthCheck signal has been received.
+                return;
+            }
+
+            log.error("unreachable, BUG, tablet :" + TopoProto.tabletToHumanString(thc.getTablet()) + ", now ts: " + currentTimeMillis + ", last health check response: "
+                + thc.getLastResponseTimestamp());
+
+        });
     }
 
     private List<TabletHealthCheck> filterStatsByReplicationLag(List<TabletHealthCheck> lst) {
@@ -466,7 +477,7 @@ public enum HealthCheck {
             try {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
-
+                // ignore
             }
         }
     }

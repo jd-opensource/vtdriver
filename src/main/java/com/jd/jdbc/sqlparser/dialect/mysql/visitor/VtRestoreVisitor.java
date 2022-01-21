@@ -49,8 +49,6 @@ import org.apache.commons.codec.binary.Hex;
 
 public class VtRestoreVisitor extends MySqlOutputVisitor {
 
-    private static final Log LOGGER = LogFactory.getLog(VtRestoreVisitor.class);
-
     private final Map<String, BindVariable> bindVariableMap;
 
     private String charEncoding;
@@ -207,7 +205,6 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
             }
         } catch (SQLException e) {
             this.exception = e;
-            LOGGER.error(e.getMessage(), e);
         }
         return valuableExprList;
     }

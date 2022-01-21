@@ -29,7 +29,7 @@
         <surefire-junit4.version>3.0.0-M5</surefire-junit4.version>
 
         <!-- dependencies -->
-        <lombok.version>1.16.20</lombok.version>
+        <lombok.version>1.18.14</lombok.version>
         <prometheus.version>0.9.0</prometheus.version>
         <commons-codec.version>1.13</commons-codec.version>
         <hierynomus.version>0.9.0</hierynomus.version>

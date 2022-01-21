@@ -337,7 +337,7 @@ public final class DatabaseMetaDataResultSet extends AbstractDatabaseMetaDataRes
     public int findColumn(final String columnLabel) throws SQLException {
         checkClosed();
         if (!indexMap.containsKey(columnLabel)) {
-            throw new SQLException(String.format("Can not find columnLabel %s", columnLabel));
+            throw new SQLException("Can not find columnLabel" + columnLabel);
         }
         return indexMap.get(columnLabel);
     }
