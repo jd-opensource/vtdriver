@@ -27,6 +27,8 @@ import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.visitor.VtVisitor;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.vitess.proto.Query;
@@ -71,37 +73,36 @@ public abstract class BasePrimitiveEngine implements PrimitiveEngine {
     }
 
     @Override
-    public ExecuteMultiShardResponse execute(IContext ctx, final Vcursor cursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
+    public ExecuteMultiShardResponse execute(IContext ctx, final Vcursor cursor, final Map<String, BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
 
         List<SQLExpr> routeValues = buildDestinationExpr();
         if (routeValues != null) {
             List<Destination> destinations = getDestination(routeValues);
 
             Resolver.ResolveDestinationResult resolveRet = cursor.resolveDestinations(keyspaceName, null, destinations);
-
-            List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShards().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
+            List<BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShards().size(), new BoundQuery(stmt.toString()));
             boolean autocommit = resolveRet.getResolvedShards().size() == 1 && cursor.autocommitApproval();
             return cursor.executeMultiShard(resolveRet.getResolvedShards(), queries, true, autocommit);
         }
 
         Resolver.AllShardResult resolveRet = cursor.getAllShards(keyspaceName, RoleUtils.getTabletType(ctx));
-        List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
+        List<BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), new BoundQuery(stmt.toString()));
 
         return cursor.executeMultiShard(resolveRet.getResolvedShardList(), queries, true, false);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         List<SQLExpr> routeValues = buildDestinationExpr();
         if (routeValues != null) {
             List<Destination> destinations = getDestination(routeValues);
             Resolver.ResolveDestinationResult resolveRet = vcursor.resolveDestinations(keyspaceName, null, destinations);
-            List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShards().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
+            List<BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShards().size(), new BoundQuery(stmt.toString()));
             return new IExecute.ResolvedShardQuery(resolveRet.getResolvedShards(), queries);
         }
 
         Resolver.AllShardResult resolveRet = vcursor.getAllShards(keyspaceName, RoleUtils.getTabletType(ctx));
-        List<Query.BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), Query.BoundQuery.newBuilder().setSql(stmt.toString()).build());
+        List<BoundQuery> queries = Collections.nCopies(resolveRet.getResolvedShardList().size(), new BoundQuery(stmt.toString()));
         return new IExecute.ResolvedShardQuery(resolveRet.getResolvedShardList(), queries);
     }
 

@@ -39,6 +39,8 @@ import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -197,7 +199,7 @@ public class InsertEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("insert is not allowed for read only connection");
         }
@@ -215,14 +217,14 @@ public class InsertEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         if (insertId != 0) {
             vtResultSet.setInsertID(insertId);
         }
         return new IExecute.ExecuteMultiShardResponse(vtResultSet).setUpdate();
     }
 
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, List<VtPlanValue> exVindexValueList,
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, List<VtPlanValue> exVindexValueList,
                                                          List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix, List<SQLExpr> exSuffixExpr,
                                                          Map<String, String> switchTableMap) throws SQLException {
 //        insertId = this.processGenerate(vcursor, bindValues);
@@ -230,13 +232,13 @@ public class InsertEngine implements PrimitiveEngine {
             List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
             Engine.allowOnlyMaster(rsList);
             String charEncoding = vcursor.getCharEncoding();
-            List<Query.BoundQuery> queries = getUnshardQueries(bindValues, exMidExprList, exPrefix, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
+            List<BoundQuery> queries = getUnshardQueries(bindValues, exMidExprList, exPrefix, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
             return new IExecute.ResolvedShardQuery(rsList, queries);
         }
         if (Engine.InsertOpcode.InsertSharded.equals(this.insertOpcode) || Engine.InsertOpcode.InsertShardedIgnore.equals(this.insertOpcode)) {
             InsertShardedRouteResult insertShardedRouteResult = this.getInsertShardedRoute(vcursor, bindValues, exVindexValueList, exMidExprList, exPrefix, exSuffix, exSuffixExpr, switchTableMap);
             List<ResolvedShard> rss = insertShardedRouteResult.getResolvedShardList();
-            List<Query.BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
+            List<BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
             Engine.allowOnlyMaster(rss);
             return new IExecute.ResolvedShardQuery(rss, queries);
         }
@@ -244,25 +246,25 @@ public class InsertEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         insertId = this.processGenerate(vcursor, bindValues);
         String charEncoding = vcursor.getCharEncoding();
         if (Engine.InsertOpcode.InsertUnsharded.equals(this.insertOpcode)) {
             List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
             Engine.allowOnlyMaster(rsList);
-            List<Query.BoundQuery> queries = Engine.getQueries(this.insertReplaceStmt, Lists.newArrayList(bindValues), charEncoding);
+            List<BoundQuery> queries = Engine.getQueries(this.insertReplaceStmt, Lists.newArrayList(bindValues), charEncoding);
             return new IExecute.ResolvedShardQuery(rsList, queries);
         }
         if (Engine.InsertOpcode.InsertSharded.equals(this.insertOpcode) || Engine.InsertOpcode.InsertShardedIgnore.equals(this.insertOpcode)) {
             InsertShardedRouteResult insertShardedRouteResult = this.getInsertShardedRoute(vcursor, bindValues);
             List<ResolvedShard> rss = insertShardedRouteResult.getResolvedShardList();
-            List<Query.BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
+            List<BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
             Engine.allowOnlyMaster(rss);
             return new IExecute.ResolvedShardQuery(rss, queries);
         }
         if (Engine.InsertOpcode.InsertByDestination.equals(this.insertOpcode)) {
             List<ResolvedShard> rsList = getResolvedDestinationShard(vcursor, this.targetDestination);
-            List<Query.BoundQuery> queries = Engine.getQueries(this.insertReplaceStmt, Lists.newArrayList(bindValues), charEncoding);
+            List<BoundQuery> queries = Engine.getQueries(this.insertReplaceStmt, Lists.newArrayList(bindValues), charEncoding);
             return new IExecute.ResolvedShardQuery(rsList, queries);
         }
         throw new SQLException("unsupported query route: " + this.insertOpcode);
@@ -279,7 +281,7 @@ public class InsertEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         long insertId = this.processGenerate(vcursor, bindVariableMap);
         List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
         Engine.allowOnlyMaster(rsList);
@@ -296,11 +298,11 @@ public class InsertEngine implements PrimitiveEngine {
         return new IExecute.ExecuteMultiShardResponse(vtResultSet);
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertSharded(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse execInsertSharded(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         long insertId = this.processGenerate(vcursor, bindVariableMap);
         InsertShardedRouteResult insertShardedRouteResult = this.getInsertShardedRoute(vcursor, bindVariableMap);
         List<ResolvedShard> rss = insertShardedRouteResult.getResolvedShardList();
-        List<Query.BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
+        List<BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
 
         boolean autocommit = (rss.size() == 1 || this.multiShardAutocommit) && vcursor.autocommitApproval();
         Engine.allowOnlyMaster(rss);
@@ -313,7 +315,7 @@ public class InsertEngine implements PrimitiveEngine {
         return new IExecute.ExecuteMultiShardResponse(vtResultSet);
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertByDestination(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, Destination destination) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse execInsertByDestination(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Destination destination) throws SQLException {
         long insertId = this.processGenerate(vcursor, bindVariableMap);
         List<ResolvedShard> rsList = getResolvedDestinationShard(vcursor, destination);
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = Engine.execShard(vcursor, this.insertReplaceStmt, bindVariableMap, rsList.get(0), true, true).setUpdate();
@@ -339,7 +341,7 @@ public class InsertEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private Long processGenerate(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Long processGenerate(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         Long insertId = 0L;
         if (this.generate == null) {
             return insertId;
@@ -386,7 +388,7 @@ public class InsertEngine implements PrimitiveEngine {
         return insertId;
     }
 
-    private InsertShardedRouteResult getInsertShardedRoute(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, List<VtPlanValue> exVindexValueList,
+    private InsertShardedRouteResult getInsertShardedRoute(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, List<VtPlanValue> exVindexValueList,
                                                            List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix, List<SQLExpr> exSuffixExpr,
                                                            Map<String, String> switchTableMap) throws SQLException {
         // vindexRowsValues builds the values of all vindex columns.
@@ -486,7 +488,7 @@ public class InsertEngine implements PrimitiveEngine {
         String charEncoding = vcursor.getCharEncoding();
         String newSuffix = getNewSuffix(bindVariableMap, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
 
-        List<Query.BoundQuery> queries = new ArrayList<>();
+        List<BoundQuery> queries = new ArrayList<>();
         for (int i = 0; i < rss.size(); i++) {
             List<String> mids = new ArrayList<>();
             for (Query.Value indexValue : indexesPerRss.get(i)) {
@@ -500,7 +502,7 @@ public class InsertEngine implements PrimitiveEngine {
                 }
             }
             String rewritten = exPrefix + String.join(",", mids) + newSuffix;
-            queries.add(Query.BoundQuery.newBuilder().setSql(rewritten).build());
+            queries.add(new BoundQuery(rewritten));
         }
 
         return new InsertShardedRouteResult(rss, queries);
@@ -520,7 +522,7 @@ public class InsertEngine implements PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    private InsertShardedRouteResult getInsertShardedRoute(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private InsertShardedRouteResult getInsertShardedRoute(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         return this.getInsertShardedRoute(vcursor, bindVariableMap, this.vindexValueList, this.midExprList, this.prefix, this.suffix, this.suffixExpr, null);
     }
 
@@ -646,10 +648,10 @@ public class InsertEngine implements PrimitiveEngine {
         return Boolean.FALSE;
     }
 
-    private List<Query.BoundQuery> getUnshardQueries(Map<String, Query.BindVariable> bindValues, List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix,
-                                                     List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
+    private List<BoundQuery> getUnshardQueries(Map<String, BindVariable> bindValues, List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix,
+                                               List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
         String newSuffix = getNewSuffix(bindValues, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
-        List<Query.BoundQuery> queries = new ArrayList<>();
+        List<BoundQuery> queries = new ArrayList<>();
         List<String> mids = new ArrayList<>();
         for (SQLInsertStatement.ValuesClause valuesClause : exMidExprList) {
             StringBuilder output = new StringBuilder();
@@ -658,11 +660,11 @@ public class InsertEngine implements PrimitiveEngine {
             mids.add(output.toString());
         }
         String rewritten = exPrefix + String.join(",", mids) + newSuffix;
-        queries.add(Query.BoundQuery.newBuilder().setSql(rewritten).build());
+        queries.add(new BoundQuery(rewritten));
         return queries;
     }
 
-    private String getNewSuffix(Map<String, Query.BindVariable> bindVariableMap, String exSuffix, List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
+    private String getNewSuffix(Map<String, BindVariable> bindVariableMap, String exSuffix, List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
         String newSuffix = exSuffix;
         if (!StringUtil.isNullOrEmpty(exSuffix)) {
             newSuffix = "on duplicate key update ";
@@ -702,7 +704,7 @@ public class InsertEngine implements PrimitiveEngine {
     private static class InsertShardedRouteResult {
         private final List<ResolvedShard> resolvedShardList;
 
-        private final List<Query.BoundQuery> boundQueryList;
+        private final List<BoundQuery> boundQueryList;
     }
 
     @Getter

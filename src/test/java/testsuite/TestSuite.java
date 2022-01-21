@@ -55,7 +55,7 @@ public abstract class TestSuite extends TestSuitePrinter {
             try {
                 conn.close();
             } catch (SQLException throwables) {
-                throw new RuntimeException(throwables);
+                printFail(throwables.getMessage());
             }
         }
     }

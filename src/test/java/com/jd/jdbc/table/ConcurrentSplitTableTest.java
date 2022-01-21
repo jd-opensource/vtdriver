@@ -17,6 +17,7 @@ limitations under the License.
 package com.jd.jdbc.table;
 
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vitess.VitessDataSource;
 import com.jd.jdbc.vitess.VitessPreparedStatement;
@@ -185,7 +186,7 @@ public class ConcurrentSplitTableTest extends TestSuite {
                             statement.setObject(1, getRandomKey());
                             break;
                     }
-                    Query.BindVariable bindVariable = ((VitessPreparedStatement) statement).getClientPreparedQueryBindings().get(0).getBindVariableMap().get("0");
+                    BindVariable bindVariable = ((VitessPreparedStatement) statement).getClientPreparedQueryBindings().get(0).getBindVariableMap().get("0");
                     VtValue vtValue = VtValue.newVtValue(bindVariable);
                     String actualTableName = logicTables.map(vtValue).getActualTableName();
 

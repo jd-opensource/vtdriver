@@ -367,11 +367,11 @@ public class EvalEngine {
     @Setter
     @Getter
     public static class ExpressionEnv {
-        private Map<String, Query.BindVariable> bindVariableMap;
+        private Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap;
 
         private List<VtResultValue> row;
 
-        public ExpressionEnv(Map<String, Query.BindVariable> bindVariableMap) {
+        public ExpressionEnv(Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) {
             this.bindVariableMap = bindVariableMap;
             this.row = new ArrayList<>();
         }

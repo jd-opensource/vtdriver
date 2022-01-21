@@ -23,6 +23,8 @@ import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.List;
@@ -35,23 +37,23 @@ public interface IQueryService extends IParentQueryService {
 
     Query.RollbackResponse rollback(IContext context, Query.Target target, Long transactionID) throws SQLException;
 
-    BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedID,
+    BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables, Long reservedID,
                                   Query.ExecuteOptions options) throws SQLException;
 
-    VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
+    VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
         throws SQLException;
 
-    StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options)
+    StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options)
         throws SQLException;
 
-    BatchVtResultSet executeBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options) throws SQLException;
+    BatchVtResultSet executeBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options) throws SQLException;
 
-    BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException;
+    BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException;
 
-    Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                           Query.ExecuteOptions options) throws Exception;
 
-    Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                 Query.ExecuteOptions options) throws Exception;
 
     Query.ReleaseResponse release(IContext context, Query.Target target, Long transactionID, Long reservedID) throws SQLException;

@@ -33,9 +33,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqltypes.VtValue;
-import io.vitess.proto.Query;
-import lombok.Getter;
-
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
 
 import static com.jd.jdbc.sqltypes.SqlTypes.valueBindVariable;
 
@@ -123,7 +122,7 @@ public class VtVisitor extends SQLASTVisitorAdapter {
 
         String getSuffix();
 
-        Map<String, Query.BindVariable> getBindVars();
+        Map<String, BindVariable> getBindVars();
     }
 
     class BaseParser implements IParser {
@@ -218,7 +217,7 @@ public class VtVisitor extends SQLASTVisitorAdapter {
 
         private String[] mid;
 
-        private Map<String, Query.BindVariable> bindVars;
+        private Map<String, BindVariable> bindVars;
 
         public InsertParser(SQLObject astNode) {
             super(astNode);
@@ -269,7 +268,7 @@ public class VtVisitor extends SQLASTVisitorAdapter {
         }
 
         @Override
-        public Map<String, Query.BindVariable> getBindVars() {
+        public Map<String, BindVariable> getBindVars() {
             return bindVars;
         }
 

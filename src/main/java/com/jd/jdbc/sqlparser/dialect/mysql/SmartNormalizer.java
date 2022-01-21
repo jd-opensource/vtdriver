@@ -16,13 +16,13 @@
 
 package com.jd.jdbc.sqlparser.dialect.mysql;
 
-import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtSmartNormalizeVisitor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtNumberRange;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -39,7 +39,7 @@ import lombok.Setter;
 public class SmartNormalizer {
     private static final Log logger = LogFactory.getLog(SmartNormalizer.class);
 
-    public static SmartNormalizerResult normalize(SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap, String charEncoding) throws SQLException {
+    public static SmartNormalizerResult normalize(SQLStatement stmt, Map<String, BindVariable> bindVariableMap, String charEncoding) throws SQLException {
         VtSmartNormalizeVisitor smartNormalizeVisitor = new VtSmartNormalizeVisitor(new ArrayList<>(), new StringBuilder(), true);
         smartNormalizeVisitor.init(bindVariableMap);
         stmt.accept(smartNormalizeVisitor);
@@ -47,51 +47,50 @@ public class SmartNormalizer {
             parameterToVtValue(smartNormalizeVisitor.getParameters(), charEncoding));
     }
 
-    private static Map<String, Query.BindVariable> parameterToVtValue(List<Object> parameterList, String charEncoding) throws SQLException {
-        Map<String, Query.BindVariable> bindVariableMap = new LinkedHashMap<>();
+    private static Map<String, BindVariable> parameterToVtValue(List<Object> parameterList, String charEncoding) throws SQLException {
+        Map<String, BindVariable> bindVariableMap = new LinkedHashMap<>();
         for (int i = 0; i < parameterList.size(); i++) {
             Object o = parameterList.get(i);
-
-            Query.BindVariable.Builder builder = Query.BindVariable.newBuilder();
+            BindVariable bindVariable;
 
             if (o == null) {
-                builder.setType(Query.Type.NULL_TYPE).setValue(ByteString.copyFrom(new byte[] {}));
+                bindVariable = BindVariable.NULL_BIND_VARIABLE;
             } else {
                 Class<?> clazz = o.getClass();
-                if (clazz == Query.BindVariable.class) {
-                    builder = ((Query.BindVariable) o).toBuilder();
+                if (clazz == BindVariable.class) {
+                    bindVariable = (BindVariable) o;
                 } else if (clazz == String.class) {
                     byte[] bytes = StringUtils.getBytes((String) o, charEncoding);
-                    builder.setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom(bytes));
+                    bindVariable = new BindVariable(bytes, Query.Type.VARBINARY);
                 } else if (clazz == Boolean.class) {
-                    builder.setType(Query.Type.BIT).setValue(ByteString.copyFrom((Boolean) o ? new byte[] {1} : new byte[] {0}));
+                    bindVariable = new BindVariable((Boolean) o ? new byte[] {1} : new byte[] {0}, Query.Type.BIT);
                 } else if (clazz == BigDecimal.class) {
-                    builder.setType(Query.Type.DECIMAL).setValue(ByteString.copyFrom((((BigDecimal) o).toEngineeringString()).getBytes()));
+                    bindVariable = new BindVariable((((BigDecimal) o).toEngineeringString()).getBytes(), Query.Type.DECIMAL);
                 } else if (clazz == BigInteger.class) {
-                    if (((BigInteger) o).compareTo(new BigInteger(String.valueOf(VtNumberRange.INT64_MIN))) >= 0
-                        && ((BigInteger) o).compareTo(new BigInteger(String.valueOf(VtNumberRange.INT64_MAX))) <= 0) {
-                        builder.setType(Query.Type.INT64).setValue(ByteString.copyFrom(((BigInteger) o).toString(10).getBytes()));
+                    if (((BigInteger) o).compareTo(VtNumberRange.BIGINTEGER_INT64_MIN) >= 0
+                        && ((BigInteger) o).compareTo(VtNumberRange.BIGINTEGER_INT64_MAX) <= 0) {
+                        bindVariable = new BindVariable(((BigInteger) o).toString(10).getBytes(), Query.Type.INT64);
                     } else {
-                        builder.setType(Query.Type.UINT64).setValue(ByteString.copyFrom(((BigInteger) o).toString(10).getBytes()));
+                        bindVariable = new BindVariable(((BigInteger) o).toString(10).getBytes(), Query.Type.UINT64);
                     }
                 } else if (clazz == Byte.class) {
-                    builder.setType(Query.Type.INT8).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.INT8);
                 } else if (clazz == Double.class) {
-                    builder.setType(Query.Type.FLOAT64).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.FLOAT64);
                 } else if (clazz == Float.class) {
-                    builder.setType(Query.Type.FLOAT32).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.FLOAT32);
                 } else if (clazz == Integer.class) {
-                    builder.setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.INT32);
                 } else if (clazz == Long.class) {
-                    builder.setType(Query.Type.INT64).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.INT64);
                 } else if (clazz == Short.class) {
-                    builder.setType(Query.Type.INT16).setValue(ByteString.copyFrom(String.valueOf(o).getBytes()));
+                    bindVariable = new BindVariable(String.valueOf(o).getBytes(), Query.Type.INT16);
                 } else {
                     logger.error("unknown class " + clazz);
                     throw new SQLException("unknown class " + clazz);
                 }
             }
-            bindVariableMap.put(String.valueOf(i), builder.build());
+            bindVariableMap.put(String.valueOf(i), bindVariable);
         }
 
         return bindVariableMap;
@@ -105,6 +104,6 @@ public class SmartNormalizer {
 
         private final String query;
 
-        private Map<String, Query.BindVariable> bindVariableMap;
+        private Map<String, BindVariable> bindVariableMap;
     }
 }

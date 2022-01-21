@@ -16,9 +16,9 @@ limitations under the License.
 
 package com.jd.jdbc.sqlparser;
 
-import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -56,13 +56,13 @@ public class SmartNormalizeTest1 {
             "select count(?) from customer where customer_id in (?, ?, ?, ?, ?)",
             "select count(1) from customer where customer_id in (1, 2, 3, 4000, 5000)",
             Collections.emptyMap(),
-            new LinkedHashMap<String, Query.BindVariable>() {{
-                put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(2).getBytes())).build());
-                put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(3).getBytes())).build());
-                put("4", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(4000).getBytes())).build());
-                put("5", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(5000).getBytes())).build());
+            new LinkedHashMap<String, BindVariable>() {{
+                put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                put("1", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                put("2", new BindVariable(String.valueOf(2).getBytes(), Query.Type.INT32));
+                put("3", new BindVariable(String.valueOf(3).getBytes(), Query.Type.INT32));
+                put("4", new BindVariable(String.valueOf(4000).getBytes(), Query.Type.INT32));
+                put("5", new BindVariable(String.valueOf(5000).getBytes(), Query.Type.INT32));
             }}));
     }
 
@@ -73,8 +73,8 @@ public class SmartNormalizeTest1 {
             "select * from t where id = ?",
             "select * from t where id = 1",
             Collections.emptyMap(),
-            new LinkedHashMap<String, Query.BindVariable>() {{
-                put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
+            new LinkedHashMap<String, BindVariable>() {{
+                put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
             }}));
     }
 
@@ -85,12 +85,12 @@ public class SmartNormalizeTest1 {
             "select * from t where id = ? and name in (?, ?, ?) and age > ?",
             "select * from t where id = 1 and name in (2, 3, 4) and age > 5",
             Collections.emptyMap(),
-            new LinkedHashMap<String, Query.BindVariable>() {{
-                put("0", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(1).getBytes())).build());
-                put("1", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(2).getBytes())).build());
-                put("2", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(3).getBytes())).build());
-                put("3", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(4).getBytes())).build());
-                put("4", Query.BindVariable.newBuilder().setType(Query.Type.INT32).setValue(ByteString.copyFrom(String.valueOf(5).getBytes())).build());
+            new LinkedHashMap<String, BindVariable>() {{
+                put("0", new BindVariable(String.valueOf(1).getBytes(), Query.Type.INT32));
+                put("1", new BindVariable(String.valueOf(2).getBytes(), Query.Type.INT32));
+                put("2", new BindVariable(String.valueOf(3).getBytes(), Query.Type.INT32));
+                put("3", new BindVariable(String.valueOf(4).getBytes(), Query.Type.INT32));
+                put("4", new BindVariable(String.valueOf(5).getBytes(), Query.Type.INT32));
             }}));
     }
 
@@ -120,14 +120,12 @@ public class SmartNormalizeTest1 {
             Query.Type.INT64, Query.Type.INT64, Query.Type.INT32, Query.Type.UINT64
         };
 
-        LinkedHashMap<String, Query.BindVariable> expectedBindVtVars = new LinkedHashMap<>();
+        LinkedHashMap<String, BindVariable> expectedBindVtVars = new LinkedHashMap<>();
         Set bindVars = new HashSet();
         int indexKey = 0;
         for (int i = 0; i < 20; i++) {
-            expectedBindVtVars.put(String.valueOf(indexKey), Query.BindVariable.newBuilder()
-                .setType(expectedBindVarsTypes[i])
-                .setValue(ByteString.copyFrom(expectedBindVars[i].getBytes()))
-                .build());
+            BindVariable bindVariable = new BindVariable(expectedBindVars[i].getBytes(), expectedBindVarsTypes[i]);
+            expectedBindVtVars.put(String.valueOf(indexKey), bindVariable);
             bindVars.add(expectedBindVars[i]);
             indexKey++;
         }
@@ -167,8 +165,8 @@ public class SmartNormalizeTest1 {
 
         private final String querySql;
 
-        private final Map<String, Query.BindVariable> inBindVariableMap;
+        private final Map<String, BindVariable> inBindVariableMap;
 
-        private final Map<String, Query.BindVariable> outBindVariableMap;
+        private final Map<String, BindVariable> outBindVariableMap;
     }
 }

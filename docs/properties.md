@@ -9,6 +9,7 @@
 | cell | String |  | 应用接入时,传入的cell需考虑跨机房切换,传入多个 |
 | deepPaginationThreshold | int | 1000000000 | 用来设置深度分页优化的临界值，超过此参数大小会开启深度分页优化 |
 | role | String | rw | 用来配置读写分离，默认role=rw，role=rr时只读 |
+| role | String |  | role=rr时优先读取replica节点，role=ro时读取rdonly节点 |
 | vtPlanCacheCapacity  | int | 300 | 该参数用来设置执行计划缓存cache大小，最大值10240 |
 | queryConsolidator | boolean | false | 用来开启Consolidator，仅在role=rr场景生效；相同的sql语句只执行一次，其余线程等待第一次查询返回结果后返回 |
 

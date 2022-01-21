@@ -18,7 +18,7 @@ package com.jd.jdbc.sqlparser;
 
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,8 +106,8 @@ public class SmartNormalizeTest2 {
 
         private final String querySql;
 
-        private final Map<String, Query.BindVariable> inBindVariableMap;
+        private final Map<String, BindVariable> inBindVariableMap;
 
-        private final Map<String, Query.BindVariable> outBindVariableMap;
+        private final Map<String, BindVariable> outBindVariableMap;
     }
 }

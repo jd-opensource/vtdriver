@@ -30,7 +30,7 @@ import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLDeleteStatement;
 import com.jd.jdbc.sqltypes.VtResultSet;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.sql.SQLException;
 import java.util.Map;
 import lombok.Data;
@@ -56,7 +56,7 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
     }
 
     @Override
-    public ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
+    public ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("delete is not allowed for read only connection");
         }
@@ -77,17 +77,17 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
         return true;
     }
 
-    private ExecuteMultiShardResponse execDeleteEqual(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteMultiShardResponse execDeleteEqual(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
         Engine.TableDestinationResponse response = getResolvedShardsEqual(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
-    private ExecuteMultiShardResponse execDeleteIn(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteMultiShardResponse execDeleteIn(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
         Engine.TableDestinationResponse response = resolveShardQueryIn(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
-    private ExecuteMultiShardResponse execDeleteByDestination(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final Destination destination)
+    private ExecuteMultiShardResponse execDeleteByDestination(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final Destination destination)
         throws SQLException {
         Engine.TableDestinationResponse response = resolveAllShardQuery(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
@@ -102,7 +102,7 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
         throw new SQLException("Error, expect Delete Statement");
     }
 
-    private ExecuteMultiShardResponse getExecuteMultiShardResponse(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap,
+    private ExecuteMultiShardResponse getExecuteMultiShardResponse(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap,
                                                                    final Engine.TableDestinationResponse response) throws SQLException {
         if (response == null) {
             return new ExecuteMultiShardResponse(new VtResultSet());

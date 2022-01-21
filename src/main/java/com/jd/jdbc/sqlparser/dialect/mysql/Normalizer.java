@@ -16,6 +16,7 @@
 
 package com.jd.jdbc.sqlparser.dialect.mysql;
 
+import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLName;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
@@ -48,6 +49,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlShowStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtNormalizeVisitor;
 import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -60,7 +62,7 @@ import lombok.Setter;
 
 @Setter
 public class Normalizer {
-    private Map<String, Query.BindVariable> bindVars;
+    private Map<String, BindVariable> bindVars;
 
     private String prefix;
 
@@ -73,7 +75,7 @@ public class Normalizer {
     private Normalizer() {
     }
 
-    private static Normalizer newNormalizer(SQLStatement stmt, Map<String, Query.BindVariable> bindvars, String prefix) {
+    private static Normalizer newNormalizer(SQLStatement stmt, Map<String, BindVariable> bindvars, String prefix) {
         Normalizer normalizer = new Normalizer();
         normalizer.setBindVars(bindvars);
         normalizer.setPrefix(prefix);
@@ -83,7 +85,7 @@ public class Normalizer {
         return normalizer;
     }
 
-    public static void normalize(SQLStatement stmt, Map<String, Query.BindVariable> bindvars, String prefix) {
+    public static void normalize(SQLStatement stmt, Map<String, BindVariable> bindvars, String prefix) {
         Normalizer nz = newNormalizer(stmt, bindvars, prefix);
         VtNormalizeVisitor.rewrite(stmt, nz::walkStatement, null);
     }
@@ -163,7 +165,7 @@ public class Normalizer {
     }
 
     private void convertLiteral(SQLLiteralExpr node, VtNormalizeVisitor.Cursor cursor) {
-        Query.BindVariable bindVariable = this.sqlToBindVar(node);
+        BindVariable bindVariable = this.sqlToBindVar(node);
         if (bindVariable == null) {
             return;
         }
@@ -187,7 +189,7 @@ public class Normalizer {
         }
 
         // Make the bindvar
-        Query.BindVariable bindVariable = this.sqlToBindVar(node);
+        BindVariable bindVariable = this.sqlToBindVar(node);
         if (bindVariable == null) {
             return;
         }
@@ -198,9 +200,9 @@ public class Normalizer {
             // Prefixing strings with "'" ensures that a string
             // and number that have the same representation don't
             // collide.
-            key = "'" + new String(bindVariable.getValue().toByteArray());
+            key = "'" + new String(bindVariable.getValue());
         } else {
-            key = new String(bindVariable.getValue().toByteArray());
+            key = new String(bindVariable.getValue());
         }
         String bindVarName;
         if (this.vals.containsKey(key)) {
@@ -220,17 +222,16 @@ public class Normalizer {
         List<SQLExpr> targetList = node.getTargetList();
         // The RHS is a tuple of values.
         // Make a list bindvar.
-        Query.BindVariable bindVariable = Query.BindVariable.newBuilder().setType(Query.Type.TUPLE).build();
         List<Query.Value> valueList = new ArrayList<>(targetList.size());
         for (SQLExpr expr : targetList) {
-            Query.BindVariable bval = this.sqlToBindVar((SQLLiteralExpr) expr);
+            BindVariable bval = this.sqlToBindVar((SQLLiteralExpr) expr);
             if (bval == null) {
                 return;
             }
-            Query.Value value = Query.Value.newBuilder().setType(bval.getType()).setValue(bval.getValue()).build();
+            Query.Value value = Query.Value.newBuilder().setType(bval.getType()).setValue(ByteString.copyFrom(bval.getValue())).build();
             valueList.add(value);
         }
-        bindVariable.getValuesList().addAll(valueList);
+        BindVariable bindVariable = new BindVariable(valueList, Query.Type.TUPLE);
         String bindVarName = this.newName();
         this.bindVars.put(bindVarName, bindVariable);
         // Modify RHS to be a list bindvar.
@@ -239,7 +240,7 @@ public class Normalizer {
         }});
     }
 
-    private Query.BindVariable sqlToBindVar(SQLLiteralExpr node) {
+    private BindVariable sqlToBindVar(SQLLiteralExpr node) {
         VtValue vtValue;
         try {
             if (node instanceof SQLTextLiteralExpr) {

@@ -26,10 +26,11 @@ import com.jd.jdbc.sqlparser.ast.statement.SQLSelectQuery;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.VKeyspace;
-import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,18 +58,17 @@ public class SingleRowEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         return getExecuteMultiShardResponse();
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         return getExecuteMultiShardResponse();
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
-        // 随机找一个分片
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(this.keyspace.getName(), null, new ArrayList<Destination>() {{
             add(new DestinationAnyShard());
         }});
@@ -77,7 +77,7 @@ public class SingleRowEngine implements PrimitiveEngine {
         if (rsList.size() != 1) {
             throw new SQLException("Keyspace does not have exactly one shard: " + rsList);
         }
-        List<Query.BoundQuery> queries = Engine.getQueries(this.singleRowQuery, new ArrayList<Map<String, Query.BindVariable>>() {{
+        List<BoundQuery> queries = Engine.getQueries(this.singleRowQuery, new ArrayList<Map<String, BindVariable>>() {{
             add(bindValues);
         }}, charEncoding);
         return new IExecute.ResolvedShardQuery(resolveDestinationResult.getResolvedShards(), queries);
@@ -92,7 +92,7 @@ public class SingleRowEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         return new IExecute.VtStream() {
             @Override
             public VtRowList fetch(boolean wantFields) throws SQLException {

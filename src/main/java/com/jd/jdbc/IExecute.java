@@ -25,8 +25,9 @@ import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.parser.VitessRuntimeException;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
-import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,7 @@ public interface IExecute {
      * @return
      * @throws Exception
      */
-    VtRowList execute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws Exception;
+    VtRowList execute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws Exception;
 
     /**
      * @param ctx
@@ -55,9 +56,9 @@ public interface IExecute {
      * @return
      * @throws Exception
      */
-    VtRowList streamExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws Exception;
+    VtRowList streamExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws Exception;
 
-    List<VtRowList> batchExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, List<SQLStatement> batchStmts, List<Map<String, Query.BindVariable>> bindVariableMapList)
+    List<VtRowList> batchExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, List<SQLStatement> batchStmts, List<Map<String, BindVariable>> bindVariableMapList)
         throws Exception;
 
     /**
@@ -69,10 +70,10 @@ public interface IExecute {
      * @param ignoreMaxMemoryRows
      * @return
      */
-    ExecuteMultiShardResponse executeMultiShard(IContext ctx, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession, Boolean autocommit, Boolean ignoreMaxMemoryRows)
+    ExecuteMultiShardResponse executeMultiShard(IContext ctx, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession, Boolean autocommit, Boolean ignoreMaxMemoryRows)
         throws SQLException;
 
-    ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext ctx, List<ResolvedShard> rss, List<List<Query.BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
+    ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext ctx, List<ResolvedShard> rss, List<List<BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
                                                           Boolean ignoreMaxMemoryRows, Boolean asTransaction) throws SQLException;
 
     /**
@@ -82,7 +83,7 @@ public interface IExecute {
      * @param safeSession
      * @return
      */
-    List<StreamIterator> streamExecuteMultiShard(IContext ctx, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession) throws SQLException;
+    List<StreamIterator> streamExecuteMultiShard(IContext ctx, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession) throws SQLException;
 
     interface VtStream {
         VtRowList fetch(boolean wantFields) throws SQLException;
@@ -150,6 +151,6 @@ public interface IExecute {
     class ResolvedShardQuery {
         List<ResolvedShard> rss;
 
-        List<Query.BoundQuery> queries;
+        List<BoundQuery> queries;
     }
 }

@@ -25,6 +25,7 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
 import com.jd.jdbc.sqltypes.VtStreamResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -86,8 +87,8 @@ public class JoinEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
-        Map<String, Query.BindVariable> joinVars = new LinkedHashMap<>();
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+        Map<String, BindVariable> joinVars = new LinkedHashMap<>();
 
         IExecute.ExecuteMultiShardResponse leftResultResponse = this.left.execute(ctx, vcursor, bindVariableMap, wantFields);
 
@@ -101,7 +102,7 @@ public class JoinEngine implements PrimitiveEngine {
         VtResultSet leftResult = (VtResultSet) leftRowList;
         if ((leftResult.getRows() == null || leftResult.getRows().isEmpty()) && wantFields) {
             for (Map.Entry<String, Integer> entry : this.vars.entrySet()) {
-                joinVars.put(entry.getKey(), SqlTypes.NULL_BIND_VARIABLE);
+                joinVars.put(entry.getKey(), BindVariable.NULL_BIND_VARIABLE);
             }
             VtResultSet rightResult = this.right.getFields(vcursor, combineVars(bindVariableMap, joinVars));
             resultSet.setFields(joinFields(leftResult.getFields(), rightResult.getFields(), this.cols));
@@ -147,7 +148,7 @@ public class JoinEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
         IExecute.VtStream leftStream = this.left.streamExecute(ctx, vcursor, bindValue, wantFields);
         return new IExecute.VtStream() {
             private IExecute.VtStream leftStreamResult = leftStream;
@@ -160,7 +161,7 @@ public class JoinEngine implements PrimitiveEngine {
             }
 
             private VtRowList internalFetch(boolean wantFields) throws SQLException {
-                Map<String, Query.BindVariable> joinVars = new HashMap<>();
+                Map<String, BindVariable> joinVars = new HashMap<>();
                 VtResultSet resultSet = new VtResultSet();
 
                 VtStreamResultSet leftStreamResultSet = new VtStreamResultSet(this.leftStreamResult, wantFields);
@@ -198,7 +199,7 @@ public class JoinEngine implements PrimitiveEngine {
                 if (wantFields) {
                     wantFields = false;
                     for (Map.Entry<String, Integer> var : vars.entrySet()) {
-                        joinVars.put(var.getKey(), SqlTypes.NULL_BIND_VARIABLE);
+                        joinVars.put(var.getKey(), BindVariable.NULL_BIND_VARIABLE);
                     }
                     VtResultSet rightResultSet = right.getFields(vcursor, null);
                     resultSet.setFields(joinFields(leftStreamResultSet.getFields(), rightResultSet.getFields(), cols));
@@ -226,12 +227,12 @@ public class JoinEngine implements PrimitiveEngine {
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindvars) throws SQLException {
-        Map<String, Query.BindVariable> joinVars = new HashMap<>();
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindvars) throws SQLException {
+        Map<String, BindVariable> joinVars = new HashMap<>();
         VtResultSet resultSet = new VtResultSet();
         VtResultSet leftResult = this.left.getFields(vcursor, bindvars);
         for (Map.Entry<String, Integer> var : this.vars.entrySet()) {
-            joinVars.put(var.getKey(), SqlTypes.NULL_BIND_VARIABLE);
+            joinVars.put(var.getKey(), BindVariable.NULL_BIND_VARIABLE);
         }
         VtResultSet rightResult = this.right.getFields(vcursor, combineVars(bindvars, joinVars));
         resultSet.setFields(joinFields(leftResult.getFields(), rightResult.getFields(), this.cols));
@@ -251,8 +252,8 @@ public class JoinEngine implements PrimitiveEngine {
         }};
     }
 
-    private Map<String, Query.BindVariable> combineVars(Map<String, Query.BindVariable> bindVariableMap1, Map<String, Query.BindVariable> bindVariableMap2) {
-        Map<String, Query.BindVariable> newBindVar = new HashMap<>(16, 1);
+    private Map<String, BindVariable> combineVars(Map<String, BindVariable> bindVariableMap1, Map<String, BindVariable> bindVariableMap2) {
+        Map<String, BindVariable> newBindVar = new HashMap<>(16, 1);
         if (bindVariableMap1 == null) {
             bindVariableMap1 = new LinkedHashMap<>();
         }

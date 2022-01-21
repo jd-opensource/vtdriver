@@ -25,6 +25,7 @@ import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -70,7 +71,7 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
     // LogicTable
     private List<LogicTable> logicTables = new ArrayList<>();
 
-    protected Engine.TableDestinationResponse getResolvedShardsEqual(final Map<String, Query.BindVariable> bindValue) throws SQLException {
+    protected Engine.TableDestinationResponse getResolvedShardsEqual(final Map<String, BindVariable> bindValue) throws SQLException {
         VtValue value = this.vtPlanValueList.get(0).resolveValue(bindValue);
         List<ActualTable> actualTables = new ArrayList<>();
         for (LogicTable ltb : this.logicTables) {
@@ -86,7 +87,7 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
         );
     }
 
-    protected Engine.TableDestinationResponse resolveShardQueryIn(final Map<String, Query.BindVariable> bindValue) throws SQLException {
+    protected Engine.TableDestinationResponse resolveShardQueryIn(final Map<String, BindVariable> bindValue) throws SQLException {
         List<VtValue> keys = this.vtPlanValueList.get(0).resolveList(bindValue);
         List<List<ActualTable>> tables = new ArrayList<>();
         List<List<Query.Value>> planValuePerTableGroup = new ArrayList<>();
@@ -115,9 +116,9 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
 
     }
 
-    protected Engine.TableDestinationResponse resolveAllShardQuery(final Map<String, Query.BindVariable> bindValue) throws SQLException {
+    protected Engine.TableDestinationResponse resolveAllShardQuery(final Map<String, BindVariable> bindValue) throws SQLException {
         List<List<ActualTable>> allActualTableGroup = this.getAllActualTableGroup(this.logicTables);
-        List<Map<String, Query.BindVariable>> bindVariableList = new ArrayList<>();
+        List<Map<String, BindVariable>> bindVariableList = new ArrayList<>();
         for (int i = 0; i < allActualTableGroup.size(); i++) {
             bindVariableList.add(bindValue);
         }

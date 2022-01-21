@@ -24,6 +24,7 @@ import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -71,7 +72,7 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         BindVarsResponse bindVarsResponse = this.execSubqery(ctx, vcursor, bindVariableMap, wantFields);
         return this.underlying.execute(ctx, vcursor, bindVarsResponse.getBindValues(), wantFields);
     }
@@ -82,7 +83,7 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
      * @param wantFields
      * @return
      */
-    private BindVarsResponse execSubqery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private BindVarsResponse execSubqery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse subResultSet = this.subquery.execute(ctx, vcursor, bindVariableMap, wantFields);
         if (subResultSet.getVtRowList() == null) {
             throw new SQLException("VtRowList is null");
@@ -90,11 +91,11 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
 
         VtResultSet subResult = (VtResultSet) subResultSet.getVtRowList();
 
-        Map<String, Query.BindVariable> combinedVars = bindVariableMap == null ? new HashMap<>() : new HashMap<>(bindVariableMap);
+        Map<String, BindVariable> combinedVars = bindVariableMap == null ? new HashMap<>() : new HashMap<>(bindVariableMap);
         switch (this.opcode) {
             case PulloutValue:
                 if (subResult.getRows() == null || subResult.getRows().size() == 0) {
-                    combinedVars.put(this.subqueryResult, SqlTypes.NULL_BIND_VARIABLE);
+                    combinedVars.put(this.subqueryResult, BindVariable.NULL_BIND_VARIABLE);
                 } else if (subResult.getRows().size() == 1) {
                     if (subResult.getRows().get(0).size() != 1) {
                         throw new SQLException("subquery returned more than one column");
@@ -112,18 +113,19 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
                     List<VtValue> valueList = new ArrayList<VtValue>() {{
                         add(VtValue.newVtValue(Query.Type.INT64, "0".getBytes()));
                     }};
-                    Query.BindVariable subBindVariable = SqlTypes.valuesBindVariable(Query.Type.TUPLE, valueList);
+                    BindVariable subBindVariable = SqlTypes.valuesBindVariable(Query.Type.TUPLE, valueList);
                     combinedVars.put(this.subqueryResult, subBindVariable);
                 } else {
                     if (subResult.getRows().get(0).size() != 1) {
                         throw new SQLException("subquery returned more than one column");
                     }
                     combinedVars.put(this.hasValues, SqlTypes.int64BindVariable(1L));
-                    Query.BindVariable values = Query.BindVariable.newBuilder().setType(Query.Type.TUPLE).build();
+
+                    List<Query.Value> valuesList = new ArrayList<>(subResult.getRows().size());
                     for (List<VtResultValue> vtValueList : subResult.getRows()) {
-                        values = values.toBuilder().addValues(SqlTypes.vtValueToProto(vtValueList.get(0))).build();
+                        valuesList.add(SqlTypes.vtValueToProto(vtValueList.get(0)));
                     }
-                    combinedVars.put(this.subqueryResult, values);
+                    combinedVars.put(this.subqueryResult, new BindVariable(valuesList, Query.Type.TUPLE));
                 }
                 break;
             case PulloutExists:
@@ -140,27 +142,27 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported multiquery for pullout subquery");
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported multiquery for pullout subquery");
     }
 
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         BindVarsResponse bindVarsResponse = this.execSubqery(ctx, vcursor, bindValues, wantFields);
         return this.underlying.streamExecute(ctx, vcursor, bindVarsResponse.getBindValues(), wantFields);
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
-        Map<String, Query.BindVariable> combinedVars = new HashMap<>(bindValues);
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
+        Map<String, BindVariable> combinedVars = new HashMap<>(bindValues);
         switch (this.opcode) {
             case PulloutValue:
-                combinedVars.put(this.subqueryResult, SqlTypes.NULL_BIND_VARIABLE);
+                combinedVars.put(this.subqueryResult, BindVariable.NULL_BIND_VARIABLE);
                 break;
             case PulloutIn:
             case PulloutNotIn:
@@ -168,7 +170,7 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
                 List<VtValue> valueList = new ArrayList<VtValue>() {{
                     add(VtValue.newVtValue(Query.Type.INT64, "0".getBytes()));
                 }};
-                Query.BindVariable subBindVariable = SqlTypes.valuesBindVariable(Query.Type.TUPLE, valueList);
+                BindVariable subBindVariable = SqlTypes.valuesBindVariable(Query.Type.TUPLE, valueList);
                 combinedVars.put(this.subqueryResult, subBindVariable);
                 break;
             case PulloutExists:
@@ -193,6 +195,6 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
     @Getter
     @AllArgsConstructor
     public static class BindVarsResponse {
-        private final Map<String, Query.BindVariable> bindValues;
+        private final Map<String, BindVariable> bindValues;
     }
 }

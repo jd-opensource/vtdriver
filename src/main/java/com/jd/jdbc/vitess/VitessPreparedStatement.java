@@ -26,12 +26,12 @@ import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import com.jd.jdbc.vitess.mysql.VitessQueryBindVariable;
 import com.mysql.cj.ParseInfo;
 import com.mysql.cj.Session;
 import com.mysql.cj.jdbc.JdbcConnection;
-import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.io.InputStream;
 import java.io.Reader;
@@ -117,7 +117,7 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
         synchronized (checkClosed().getConnectionMutex()) {
             try (IContext ctx = this.queryTimeout == 0 ? VtContext.withCancel(this.context) : VtContext.withDeadline(this.context, this.queryTimeout, TimeUnit.SECONDS)) {
                 if (sqls.size() > 1) {
-                    List<Map<String, Query.BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
+                    List<Map<String, BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
                     returnResultSet = executeMultiQueryInternal(ctx, sqls, bindVariableMapList, this.retrieveGeneratedKeys);
                     return returnResultSet;
                 }
@@ -142,7 +142,7 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
         synchronized (checkClosed().getConnectionMutex()) {
             try (IContext ctx = this.queryTimeout == 0 ? VtContext.withCancel(this.context) : VtContext.withDeadline(this.context, this.queryTimeout, TimeUnit.SECONDS)) {
                 if (sqls.size() > 1) {
-                    List<Map<String, Query.BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
+                    List<Map<String, BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
                     rc = executeMultiQueryUpdateInternal(ctx, sqls, bindVariableMapList, true, this.retrieveGeneratedKeys);
                     return rc;
                 }
@@ -373,7 +373,7 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
         synchronized (checkClosed().getConnectionMutex()) {
             try (IContext ctx = this.queryTimeout == 0 ? VtContext.withCancel(this.context) : VtContext.withDeadline(this.context, this.queryTimeout, TimeUnit.SECONDS)) {
                 if (sqls.size() > 1) {
-                    List<Map<String, Query.BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
+                    List<Map<String, BindVariable>> bindVariableMapList = clientPreparedQueryBindingsList.stream().map(VitessQueryBindVariable::getBindVariableMap).collect(Collectors.toList());
                     executeMultiQueryInternal(ctx, sqls, bindVariableMapList, this.retrieveGeneratedKeys);
                     return getExecuteInternalResult();
                 }

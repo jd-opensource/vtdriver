@@ -25,9 +25,9 @@ import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.prometheus.client.Collector;
 import io.prometheus.client.GaugeMetricFamily;
-import io.vitess.proto.Query;
 import java.sql.DataTruncation;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -89,13 +89,13 @@ public final class SqlErrorCollector extends Collector {
         return Collections.singletonList(labeledGauge);
     }
 
-    public void add(final String keyspace, final String userSQL, final Map<String, Query.BindVariable> userBindVarMap, final String charEncoding, final SQLException e) {
+    public void add(final String keyspace, final String userSQL, final Map<String, BindVariable> userBindVarMap, final String charEncoding, final SQLException e) {
         if (Ignored.match(e)) {
             return;
         }
         SQLStatement stmt = SQLUtils.parseSingleMysqlStatement(userSQL);
 
-        Map<String, Query.BindVariable> bdMap = userBindVarMap;
+        Map<String, BindVariable> bdMap = userBindVarMap;
         String sql = userSQL;
         try {
             SqlParser.PrepareAstResult prepareAstResult = SqlParser.prepareAst(stmt, userBindVarMap, charEncoding);

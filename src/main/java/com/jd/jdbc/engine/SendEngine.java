@@ -28,6 +28,8 @@ import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -106,7 +108,7 @@ public class SendEngine implements PrimitiveEngine {
      * @throws SQLException
      */
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         if (this.isDML && RoleUtils.notMaster(ctx)) {
             throw new SQLException("dml is not allowed for read only connection");
         }
@@ -131,7 +133,7 @@ public class SendEngine implements PrimitiveEngine {
      * @throws SQLException
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
         if (this.isDML) {
             throw new SQLFeatureNotSupportedException("dml sql doesn't support stream query");
         }
@@ -141,7 +143,7 @@ public class SendEngine implements PrimitiveEngine {
         return new SendStream(iteratorList, this, vcursor, bindValue);
     }
 
-    private IExecute.ResolvedShardQuery getResolvedShardQuery(Vcursor vcursor, Map<String, Query.BindVariable> bindValue) throws SQLException {
+    private IExecute.ResolvedShardQuery getResolvedShardQuery(Vcursor vcursor, Map<String, BindVariable> bindValue) throws SQLException {
         List<Destination> destinations = new ArrayList<>();
         destinations.add(targetDestination);
         Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(this.keyspace.getName(), null, destinations);
@@ -157,15 +159,15 @@ public class SendEngine implements PrimitiveEngine {
             throw new SQLException("Unexpected error, DestinationKeyspaceID mapping to multiple shards: " + this.query + ", got: " + this.targetDestination);
         }
 
-        List<Map<String, Query.BindVariable>> multiBindVars = new ArrayList<>(resolvedShardList.size());
+        List<Map<String, BindVariable>> multiBindVars = new ArrayList<>(resolvedShardList.size());
         for (ResolvedShard resolvedShard : resolvedShardList) {
-            Map<String, Query.BindVariable> bv = bindValue == null ? new HashMap<>() : new HashMap<>(bindValue);
+            Map<String, BindVariable> bv = bindValue == null ? new HashMap<>() : new HashMap<>(bindValue);
             if (this.shardNameNeeded) {
                 bv.put(SHARD_NAME, SqlTypes.stringBindVariable(resolvedShard.getTarget().getShard()));
             }
             multiBindVars.add(bv);
         }
-        List<Query.BoundQuery> queries = Engine.getQueries(stmt, multiBindVars, charEncoding);
+        List<BoundQuery> queries = Engine.getQueries(stmt, multiBindVars, charEncoding);
         return new IExecute.ResolvedShardQuery(resolvedShardList, queries);
     }
 
@@ -180,13 +182,13 @@ public class SendEngine implements PrimitiveEngine {
 
         private final SendEngine sendEngine;
 
-        private final Map<String, Query.BindVariable> bindVariableMap;
+        private final Map<String, BindVariable> bindVariableMap;
 
         Vcursor vcursor;
 
         private Query.Field[] fields = null;
 
-        public SendStream(List<StreamIterator> iterators, SendEngine sendEngine, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) {
+        public SendStream(List<StreamIterator> iterators, SendEngine sendEngine, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) {
             this.iterators = iterators;
             this.sendEngine = sendEngine;
             this.vcursor = vcursor;

@@ -40,7 +40,7 @@ import com.jd.jdbc.sqlparser.ast.statement.SQLSelectItem;
 import com.jd.jdbc.sqlparser.utils.JdbcConstants;
 import com.jd.jdbc.sqlparser.visitor.ExportParameterVisitorUtils;
 import com.jd.jdbc.sqlparser.visitor.VisitorFeature;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -62,7 +62,7 @@ public class VtSmartNormalizeVisitor extends MySqlExportParameterVisitor {
         super(parameters, appender, wantParameterizedOutput);
     }
 
-    public void init(Map<String, Query.BindVariable> bindVariableMap) {
+    public void init(Map<String, BindVariable> bindVariableMap) {
         this.setShardingSupport(false);
         if (bindVariableMap == null) {
             this.setInputParameters(new ArrayList<>());

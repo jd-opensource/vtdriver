@@ -24,6 +24,7 @@ import com.jd.jdbc.evalengine.EvalEngine;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class ProjectionEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse result = this.input.execute(ctx, vcursor, bindVariableMap, wantFields);
         VtResultSet resultSet = (VtResultSet) result.getVtRowList();
 
@@ -62,20 +63,20 @@ public class ProjectionEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = this.input.mergeResult(resultSet, bindValues, wantFields);
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
         return getExecuteMultiShardResponse(vtResultSet, bindValues, wantFields);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValueList) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValueList) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValueList);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValueList, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValueList, Map<String, String> switchTableMap) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValueList, switchTableMap);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
@@ -94,7 +95,7 @@ public class ProjectionEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new IExecute.VtStream() {
             private IExecute.VtStream stream = vtStream;
@@ -137,7 +138,7 @@ public class ProjectionEngine implements PrimitiveEngine {
         };
     }
 
-    private void addFields(VtResultSet qr, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private void addFields(VtResultSet qr, Map<String, BindVariable> bindVariableMap) throws SQLException {
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
         Query.Field[] existedFields = qr.getFields();
         if (existedFields == null) {
@@ -159,7 +160,7 @@ public class ProjectionEngine implements PrimitiveEngine {
         return false;
     }
 
-    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(VtResultSet resultSet, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(VtResultSet resultSet, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
 
         if (wantFields) {

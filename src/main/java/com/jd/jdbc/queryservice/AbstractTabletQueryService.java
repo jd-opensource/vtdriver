@@ -23,6 +23,8 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.discovery.TabletHealthCheck;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSetMessage;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import io.vitess.proto.Query;
@@ -192,7 +194,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public abstract VtResultSetMessage execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Long reservedId,
+    public abstract VtResultSetMessage execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Long reservedId,
                                                Query.ExecuteOptions options) throws Exception;
 
     /**
@@ -206,7 +208,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public abstract StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options);
+    public abstract StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options);
 
     /**
      * Currently always called with transactionID = 0
@@ -219,7 +221,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public Query.ExecuteBatchResponse executeBatch(Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options) {
+    public Query.ExecuteBatchResponse executeBatch(Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options) {
         return null;
     }
 
@@ -238,7 +240,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public abstract VtResultSetMessage beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedId,
+    public abstract VtResultSetMessage beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long reservedId,
                                                     Query.ExecuteOptions options) throws Exception;
 
     /**
@@ -254,7 +256,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) {
+    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) {
         return null;
     }
 
@@ -342,7 +344,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                                  Query.ExecuteOptions options) throws Exception {
         return null;
     }
@@ -357,7 +359,7 @@ public abstract class AbstractTabletQueryService extends AbstractQueryService im
      * @return
      */
     @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                        Query.ExecuteOptions options) throws Exception {
         return null;
     }

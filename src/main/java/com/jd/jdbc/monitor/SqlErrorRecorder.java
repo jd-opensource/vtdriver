@@ -17,7 +17,7 @@ limitations under the License.
 package com.jd.jdbc.monitor;
 
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +37,7 @@ public class SqlErrorRecorder {
 
     private LocalDateTime errorTime;
 
-    private Map<String, Query.BindVariable> bindVariableMap;
+    private Map<String, BindVariable> bindVariableMap;
 
     private String sql;
 

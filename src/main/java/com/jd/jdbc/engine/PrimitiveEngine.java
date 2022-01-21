@@ -22,7 +22,7 @@ import com.jd.jdbc.IExecute;
 import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqltypes.VtResultSet;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.List;
@@ -53,7 +53,7 @@ public interface PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException;
+    ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException;
 
     /**
      * @param ctx
@@ -73,7 +73,7 @@ public interface PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    default ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindVariable, boolean wantFields) throws SQLException {
+    default ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindVariable, boolean wantFields) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported multiquery");
     }
 
@@ -84,7 +84,7 @@ public interface PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    default IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue) throws SQLException {
+    default IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported multiquery");
     }
 
@@ -95,7 +95,7 @@ public interface PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    default IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, Map<String, String> switchTableMap) throws SQLException {
+    default IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, Map<String, String> switchTableMap) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported multiquery");
     }
 
@@ -110,7 +110,7 @@ public interface PrimitiveEngine {
      * @return
      * @throws Exception
      */
-    default IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, boolean wantFields) throws SQLException {
+    default IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported streamExecute");
     }
 
@@ -119,7 +119,7 @@ public interface PrimitiveEngine {
      * @param bindVariableMap
      * @return
      */
-    default VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    default VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         throw new SQLFeatureNotSupportedException("unsupported getFields");
     }
 

@@ -35,6 +35,8 @@ import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtType;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.SchemaUtil;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
@@ -112,7 +114,7 @@ public class NativeQueryService implements IQueryService {
     }
 
     @Override
-    public VtResultSet execute(final IContext context, final Query.Target target, final String sql, final Map<String, Query.BindVariable> bindVariables, final Long transactionId,
+    public VtResultSet execute(final IContext context, final Query.Target target, final String sql, final Map<String, BindVariable> bindVariables, final Long transactionId,
                                final Long reservedId, final Query.ExecuteOptions options)
         throws SQLException {
         if (transactionId != 0 && reservedId != 0 && transactionId.compareTo(reservedId) != 0) {
@@ -157,7 +159,7 @@ public class NativeQueryService implements IQueryService {
     }
 
     @Override
-    public StreamIterator streamExecute(final IContext context, final Query.Target target, final String sql, final Map<String, Query.BindVariable> bindVariables, final Long transactionId,
+    public StreamIterator streamExecute(final IContext context, final Query.Target target, final String sql, final Map<String, BindVariable> bindVariables, final Long transactionId,
                                         final Query.ExecuteOptions options)
         throws SQLException {
         if (transactionId != 0) {
@@ -193,7 +195,7 @@ public class NativeQueryService implements IQueryService {
      * @throws SQLException
      */
     @Override
-    public BatchVtResultSet executeBatch(final IContext context, final Query.Target target, final List<Query.BoundQuery> queries, final Boolean asTransaction, final Long transactionId,
+    public BatchVtResultSet executeBatch(final IContext context, final Query.Target target, final List<BoundQuery> queries, final Boolean asTransaction, final Long transactionId,
                                          final Query.ExecuteOptions options)
         throws SQLException {
         if (transactionId != 0 && asTransaction) {
@@ -265,7 +267,7 @@ public class NativeQueryService implements IQueryService {
      * @return
      */
     @Override
-    public BeginBatchVtResultSet beginExecuteBatch(final IContext ctx, final Query.Target target, final List<Query.BoundQuery> queries, final Boolean asTransaction, final Query.ExecuteOptions options)
+    public BeginBatchVtResultSet beginExecuteBatch(final IContext ctx, final Query.Target target, final List<BoundQuery> queries, final Boolean asTransaction, final Query.ExecuteOptions options)
         throws SQLException {
         if (ctx.isDone()) {
             throw new SQLException(VtContextConstant.BEGIN_EXECUTION_CANCELLED + ctx.error());
@@ -304,19 +306,19 @@ public class NativeQueryService implements IQueryService {
     }
 
     @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                                  Query.ExecuteOptions options) throws Exception {
         return null;
     }
 
     @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                        Query.ExecuteOptions options) throws Exception {
         return null;
     }
 
     @Override
-    public BeginVtResultSet beginExecute(final IContext context, final Query.Target target, final List<String> preQueries, final String sql, final Map<String, Query.BindVariable> bindVariables,
+    public BeginVtResultSet beginExecute(final IContext context, final Query.Target target, final List<String> preQueries, final String sql, final Map<String, BindVariable> bindVariables,
                                          final Long reservedId,
                                          final Query.ExecuteOptions options) throws SQLException {
         if (context.isDone()) {
@@ -365,13 +367,13 @@ public class NativeQueryService implements IQueryService {
         StatefulConnectionPool.shutdown(tablet);
     }
 
-    private List<String> getMultiSql(final IContext context, final List<Query.BoundQuery> queries) {
+    private List<String> getMultiSql(final IContext context, final List<BoundQuery> queries) {
         // sql1,sql2,sql3 -----> sql1;sql2;sql3
         List<String> queryList = new ArrayList<>();
         StringBuilder queryBuf = new StringBuilder();
         Integer maxAllowedPacket = (Integer) context.getContextValue(VitessPropertyKey.MAX_ALLOWED_PACKET);
 
-        for (Query.BoundQuery query : queries) {
+        for (BoundQuery query : queries) {
             String nextSql = query.getSql();
             if (queryBuf.length() > 0 && (((queryBuf.length() + nextSql.length()) * 3)) * 2 > maxAllowedPacket) {
                 queryList.add(queryBuf.toString());

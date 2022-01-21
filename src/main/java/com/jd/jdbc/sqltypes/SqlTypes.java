@@ -19,8 +19,10 @@ limitations under the License.
 package com.jd.jdbc.sqltypes;
 
 import com.google.protobuf.ByteString;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SqlTypes {
@@ -32,35 +34,33 @@ public class SqlTypes {
 
     public static final String BV_REPLACE_SCHEMA_NAME = "__replacevtschemaname";
 
-    public static final Query.BindVariable NULL_BIND_VARIABLE = Query.BindVariable.newBuilder().setType(Query.Type.NULL_TYPE).build();
-
     /**
      * ValueBindVariable converts a Value to a bind var.
      *
      * @param v
      * @return
      */
-    public static Query.BindVariable valueBindVariable(VtValue v) {
+    public static BindVariable valueBindVariable(VtValue v) {
         if (v.isNull()) {
-            return NULL_BIND_VARIABLE;
+            return BindVariable.NULL_BIND_VARIABLE;
         }
-        return Query.BindVariable.newBuilder().setType(v.getVtType()).setValue(ByteString.copyFrom(v.getVtValue())).build();
+        return new BindVariable(v.getVtValue(), v.getVtType());
     }
 
-    public static Query.BindVariable valueBindVariable(VtResultValue v) {
+    public static BindVariable valueBindVariable(VtResultValue v) {
         if (v.isNull()) {
-            return NULL_BIND_VARIABLE;
+            return BindVariable.NULL_BIND_VARIABLE;
         }
-        return Query.BindVariable.newBuilder().setType(v.getVtType()).setValue(ByteString.copyFrom(v.toBytes())).build();
+        return new BindVariable(v.toBytes(), v.getVtType());
     }
 
-    public static Query.BindVariable valuesBindVariable(Query.Type type, List<VtValue> values) {
-        Query.BindVariable.Builder bindVariableBuilder = Query.BindVariable.newBuilder().setType(type);
+    public static BindVariable valuesBindVariable(Query.Type type, List<VtValue> values) {
+        List<Query.Value> valuesList = new ArrayList<>(values.size());
         for (int i = 0; i < values.size(); i++) {
             Query.Value value = Query.Value.newBuilder().setType(values.get(i).getVtType()).setValue(ByteString.copyFrom(values.get(i).getVtValue())).build();
-            bindVariableBuilder.addValues(value);
+            valuesList.add(value);
         }
-        return bindVariableBuilder.build();
+        return new BindVariable(valuesList, type);
     }
 
     /**
@@ -70,7 +70,7 @@ public class SqlTypes {
      * @return
      * @throws Exception
      */
-    public static Query.BindVariable int64BindVariable(Long v) throws SQLException {
+    public static BindVariable int64BindVariable(Long v) throws SQLException {
         return valueBindVariable(VtValue.newVtValue(Query.Type.INT64, String.valueOf(v).getBytes()));
     }
 
@@ -80,8 +80,8 @@ public class SqlTypes {
      * @param v
      * @return
      */
-    public static Query.BindVariable float64BindVariable(Float v) {
-        return Query.BindVariable.newBuilder().setType(Query.Type.FLOAT64).setValue(ByteString.copyFrom(String.valueOf(v).getBytes())).build();
+    public static BindVariable float64BindVariable(Float v) {
+        return new BindVariable(String.valueOf(v).getBytes(), Query.Type.FLOAT64);
     }
 
     /**
@@ -90,8 +90,8 @@ public class SqlTypes {
      * @param v
      * @return
      */
-    public static Query.BindVariable bytesBindVariable(byte[] v) {
-        return Query.BindVariable.newBuilder().setType(Query.Type.VARBINARY).setValue(ByteString.copyFrom(v)).build();
+    public static BindVariable bytesBindVariable(byte[] v) {
+        return new BindVariable(v, Query.Type.VARBINARY);
     }
 
     /**
@@ -100,7 +100,7 @@ public class SqlTypes {
      * @param v
      * @return
      */
-    public static Query.BindVariable stringBindVariable(String v) throws SQLException {
+    public static BindVariable stringBindVariable(String v) throws SQLException {
         return valueBindVariable(VtValue.newVtValue(Query.Type.VARBINARY, v.getBytes()));
     }
 
