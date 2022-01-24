@@ -1,6 +1,5 @@
 package com.jd.jdbc.util;
 
-import com.jd.jdbc.monitor.MonitorServer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import java.io.BufferedReader;
@@ -18,15 +17,19 @@ import java.net.UnknownHostException;
 import java.util.Enumeration;
 
 public class NetUtil {
-    private static final Log log = LogFactory.getLog(MonitorServer.class);
+    private static final Log log = LogFactory.getLog(NetUtil.class);
 
-    public static String getLocalAdder() {
-        String localAddress = null;
+    private static String localAddress = null;
+
+    static {
         try {
             localAddress = getLocalHostAddress().getHostAddress();
-        } catch (Exception e) {
-            log.error(String.format("getLocalAddr error! causeby:%s", e.getMessage()));
+        } catch (UnknownHostException | SocketException e) {
+            log.error("getLocalAddr error! causeby:%s" + e.getMessage());
         }
+    }
+
+    public static String getLocalAdder() {
         return localAddress;
     }
 
