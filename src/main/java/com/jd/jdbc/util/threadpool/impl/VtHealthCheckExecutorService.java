@@ -40,10 +40,13 @@ public class VtHealthCheckExecutorService extends AbstractVtExecutorService {
             synchronized (VtHealthCheckExecutorService.class) {
                 if (executorService == null) {
                     if (corePoolSize == null || corePoolSize <= 0) {
-                        corePoolSize = DEFAULT_CORE_POOL_SIZE;
+                        corePoolSize = DEFAULT_HEALTH_CHECK_CORE_POOL_SIZE;
                     }
                     if (maximumPoolSize == null || maximumPoolSize <= 0 || maximumPoolSize < corePoolSize) {
-                        maximumPoolSize = DEFAULT_MAXIMUM_POOL_SIZE;
+                        maximumPoolSize = DEFAULT_HEALTH_MAXIMUM_POOL_SIZE;
+                        if (maximumPoolSize < corePoolSize) {
+                            maximumPoolSize += corePoolSize;
+                        }
                     }
                     if (queueSize == null || queueSize <= 0) {
                         queueSize = DEFAULT_QUEUE_SIZE;

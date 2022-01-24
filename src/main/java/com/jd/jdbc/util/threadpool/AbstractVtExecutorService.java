@@ -17,9 +17,17 @@ limitations under the License.
 package com.jd.jdbc.util.threadpool;
 
 public abstract class AbstractVtExecutorService {
-    public static final Integer DEFAULT_CORE_POOL_SIZE = 10;
+    public static final Integer DEFAULT_QUERY_CORE_POOL_SIZE = JdkUtil.getQueryExecutorCorePoolSize();
 
-    public static final Integer DEFAULT_MAXIMUM_POOL_SIZE = DEFAULT_CORE_POOL_SIZE * 10;
+    public static final Integer DEFAULT_DAEMON_CORE_POOL_SIZE = 10;
+
+    public static final Integer DEFAULT_HEALTH_CHECK_CORE_POOL_SIZE = 10;
+
+    public static final Integer DEFAULT_QUERY_MAXIMUM_POOL_SIZE = 100;
+
+    public static final Integer DEFAULT_DAEMON_MAXIMUM_POOL_SIZE = DEFAULT_DAEMON_CORE_POOL_SIZE * 10;
+
+    public static final Integer DEFAULT_HEALTH_MAXIMUM_POOL_SIZE = DEFAULT_HEALTH_CHECK_CORE_POOL_SIZE * 10;
 
     public static final Long DEFAULT_KEEP_ALIVE_TIME_MILLIS = 60 * 1000L;
 

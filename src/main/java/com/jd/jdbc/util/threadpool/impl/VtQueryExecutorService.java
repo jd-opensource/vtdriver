@@ -38,10 +38,13 @@ public class VtQueryExecutorService extends AbstractVtExecutorService {
             synchronized (VtQueryExecutorService.class) {
                 if (executorService == null) {
                     if (corePoolSize == null || corePoolSize <= 0) {
-                        corePoolSize = DEFAULT_CORE_POOL_SIZE;
+                        corePoolSize = DEFAULT_QUERY_CORE_POOL_SIZE;
                     }
                     if (maximumPoolSize == null || maximumPoolSize <= 0 || maximumPoolSize < corePoolSize) {
-                        maximumPoolSize = DEFAULT_MAXIMUM_POOL_SIZE;
+                        maximumPoolSize = DEFAULT_QUERY_MAXIMUM_POOL_SIZE;
+                        if (maximumPoolSize < corePoolSize) {
+                            maximumPoolSize += corePoolSize;
+                        }
                     }
                     if (queueSzie == null || queueSzie <= 0) {
                         queueSzie = DEFAULT_QUEUE_SIZE;
