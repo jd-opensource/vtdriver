@@ -68,6 +68,8 @@ public interface TopoConnection extends Resource {
 
     CompletableFuture<ConnGetResponse> getFuture(IContext ctx, String filePath);
 
+    List<ConnGetResponse> getTabletsByCell(IContext ctx, String filePath) throws TopoException;
+
     /**
      * @param ctx
      * @param filePath

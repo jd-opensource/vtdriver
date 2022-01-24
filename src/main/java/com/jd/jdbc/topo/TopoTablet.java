@@ -35,13 +35,15 @@ public interface TopoTablet {
 
     CompletableFuture<TopoTabletInfo> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException;
 
+    List<TopoTabletInfo> getTabletsByRange(IContext ctx, String cell) throws TopoException;
+
     /**
      * @param ctx
      * @param cell
      * @return
      * @throws TopoException
      */
-    List<Topodata.TabletAlias> getTabletsByCell(IContext ctx, String cell) throws TopoException;
+    List<Topodata.TabletAlias> getTabletAliasByCell(IContext ctx, String cell) throws TopoException;
 
     CompletableFuture<List<Topodata.TabletAlias>> getTabletsByCellFuture(IContext ctx, String cell) throws TopoException;
 }

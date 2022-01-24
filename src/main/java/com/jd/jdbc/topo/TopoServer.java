@@ -362,6 +362,29 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
 
     /**
      * @param ctx
+     * @param cell
+     * @return
+     * @throws TopoException
+     */
+    @Override
+    public List<TopoTabletInfo> getTabletsByRange(IContext ctx, String cell) throws TopoException {
+        TopoConnection topoConnection = this.connForCell(ctx, cell);
+        List<ConnGetResponse> connGetResponseList = topoConnection.getTabletsByCell(ctx, TABLETS_PATH);
+        List<TopoTabletInfo> topoTabletInfos = new ArrayList<>(connGetResponseList.size());
+        Topodata.Tablet tablet;
+        try {
+            for (ConnGetResponse connGetResponse : connGetResponseList) {
+                tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
+                topoTabletInfos.add(new TopoTabletInfo(connGetResponse.getVersion(), tablet));
+            }
+        } catch (InvalidProtocolBufferException e) {
+            throw TopoException.wrap(e.getMessage());
+        }
+        return topoTabletInfos;
+    }
+
+    /**
+     * @param ctx
      * @param tabletAlias
      * @return
      * @throws TopoException
@@ -375,11 +398,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
         Topodata.Tablet tablet;
         try {
             tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
-            if (null != tablet) {
-                tablet = tablet.toBuilder().setHostname(tablet.getHostname())
-                    .setMysqlHostname(tablet.getMysqlHostname())
-                    .build();
-            }
         } catch (InvalidProtocolBufferException e) {
             throw TopoException.wrap(e.getMessage());
         }
@@ -394,11 +412,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             Topodata.Tablet tablet;
             try {
                 tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
-                if (null != tablet) {
-                    tablet = tablet.toBuilder().setHostname(tablet.getHostname())
-                        .setMysqlHostname(tablet.getMysqlHostname())
-                        .build();
-                }
             } catch (InvalidProtocolBufferException e) {
                 throw new CompletionException(TopoException.wrap(e.getMessage()));
             }
@@ -413,7 +426,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
      * @throws TopoException
      */
     @Override
-    public List<Topodata.TabletAlias> getTabletsByCell(IContext ctx, String cell) throws TopoException {
+    public List<Topodata.TabletAlias> getTabletAliasByCell(IContext ctx, String cell) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, cell);
         try {
             List<DirEntry> children = topoConnection.listDir(ctx, TABLETS_PATH, false, true);

@@ -29,7 +29,6 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -110,7 +109,7 @@ public class TabletGateway extends Gateway {
             return;
         }
         List<Query.Target> targetList = SrvTopo.findAllTargets(ctx, srvTopoServer, cell,
-            new ArrayList<>(noWatchedMap.values()), tabletTypeList);
+            new HashSet<>(noWatchedMap.values()), tabletTypeList);
         hc.waitForAllServingTablets(VtContext.withDeadline(ctx, 30, TimeUnit.SECONDS), Lists.newArrayList(targetList));
         noWatchedMap.forEach((cacheKey, v) -> this.tabletGatewayManager.add(cacheKey));
     }
