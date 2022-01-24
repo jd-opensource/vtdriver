@@ -1,0 +1,80 @@
+[
+  {
+    "comment": " \\n \\t ",
+    "initSql": "select * from table1; \t; \n; \n\t\t ; select * from table1;  ",
+    "verifyResult": [
+      "select * from table1;",
+      " \t;",
+      " \n;",
+      " \n\t\t ;",
+      " select * from table1;"
+    ],
+    "errorMessage": ""
+  },
+  {
+    "comment": "null sql",
+    "initSql": "",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "white space",
+    "initSql": "   ",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "all kinds of comment",
+    "initSql": "-- ; \n  select * from music; \n // ; \n /*123*/ #234\n -- bnmsd \n select * from user_extra;# ceshi \n select * from user;/*comment*/ select * from user_extra;",
+    "verifyResult": [
+      "-- ; \n  select * from music;",
+      " \n // ; \n /*123*/ #234\n -- bnmsd \n select * from user_extra;",
+      "# ceshi \n select * from user;",
+      "/*comment*/ select * from user_extra;"
+    ]
+  },
+  {
+    "comment": "special character in value",
+    "initSql": "  /*insert*/select * from user_extra where email = '\u001A';  /*insert*/select * from user_extra where email = '\u001A';  /*insert*/select * from user_extra where email = '¥';/*insert*/select * from user_extra where email = '\u00a5';/*insert*/select * from user_extra where email = '₩';/*insert*/select * from user_extra where email = '₩';  ",
+    "verifyResult": [
+      "  /*insert*/select * from user_extra where email = '\u001A';",
+      "  /*insert*/select * from user_extra where email = '\u001A';",
+      "  /*insert*/select * from user_extra where email = '¥';",
+      "/*insert*/select * from user_extra where email = '\u00a5';",
+      "/*insert*/select * from user_extra where email = '₩';",
+      "/*insert*/select * from user_extra where email = '₩';"
+    ]
+  },
+  {
+    "comment": "' ; \" \\ in value",
+    "initSql": "/*insert*/select * from user_extra where email = '单引号';/*insert*/select * from user_extra where email = \"双引号\";/*insert;*/ select * from user_extra where email = \"双引号\" and email = '单引号';/*insert*/select * from user_extra where email = \";\" and email = '\"';/*insert*/select * from user_extra where email = ';' and email = '\\'';select * from user_extra where email = \"\\';\\'\" and email = '\\'\\'';select * from user_extra where email = \"';'\" and email = '\\'\\\\';select * from user_extra where email = '内部双引号测试\"\\\"';/*comment*/select * from user_extra where email = \"内部单引号测试\"  ",
+    "verifyResult": [
+      "/*insert*/select * from user_extra where email = '单引号';",
+      "/*insert*/select * from user_extra where email = \"双引号\";",
+      "/*insert;*/ select * from user_extra where email = \"双引号\" and email = '单引号';",
+      "/*insert*/select * from user_extra where email = \";\" and email = '\"';",
+      "/*insert*/select * from user_extra where email = ';' and email = '\\'';",
+      "select * from user_extra where email = \"\\';\\'\" and email = '\\'\\'';",
+      "select * from user_extra where email = \"';'\" and email = '\\'\\\\';",
+      "select * from user_extra where email = '内部双引号测试\"\\\"';",
+      "/*comment*/select * from user_extra where email = \"内部单引号测试\"  "
+    ]
+  },
+  {
+    "comment": "single sql",
+    "initSql": "select * from user_extra;",
+    "verifyResult": [
+      "select * from user_extra;"
+    ]
+  },
+  {
+    "comment": "dml sql",
+    "initSql": "  insert into user(id, name) values (null, ';;;'); delete from user_extra;update engine_test set f_tinyint = 1 where f_key = '11';replace into unsharded_auto(val) values('aa');  ",
+    "verifyResult": [
+      "  insert into user(id, name) values (null, ';;;');",
+      " delete from user_extra;",
+      "update engine_test set f_tinyint = 1 where f_key = '11';",
+      "replace into unsharded_auto(val) values('aa');"
+    ]
+  }
+]
