@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
-import com.google.common.base.Splitter;
 import com.jd.jdbc.Executor;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
@@ -55,6 +54,8 @@ import com.jd.jdbc.sqlparser.parser.Lexer;
 import com.jd.jdbc.sqlparser.parser.ParserException;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.SplitMultiQueryUtils;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.sqltypes.VtResultSet;
@@ -613,7 +614,10 @@ public class VitessStatement extends AbstractVitessStatement {
     }
 
     protected List<String> split(String sql) throws SQLException {
-        List<String> sqls = new ArrayList<>(Splitter.on(";").omitEmptyStrings().trimResults().splitToList(sql));
+        if (StringUtils.isEmpty(sql)) {
+            throw new SQLException("trying to execute empty queries " + sql);
+        }
+        List<String> sqls = SplitMultiQueryUtils.splitMulti(sql);
         if (sqls.isEmpty()) {
             throw new SQLException("trying to execute empty queries " + sqls);
         }

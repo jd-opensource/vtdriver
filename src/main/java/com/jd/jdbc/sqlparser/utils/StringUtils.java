@@ -677,4 +677,27 @@ public class StringUtils {
 
         return replaceEach(result, searchList, replacementList, repeat, timeToLive - 1);
     }
+
+    /**
+     * @param searchIn
+     * @param searchFor
+     * @param startPos
+     * @return
+     */
+    public static boolean startsWith(String searchIn, String searchFor, int startPos) {
+        if (StringUtils.isEmpty(searchIn) || StringUtils.isEmpty(searchFor)) {
+            return false;
+        }
+        int searchForLength = searchFor.length();
+        int searchInLength = searchIn.length();
+        if (searchForLength > (searchInLength - startPos)) {
+            return false;
+        }
+        for (int i = 0; i < searchForLength; i++) {
+            if (searchFor.charAt(i) != searchIn.charAt(i + startPos)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
