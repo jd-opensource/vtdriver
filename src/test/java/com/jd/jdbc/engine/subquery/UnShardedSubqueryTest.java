@@ -111,8 +111,6 @@ public class UnShardedSubqueryTest extends SelectTestSuite {
                         int intValue = rs.getInt(j + 1);
                         if ("cnt".equalsIgnoreCase(fieldName)) {
                             testResult.setCnt(intValue);
-                        } else if ("index_length".equalsIgnoreCase(fieldName)) {
-                            testResult.setIndexLength(intValue);
                         } else if ("u.id".equalsIgnoreCase(fieldName)
                             || "id".equalsIgnoreCase(fieldName)
                             || "t.id".equalsIgnoreCase(fieldName)) {
@@ -170,6 +168,12 @@ public class UnShardedSubqueryTest extends SelectTestSuite {
                             Assert.fail("fieldName in output is not found: " + fieldName + ", javaType: " + javaType);
                         }
                         break;
+                    case "Long":
+                        Long longValue = rs.getLong(j + 1);
+                        if ("index_length".equalsIgnoreCase(fieldName)) {
+                            testResult.setIndexLength(longValue);
+                        }
+                        break;
                     default:
                         Assert.fail("javaType in output is not found: " + fieldName + ", javaType: " + javaType);
                         break;
@@ -199,7 +203,7 @@ public class UnShardedSubqueryTest extends SelectTestSuite {
 
         private String pluginName;
 
-        private Integer indexLength;
+        private Long indexLength;
 
         private String tableName;
 
