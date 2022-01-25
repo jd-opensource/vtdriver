@@ -45,6 +45,7 @@ import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -187,10 +188,10 @@ public class RouteEngine implements PrimitiveEngine {
     @Override
     public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
-        String charEncoding = vcursor.getCharEncoding();
-        if (paramsResponse == null) {
-            return null;
+        if (paramsResponse == null || paramsResponse.getResolvedShardList() == null || paramsResponse.getResolvedShardList().isEmpty()) {
+            return getFieldResolvedShardQuery(vcursor);
         }
+        String charEncoding = vcursor.getCharEncoding();
         List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
         return new IExecute.ResolvedShardQuery(paramsResponse.getResolvedShardList(), queries);
     }
@@ -198,10 +199,10 @@ public class RouteEngine implements PrimitiveEngine {
     @Override
     public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Map<String, String> switchTableMap) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
-        String charEncoding = vcursor.getCharEncoding();
-        if (paramsResponse == null) {
-            return null;
+        if (paramsResponse == null || paramsResponse.getResolvedShardList() == null || paramsResponse.getResolvedShardList().isEmpty()) {
+            return getFieldResolvedShardQuery(vcursor);
         }
+        String charEncoding = vcursor.getCharEncoding();
         List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), switchTableMap, charEncoding);
         return new IExecute.ResolvedShardQuery(paramsResponse.getResolvedShardList(), queries);
     }
@@ -256,11 +257,23 @@ public class RouteEngine implements PrimitiveEngine {
         return false;
     }
 
+    private IExecute.ResolvedShardQuery getFieldResolvedShardQuery(Vcursor vcursor) throws SQLException {
+        Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(this.keyspace.getName(), null, Collections.singletonList(new DestinationAnyShard()));
+        if (resolveDestinationResult == null
+            || resolveDestinationResult.getResolvedShards() == null
+            || resolveDestinationResult.getResolvedShards().size() != 1) {
+            throw new SQLException("no shards for keyspace: " + this.keyspace.getName());
+        }
+
+        List<BoundQuery> queries = Collections.singletonList(new BoundQuery(fieldQuery));
+        return new IExecute.ResolvedShardQuery(resolveDestinationResult.getResolvedShards(), queries);
+    }
+
     private VtResultSet exec(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         ParamsResponse paramsResponse = getResolveDestinationResult(vcursor, bindVariableMap);
         String charEncoding = vcursor.getCharEncoding();
         // No route
-        if (paramsResponse == null) {
+        if (paramsResponse == null || paramsResponse.getResolvedShardList() == null || paramsResponse.getResolvedShardList().isEmpty()) {
             if (wantFields) {
                 return this.getFields(vcursor, new HashMap<>(16, 1));
             }
@@ -295,12 +308,18 @@ public class RouteEngine implements PrimitiveEngine {
             }
         }
 
-        // No route
-        if (paramsResponse != null && !paramsResponse.getResolvedShardList().isEmpty()) {
-            List<BoundQuery> queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
-            iteratorList = vcursor.streamExecuteMultiShard(paramsResponse.getResolvedShardList(), queries);
+        List<BoundQuery> queries;
+        List<ResolvedShard> shards;
+        if (paramsResponse == null || paramsResponse.getResolvedShardList() == null || paramsResponse.getResolvedShardList().isEmpty()) {
+            IExecute.ResolvedShardQuery shardQuery = getFieldResolvedShardQuery(vcursor);
+            queries = shardQuery.getQueries();
+            shards = shardQuery.getRss();
+        } else {
+            queries = Engine.getQueries(this.selectQuery, paramsResponse.getShardVarList(), charEncoding);
+            shards = paramsResponse.getResolvedShardList();
         }
 
+        iteratorList = vcursor.streamExecuteMultiShard(shards, queries);
         return new RouteStream(iteratorList, orderBy, truncateColumnCount, this, vcursor, bindVariableMap);
     }
 

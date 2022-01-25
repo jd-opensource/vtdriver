@@ -90,14 +90,14 @@
     ],
     "fields": [
       {
-        "name": "f_double"
+        "name": "f_decimal"
       }
     ],
-    "query": "select 5/2 as f_double from dual",
+    "query": "select 5/2 as f_decimal from dual",
     "needSort": false,
     "verifyResult": [
       {
-        "f_double": 2.5
+        "f_decimal": 2.5000
       }
     ]
   }

@@ -40,10 +40,6 @@ public class StreamIterator implements VtIterator<VtResultSet> {
 
     private VtResultSet currentVtResultSet;
 
-    private List<String> columnClassNames;
-
-    private int[] precisions;
-
     public StreamIterator(InnerConnection connection, ResultSet resultSet) {
         this.connection = connection;
         this.resultSet = resultSet;
@@ -58,14 +54,15 @@ public class StreamIterator implements VtIterator<VtResultSet> {
             int cols = metaData.getColumnCount();
             if (fields == null) {
                 fields = new Query.Field[cols];
-                columnClassNames = new ArrayList<>(cols);
                 for (int idx = 0, col = 1; idx < cols; idx++, col++) {
                     Query.Field.Builder fieldBuilder = Query.Field.newBuilder();
                     Query.Type queryType = VtType.getQueryType(metaData.getColumnTypeName(col));
-                    columnClassNames.add(metaData.getColumnClassName(col));
-                    precisions = new int[cols];
-                    precisions[idx] = metaData.getPrecision(col);
                     fieldBuilder.setDatabase(SchemaUtil.getLogicSchema(metaData.getCatalogName(col)))
+                        .setJdbcClassName(metaData.getColumnClassName(col))
+                        .setPrecision(metaData.getPrecision(col))
+                        .setIsSigned(metaData.isSigned(col))
+                        .setColumnLength(metaData.getColumnDisplaySize(col))
+                        .setDecimals(metaData.getScale(col))
                         .setTable(metaData.getTableName(col))
                         .setName(metaData.getColumnLabel(col))
                         .setOrgName(metaData.getColumnName(col))
@@ -78,7 +75,7 @@ public class StreamIterator implements VtIterator<VtResultSet> {
 
             List<VtResultValue> vtValueList = new ArrayList<>(cols);
             for (int col = 1; col <= cols; col++) {
-                VtResultValue vtResultValue = VtResultSetUtils.getValue(resultSet, col, columnClassNames.get(col - 1), precisions[col - 1], fields[col - 1].getType());
+                VtResultValue vtResultValue = VtResultSetUtils.getValue(resultSet, col, fields[col - 1].getJdbcClassName(), (int) fields[col - 1].getPrecision(), fields[col - 1].getType());
                 vtValueList.add(vtResultValue);
             }
             rows.add(vtValueList);
