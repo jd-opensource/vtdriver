@@ -37,8 +37,7 @@ public class JdkUtilTest {
         for (JdkUtilNode jdkNode : jdkUtilNodeList) {
             i++;
             System.out.println("No. " + i);
-            System.out.println("JDK version: " + jdkNode.applicationCurrentJdkVersion
-                + " availableProcessors: " + jdkNode.availableProcessors
+            System.out.println(" availableProcessors: " + jdkNode.availableProcessors
                 + " expectPoolCoreSize: " + jdkNode.expectPoolCoreSize
                 + " poolCoreSize: " + jdkNode.poolCoreSize);
             Assert.assertEquals("Expected: " + jdkNode.expectPoolCoreSize + "; Actual: " + jdkNode.poolCoreSize, jdkNode.expectPoolCoreSize, jdkNode.poolCoreSize);
@@ -47,47 +46,35 @@ public class JdkUtilTest {
     }
 
     private void recoverJdkUtilVariable() throws NoSuchFieldException, InvocationTargetException, IllegalAccessException, NoSuchMethodException {
-        new JdkUtilNode(System.getProperty("java.version"), Runtime.getRuntime().availableProcessors(), -1);
+        new JdkUtilNode(Runtime.getRuntime().availableProcessors(), -1);
     }
 
     private void initJdkData() throws NoSuchFieldException, InvocationTargetException, IllegalAccessException, NoSuchMethodException {
         jdkUtilNodeList = new ArrayList<JdkUtilNode>();
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_131", 10, 10));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_191", 10, 10));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_191", 6, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_191", 36, 32));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_101", 10, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0u131", 16, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0u231", 16, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0u231", 36, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_131.1", 10, 8));
-        jdkUtilNodeList.add(new JdkUtilNode("1.8.0_131.1", 40, 8));
+        jdkUtilNodeList.add(new JdkUtilNode(10, 10));
+        jdkUtilNodeList.add(new JdkUtilNode(6, 8));
+        jdkUtilNodeList.add(new JdkUtilNode(36, 32));
+        jdkUtilNodeList.add(new JdkUtilNode(8, 8));
+        jdkUtilNodeList.add(new JdkUtilNode(32, 32));
     }
 
     class JdkUtilNode {
-        private String applicationCurrentJdkVersion;
-
         private int availableProcessors;
 
         private int poolCoreSize;
 
         private int expectPoolCoreSize;
 
-        JdkUtilNode(String applicationCurrentJdkVersion, int availableProcessors, int expectPoolCoreSize)
+        JdkUtilNode(int availableProcessors, int expectPoolCoreSize)
             throws NoSuchFieldException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-            this.applicationCurrentJdkVersion = applicationCurrentJdkVersion;
             this.availableProcessors = availableProcessors;
             this.expectPoolCoreSize = expectPoolCoreSize;
             setQueryCorePoolSize();
         }
 
         private void setQueryCorePoolSize() throws NoSuchFieldException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-            Field applicationCurrentJdkVersionField = JdkUtil.class.getDeclaredField("applicationCurrentJdkVersion");
             Field availableProcessorsField = JdkUtil.class.getDeclaredField("availableProcessors");
-            changeStaticFinal(applicationCurrentJdkVersionField, this.applicationCurrentJdkVersion);
             changeStaticFinal(availableProcessorsField, this.availableProcessors);
-            Assert.assertEquals("Expected: " + this.applicationCurrentJdkVersion + "; Actual: " + applicationCurrentJdkVersionField.get(null), this.applicationCurrentJdkVersion,
-                applicationCurrentJdkVersionField.get(null));
             Assert.assertEquals("Expected: " + this.availableProcessors + "; Actual: " + availableProcessorsField.get(null), this.availableProcessors, availableProcessorsField.get(null));
             Method initQueryExecutorCorePoolSizeMethod = JdkUtil.class.getDeclaredMethod("initQueryExecutorCorePoolSize");
             initQueryExecutorCorePoolSizeMethod.setAccessible(true);
