@@ -381,7 +381,7 @@ public class Executor implements IExecute {
             List<ExecuteMultiShardResponse> executeMultiShardResponses;
             List<VtRowList> vtRowLists = new ArrayList<>();
             try {
-                executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, false);
+                executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, true);
                 for (ExecuteMultiShardResponse executeResponse : executeMultiShardResponses) {
                     VtRowList resultSet = executeResponse.getVtRowList().reserve(maxRows);
                     vtRowLists.add(resultSet);

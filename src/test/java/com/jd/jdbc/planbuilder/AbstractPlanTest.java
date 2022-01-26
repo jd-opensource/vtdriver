@@ -19,7 +19,6 @@ limitations under the License.
 package com.jd.jdbc.planbuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Strings;
 import com.jd.BaseTest;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.engine.Plan;
@@ -57,8 +56,9 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceState
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlUpdateStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.parser.MySqlLexer;
 import com.jd.jdbc.sqlparser.parser.Lexer;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
-import io.netty.util.internal.StringUtil;
+import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
 import io.vitess.proto.Query;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +69,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import vschema.Vschema;
 
 import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
@@ -146,7 +145,7 @@ public class AbstractPlanTest extends BaseTest {
             }
         }
 
-        if (StringUtil.isNullOrEmpty(defaultKeyspace)) {
+        if (StringUtils.isEmpty(defaultKeyspace)) {
             if (query.equals("select c from t")) {
                 defaultKeyspace = "user";
             } else {
@@ -206,7 +205,7 @@ public class AbstractPlanTest extends BaseTest {
                 SQLTableSource from = ((SQLSubqueryTableSource) leftTableSource).getSelect().getQueryBlock().getFrom();
                 defaultKeyspace = processExprTableSource((SQLExprTableSource) from);
             }
-            if (StringUtil.isNullOrEmpty(defaultKeyspace)) {
+            if (StringUtils.isEmpty(defaultKeyspace)) {
                 if (rightTableSource instanceof SQLExprTableSource) {
                     defaultKeyspace = processExprTableSource((SQLExprTableSource) rightTableSource);
                 } else if (rightTableSource instanceof SQLSubqueryTableSource) {
@@ -230,7 +229,7 @@ public class AbstractPlanTest extends BaseTest {
                     SQLTableSource from = ((SQLSubqueryTableSource) leftTableSource).getSelect().getQueryBlock().getFrom();
                     defaultKeyspace = processExprTableSource((SQLExprTableSource) from);
                 }
-                if (StringUtil.isNullOrEmpty(defaultKeyspace)) {
+                if (StringUtils.isEmpty(defaultKeyspace)) {
                     if (rightTableSource instanceof SQLExprTableSource) {
                         defaultKeyspace = processExprTableSource((SQLExprTableSource) rightTableSource);
                     } else if (rightTableSource instanceof SQLSubqueryTableSource) {
@@ -472,7 +471,7 @@ public class AbstractPlanTest extends BaseTest {
         List<Vschema.Column> columnList = new ArrayList<>();
         for (ColumnsItem columnsItem : columnsItemList) {
             Vschema.Column.Builder columnBuilder = Vschema.Column.newBuilder();
-            columnBuilder.setName(Strings.nullToEmpty(columnsItem.getName()));
+            columnBuilder.setName(StringUtils.nullToEmpty(columnsItem.getName()));
             Query.Type type = Query.Type.NULL_TYPE;
             if (StringUtils.isNotEmpty(columnsItem.getType())) {
                 type = Query.Type.valueOf(columnsItem.getType());
@@ -487,8 +486,8 @@ public class AbstractPlanTest extends BaseTest {
         List<Vschema.ColumnVindex> columnVindexList = new ArrayList<>();
         for (ColumnVindexesItem columnVindexesItem : columnVindexesItemList) {
             Vschema.ColumnVindex columnVindex = Vschema.ColumnVindex.newBuilder()
-                .setColumn(Strings.nullToEmpty(columnVindexesItem.getColumn()))
-                .setName(Strings.nullToEmpty(columnVindexesItem.getName()))
+                .setColumn(StringUtils.nullToEmpty(columnVindexesItem.getColumn()))
+                .setName(StringUtils.nullToEmpty(columnVindexesItem.getName()))
                 .build();
             columnVindexList.add(columnVindex);
         }

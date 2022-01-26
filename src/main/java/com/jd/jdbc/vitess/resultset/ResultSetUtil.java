@@ -205,6 +205,10 @@ public final class ResultSetUtil {
                 return Longs.toByteArray((Long) value);
             case BINARY:
             case VARBINARY:
+                if (value instanceof byte[]) {
+                    return (byte[]) value;
+                }
+                break;
             case BLOB:
             case YEAR:
             case TIME:
@@ -502,6 +506,10 @@ public final class ResultSetUtil {
             case DATE:
             case BINARY:
             case VARBINARY:
+                if (value instanceof byte[]) {
+                    return new String((byte[]) value);
+                }
+                break;
             case BLOB:
                 return new String((byte[]) value);
             case TIME:

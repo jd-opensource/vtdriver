@@ -106,6 +106,9 @@ public class LimitEngine implements PrimitiveEngine {
                 rows.add(next);
             }
             VtResultSet resultSet = new VtResultSet(rows.size(), rows);
+            if (wantFields && vtRowList != null) {
+                resultSet.setFields(vtRowList.getFields());
+            }
             return new IExecute.ExecuteMultiShardResponse(resultSet);
         }
         IExecute.ExecuteMultiShardResponse response = this.input.execute(ctx, vcursor, bindVariableMap, wantFields);
