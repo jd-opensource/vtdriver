@@ -64,7 +64,9 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     @Override
     public void setTablet(Topodata.Tablet tablet) {
         this.tablet = tablet;
-        nativeQueryService.setTablet(tablet);
+        if (nativeQueryService != null) {
+            nativeQueryService.setTablet(tablet);
+        }
     }
 
     private IQueryService getNativeQueryService() {

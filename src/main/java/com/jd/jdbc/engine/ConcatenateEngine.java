@@ -227,7 +227,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
                 continue;
             }
             VtResultSet qr = source.getFields(vcursor, bindVariableMap);
-            this.compareFields(Arrays.asList(firstQr.getFields()), Arrays.asList(qr.getFields()));
+            this.compareFields(firstQr.getFields(), qr.getFields());
         }
         return firstQr;
     }
@@ -250,18 +250,5 @@ public class ConcatenateEngine implements PrimitiveEngine {
     @Override
     public List<PrimitiveEngine> inputs() {
         return this.sourceList;
-    }
-
-    private void compareFields(List<Query.Field> fields1, List<Query.Field> fields2) throws SQLException {
-        if (fields1.size() != fields2.size()) {
-            throw new SQLException("The used SELECT statements have a different number of columns");
-        }
-        for (int i = 0; i < fields2.size(); i++) {
-            Query.Field field1 = fields1.get(i);
-            Query.Field field2 = fields2.get(i);
-            if (!field1.getType().equals(field2.getType())) {
-                throw new SQLException("column field type does not match for name: (%v, %v) types: (%v, %v)");
-            }
-        }
     }
 }
