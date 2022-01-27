@@ -491,7 +491,7 @@ public class Executor implements IExecute {
         Properties properties = safeSession.getVitessConnection().getProperties();
         Boolean consolidatorFlag = Utils.getBoolean(properties, Constant.DRIVER_PROPERTY_QUERY_CONSOLIDATOR);
         return consolidatorFlag != null && consolidatorFlag && plan.getStatementType() == VtSqlStatementType.StmtSelect
-            && RoleUtils.notMaster(ctx);
+            && RoleUtils.notMaster(ctx) && !safeSession.inTransaction();
     }
 
     private ExecuteResponse getConsolidatorResponse(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap, Vcursor vCursor,
@@ -504,13 +504,13 @@ public class Executor implements IExecute {
         String consolidatorKey = keyspace + ":" + querySqlBuffer;
 
         // find consolidatorResultInMap
-        ConsolidatorResult consolidatorResult = consolidator.get(consolidatorKey);
-        if (consolidatorResult == null) {
-            ConsolidatorResult consolidatorTmpResult = new ConsolidatorResult(new Result());
-            consolidatorTmpResult.writeLockLock();
+        ConsolidatorResult consolidatorRes = consolidator.get(consolidatorKey);
+        if (consolidatorRes == null) {
+            ConsolidatorResult tmpResult = new ConsolidatorResult(new Result());
+            tmpResult.writeLockLock();
             try {
-                ConsolidatorResult putIfAbsent = consolidator.putIfAbsent(consolidatorKey, consolidatorTmpResult);
-                if (putIfAbsent == null) {
+                ConsolidatorResult oldResult = consolidator.putIfAbsent(consolidatorKey, tmpResult);
+                if (oldResult == null) {
                     try {
                         ExecuteResponse response = this.executePlan(ctx, plan, vCursor, bindVariableMap).exec(safeSession);
                         VtRowList vtRowList = null;
@@ -518,47 +518,38 @@ public class Executor implements IExecute {
                             vtRowList = ((VtResultSet) response.getResultSet()).clone();
                         }
                         ExecuteResponse executeResponse = new ExecuteResponse(response.getSqlStatementType(), vtRowList);
-                        consolidatorTmpResult.setExecuteResponse(executeResponse);
+                        tmpResult.setExecuteResponse(executeResponse);
                         return response;
                     } catch (SQLException e) {
-                        consolidatorTmpResult.setSQLException(e);
+                        tmpResult.setSQLException(e);
                         throw e;
                     } finally {
-                        if (consolidatorTmpResult.getQueryCount() == 0) {
-                            consolidator.remove(consolidatorKey);
-                        }
+                        consolidator.remove(consolidatorKey);
                     }
                 } else {
-                    consolidatorResult = putIfAbsent;
-                    consolidatorResult.incrementQueryCounter();
+                    consolidatorRes = oldResult;
                 }
             } finally {
-                consolidatorTmpResult.writeLockUnLock();
+                tmpResult.writeLockUnLock();
             }
-        } else {
-            consolidatorResult.incrementQueryCounter();
         }
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("consolidatorKey:" + consolidatorKey + " is wait other result");
         }
-        consolidatorResult.readLockLock();
+        consolidatorRes.readLockLock();
         try {
-            if (consolidatorResult.getSQLException() != null) {
-                throw consolidatorResult.getSQLException();
+            if (consolidatorRes.getSQLException() != null) {
+                throw consolidatorRes.getSQLException();
             }
-            ExecuteResponse response = consolidatorResult.getExecuteResponse();
+            ExecuteResponse response = consolidatorRes.getExecuteResponse();
             VtRowList vtRowList = null;
             if (response.resultSet != null) {
                 vtRowList = ((VtResultSet) response.getResultSet()).clone();
             }
             return new ExecuteResponse(response.getSqlStatementType(), vtRowList);
         } finally {
-            consolidatorResult.decrementQueryCounter();
-            if (consolidatorResult.getQueryCount() == 0) {
-                consolidator.remove(consolidatorKey);
-            }
-            consolidatorResult.readLockUnLock();
+            consolidatorRes.readLockUnLock();
         }
     }
 

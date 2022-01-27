@@ -110,7 +110,7 @@ public class VitessDriverConsolidatorTest extends TestSuite {
         AtomicBoolean atomicBoolean = new AtomicBoolean(true);
         for (int i = 0; i < threadCount; i++) {
             int andIncrement = thCounter.getAndIncrement();
-            executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1));
+            executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1, false));
         }
         countDownLatch.await();
         int result = count[0];
@@ -128,7 +128,7 @@ public class VitessDriverConsolidatorTest extends TestSuite {
         int[] count = new int[1];
         CountDownLatch countDownLatch = new CountDownLatch(1);
         AtomicBoolean atomicBoolean = new AtomicBoolean(true);
-        executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, 0, dataSource1));
+        executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, 0, dataSource1, false));
         countDownLatch.await();
         Assert.assertTrue(atomicBoolean.get());
         checkConsolidatorMap();
@@ -170,14 +170,14 @@ public class VitessDriverConsolidatorTest extends TestSuite {
         AtomicBoolean atomicBoolean = new AtomicBoolean(true);
         for (int i = 0; i < threadCount; i++) {
             int andIncrement = thCounter.getAndIncrement();
-            executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1));
+            executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1, false));
         }
 
         // dataSource2
         int[] count2 = new int[threadCount];
         for (int i = 0; i < threadCount; i++) {
             int andIncrement = thCounter2.getAndIncrement();
-            executorService.execute(new ConsolidatorTask(count2, countDownLatch, atomicBoolean, andIncrement, dataSource2));
+            executorService.execute(new ConsolidatorTask(count2, countDownLatch, atomicBoolean, andIncrement, dataSource2, false));
         }
         countDownLatch.await();
         int result = count[0];
@@ -204,8 +204,28 @@ public class VitessDriverConsolidatorTest extends TestSuite {
         for (String slowSql : slowSqls) {
             for (int i = 0; i < threadCount; i++) {
                 int andIncrement = thCounter.getAndIncrement();
-                executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1, slowSql));
+                executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1, false, slowSql));
             }
+        }
+        countDownLatch.await();
+        int result = count[0];
+        for (int i = 1; i < threadCount; i++) {
+            if (count[i] != result) {
+                Assert.fail();
+            }
+        }
+        Assert.assertTrue(atomicBoolean.get());
+        checkConsolidatorMap();
+    }
+
+    @Test
+    public void testSkipTransaction() throws InterruptedException {
+        int[] count = new int[threadCount];
+        CountDownLatch countDownLatch = new CountDownLatch(threadCount);
+        AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+        for (int i = 0; i < threadCount; i++) {
+            int andIncrement = thCounter.getAndIncrement();
+            executorService.execute(new ConsolidatorTask(count, countDownLatch, atomicBoolean, andIncrement, dataSource1, true));
         }
         countDownLatch.await();
         int result = count[0];
@@ -258,16 +278,19 @@ public class VitessDriverConsolidatorTest extends TestSuite {
 
         private String slowSql = SLOW_SQL;
 
-        public ConsolidatorTask(int[] count, CountDownLatch countDownLatch, AtomicBoolean atomicBoolean, int andIncrement, HikariDataSource dataSource) {
+        private final boolean isTransaction;
+
+        public ConsolidatorTask(int[] count, CountDownLatch countDownLatch, AtomicBoolean atomicBoolean, int andIncrement, HikariDataSource dataSource, boolean isTransaction) {
             this.count = count;
             this.countDownLatch = countDownLatch;
             this.atomicBoolean = atomicBoolean;
             this.andIncrement = andIncrement;
             this.dataSource = dataSource;
+            this.isTransaction = isTransaction;
         }
 
-        public ConsolidatorTask(int[] count, CountDownLatch countDownLatch, AtomicBoolean atomicBoolean, int andIncrement, HikariDataSource dataSource, String slowSql) {
-            this(count, countDownLatch, atomicBoolean, andIncrement, dataSource);
+        public ConsolidatorTask(int[] count, CountDownLatch countDownLatch, AtomicBoolean atomicBoolean, int andIncrement, HikariDataSource dataSource, boolean isTransaction, String slowSql) {
+            this(count, countDownLatch, atomicBoolean, andIncrement, dataSource, isTransaction);
             this.slowSql = slowSql;
         }
 
@@ -276,14 +299,16 @@ public class VitessDriverConsolidatorTest extends TestSuite {
             long start = System.currentTimeMillis();
             try (Connection connection = dataSource.getConnection();
                  Statement stmt = connection.createStatement()) {
+                connection.setAutoCommit(!isTransaction);
                 ResultSet resultSet = stmt.executeQuery(slowSql);
                 while (resultSet.next()) {
                     count[andIncrement] = resultSet.getInt(1);
                 }
+                connection.setAutoCommit(true);
             } catch (SQLException e) {
                 atomicBoolean.set(false);
             } finally {
-                printInfo(String.format("ConsolidatorTest----Threadname=%s , cost %d ms", Thread.currentThread().getName(), (System.currentTimeMillis() - start)));
+                printInfo(String.format("ConsolidatorTest-ThreadName=%s, cost %d ms", Thread.currentThread().getName(), (System.currentTimeMillis() - start)));
                 if (countDownLatch != null) {
                     countDownLatch.countDown();
                 }
