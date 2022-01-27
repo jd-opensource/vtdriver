@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.planbuilder;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.engine.Engine;
@@ -71,6 +70,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.visitor.CheckNodeTypesVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtHasSubqueryVisitor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.tindexes.LogicTable;
@@ -245,7 +245,7 @@ public class PlanBuilder {
                 EvalEngine.Expr expr = SqlParser.convert(selItem.getExpr());
                 exprs.add(expr);
                 cols.add(selItem.getAlias());
-                if (Strings.isNullOrEmpty(cols.get(i))) {
+                if (StringUtils.isEmpty(cols.get(i))) {
                     cols.set(i, selItem.getExpr().toString());
                 }
             } catch (SQLException e) {

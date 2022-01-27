@@ -1077,7 +1077,7 @@ public class PrimitiveBuilder {
                 if (!(groupByItem instanceof SQLIntegerExpr)) {
                     continue;
                 }
-                Integer num = (Integer) ((SQLIntegerExpr) groupByItem).getNumber();
+                int num = ((SQLIntegerExpr) groupByItem).getNumber().intValue();
                 if (num < 1 || num > sel.getSelectList().size()) {
                     continue;
                 }

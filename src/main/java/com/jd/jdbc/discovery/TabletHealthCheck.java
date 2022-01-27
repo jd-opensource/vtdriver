@@ -25,6 +25,8 @@ import com.jd.jdbc.queryservice.TabletDialer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.vitess.proto.Query;
@@ -47,7 +49,7 @@ import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.T
 
 @Data
 public class TabletHealthCheck {
-    private static final Log log = LogFactory.getLog(HealthCheck.class);
+    private static final Log log = LogFactory.getLog(TabletHealthCheck.class);
 
     private static final String CTX_RESPONSE = "health check response ok";
 
@@ -60,16 +62,16 @@ public class TabletHealthCheck {
 
     @Getter
     @Setter
-    private final AtomicBoolean retrying;
+    private AtomicBoolean retrying;
 
     //    ITabletQueryService tabletQueryService;
-    IParentQueryService queryService;
+    private IParentQueryService queryService;
 
-    ReentrantLock lock = new ReentrantLock();
+    private ReentrantLock lock = new ReentrantLock();
 
     @Getter
     private AtomicReference<TabletStreamHealthDetailStatus> tabletStreamHealthDetailStatus =
-        new AtomicReference<TabletStreamHealthDetailStatus>(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_NONE, ""));
+        new AtomicReference<>(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_NONE, ""));
 
     private volatile boolean isCanceled = false;
 
@@ -186,7 +188,7 @@ public class TabletHealthCheck {
 
         try {
             getHealthCheckQueryService().streamHealth(this, responseObserver);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("tablet " + TopoProto.tabletToHumanString(tablet) + "init stream health error, error msg : " + e.getMessage(), e);
             if (savedClientCallStreamObserver != null) {
                 savedClientCallStreamObserver.cancel("streamHealth Exception", e);
@@ -208,7 +210,7 @@ public class TabletHealthCheck {
 
             try {
                 getHealthCheckQueryService().streamHealth(this, responseObserver);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 if (savedClientCallStreamObserver != null) {
                     savedClientCallStreamObserver.cancel("streamHealth Exception", e);
                     savedClientCallStreamObserver = null;
@@ -284,6 +286,19 @@ public class TabletHealthCheck {
             this.healthCheck.removeTablet(this.tablet);
             return;
         } else {
+            boolean logFlag = false;
+            if (t instanceof StatusRuntimeException) {
+                StatusRuntimeException statusRuntimeException = (StatusRuntimeException) t;
+                Status status = statusRuntimeException.getStatus();
+                logFlag = "channel closed".equals(status.getDescription()) ||
+                    "io exception".equals(status.getDescription()) ||
+                    "Keepalive failed. The connection is likely gone".equals(status.getDescription()) ||
+                    "Network closed for unknown reason".equals(status.getDescription());
+            }
+            logFlag = logFlag || t.getMessage().contains("stopHealthCheckStream");
+            if (!logFlag) {
+                log.error("tablet " + TopoProto.tabletToHumanString(tablet) + " handleStreamHealthError error msg : ", t);
+            }
             if (!this.retrying.get()) {
                 this.healthCheck.updateHealth(this.simpleCopy(), this.getTarget(), false, false);
             }

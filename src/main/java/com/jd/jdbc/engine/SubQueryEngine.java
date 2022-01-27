@@ -50,7 +50,7 @@ public class SubQueryEngine implements PrimitiveEngine {
     @Override
     public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse inner = this.subqueryEngine.execute(ctx, vcursor, bindVariableMap, wantFields);
-        VtResultSet result = this.buildResult(inner.getVtRowList());
+        VtResultSet result = this.buildResult(inner.getVtRowList(), true);
         return new IExecute.ExecuteMultiShardResponse(result);
     }
 
@@ -61,11 +61,13 @@ public class SubQueryEngine implements PrimitiveEngine {
      * @param inner
      * @return
      */
-    private VtResultSet buildResult(VtRowList inner) {
+    private VtResultSet buildResult(VtRowList inner, boolean wantFields) {
         VtResultSet innerResult = (VtResultSet) inner;
 
         VtResultSet result = new VtResultSet();
-        result.setFields(innerResult.getFields());
+        if (wantFields) {
+            result.setFields(buildFields(innerResult));
+        }
         result.setRows(new ArrayList<>(innerResult.getRows().size()));
 
         for (List<VtResultValue> innerRow : innerResult.getRows()) {
@@ -82,7 +84,7 @@ public class SubQueryEngine implements PrimitiveEngine {
     @Override
     public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse inner = this.subqueryEngine.mergeResult(vtResultSet, bindValues, wantFields);
-        VtResultSet result = this.buildResult(inner.getVtRowList());
+        VtResultSet result = this.buildResult(inner.getVtRowList(), true);
         return new IExecute.ExecuteMultiShardResponse(result);
     }
 
@@ -112,7 +114,7 @@ public class SubQueryEngine implements PrimitiveEngine {
             @Override
             public VtRowList fetch(boolean wantFields) throws SQLException {
                 VtRowList vtRowList = stream.fetch(wantFields);
-                return buildResult(vtRowList);
+                return buildResult(vtRowList, wantFields);
             }
 
             @Override

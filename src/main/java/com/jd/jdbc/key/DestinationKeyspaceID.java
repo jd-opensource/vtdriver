@@ -53,7 +53,7 @@ public class DestinationKeyspaceID implements Destination {
                 return shardReference.getName();
             }
         }
-        throw new SQLException("KeyspaceId %v didn't match any shards " + allShards);
+        throw new SQLException("KeyspaceId didn't match any shards " + allShards);
     }
 
     public byte[] getValue() {

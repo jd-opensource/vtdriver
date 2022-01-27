@@ -1109,6 +1109,9 @@ public class VitessStatement extends AbstractVitessStatement {
 
             Query.Field field = Query.Field.newBuilder()
                 .setName(StringUtil.isNullOrEmpty(alias) ? methodName : alias)
+                .setJdbcClassName("java.math.BigInteger")
+                .setPrecision(20)
+                .setColumnLength(20)
                 .setType(Query.Type.UINT64).build();
 
             this.resultSets.add(new VtResultSet(new Query.Field[] {field}, rows));

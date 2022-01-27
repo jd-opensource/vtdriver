@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -215,6 +216,9 @@ public class EvalEngine {
             case FLOAT64:
                 Double fval = Double.valueOf(new String(val.getVtValue()));
                 return new EvalResult(fval, Query.Type.FLOAT64);
+            case DECIMAL:
+                BigDecimal bigDecimal = new BigDecimal(new String(val.getVtValue()));
+                return new EvalResult(bigDecimal, Query.Type.DECIMAL);
             case VARCHAR:
             case TEXT:
             case VARBINARY:
@@ -227,14 +231,20 @@ public class EvalEngine {
 
     private static Query.Type mergeNumericalTypes(Query.Type ltype, Query.Type rtype) {
         switch (ltype) {
+            case INT32:
+                if (rtype == Query.Type.UINT32 || rtype == Query.Type.INT64 || rtype == Query.Type.UINT64 || rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
+                    return rtype;
+                }
             case INT64:
-                if (rtype == Query.Type.UINT64 || rtype == Query.Type.FLOAT64) {
+                if (rtype == Query.Type.UINT64 || rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
                     return rtype;
                 }
             case UINT64:
-                if (rtype == Query.Type.FLOAT64) {
+                if (rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
                     return rtype;
                 }
+            case DECIMAL:
+                break;
         }
         return ltype;
     }
@@ -259,6 +269,8 @@ public class EvalEngine {
          * @return
          */
         String string();
+
+        void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException;
     }
 
     /**
@@ -296,6 +308,8 @@ public class EvalEngine {
 
         private Double fval;
 
+        private BigDecimal bigDecimal;
+
         private byte[] bytes;
 
         public EvalResult() {
@@ -321,6 +335,11 @@ public class EvalEngine {
             this.type = type;
         }
 
+        public EvalResult(BigDecimal bigDecimal, Query.Type type) {
+            this.bigDecimal = bigDecimal;
+            this.type = type;
+        }
+
         public EvalResult(Query.Type type) {
             this.type = type;
         }
@@ -334,8 +353,10 @@ public class EvalEngine {
                     return "Type: " + this.type + ", Value: " + this.uval.toString();
                 case FLOAT64:
                     return "Type: " + this.type + ", Value: " + this.fval.toString();
+                case DECIMAL:
+                    return "Type: " + this.type + ", Value: " + this.bigDecimal.toString();
                 default:
-                    return "Type: " + this.type + ", Value: " + this.bytes;
+                    return "Type: " + this.type + ", Value: " + Arrays.toString(this.bytes);
             }
         }
 
@@ -404,6 +425,11 @@ public class EvalEngine {
         public String string() {
             return ":" + this.key;
         }
+
+        @Override
+        public void output(final StringBuilder builder, final boolean wrap, final Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) {
+            builder.append(new String(bindVariableMap.get(key).getValue()));
+        }
     }
 
     public static class Literal implements Expr {
@@ -434,6 +460,11 @@ public class EvalEngine {
                 logger.error(e.getMessage(), e);
                 return "";
             }
+        }
+
+        @Override
+        public void output(final StringBuilder builder, final boolean wrap, final Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+            builder.append(val.value().toString());
         }
     }
 
@@ -474,6 +505,23 @@ public class EvalEngine {
         @Override
         public String string() {
             return null;
+        }
+
+        @Override
+        public void output(final StringBuilder builder, final boolean wrap, final Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+            if (wrap) {
+                builder.append('(');
+            }
+
+            this.left.output(builder, true, bindVariableMap);
+            builder.append(" ");
+            builder.append(this.expr.string());
+            builder.append(" ");
+            this.right.output(builder, true, bindVariableMap);
+
+            if (wrap) {
+                builder.append(')');
+            }
         }
     }
 

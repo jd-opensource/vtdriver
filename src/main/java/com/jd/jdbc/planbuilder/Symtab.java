@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.planbuilder;
 
-import com.google.common.base.Strings;
 import com.jd.jdbc.planbuilder.tableplan.TableRoutePlan;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
@@ -27,6 +26,7 @@ import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLPropertyExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLExprTableSource;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectItem;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.tindexes.TableIndex;
@@ -114,7 +114,7 @@ public class Symtab {
      */
     public static ResultColumn newResultColumn(SQLSelectItem expr, Builder origin) {
         ResultColumn resultColumn = new ResultColumn();
-        resultColumn.setAlias(Strings.nullToEmpty(expr.getAlias()));
+        resultColumn.setAlias(StringUtils.nullToEmpty(expr.getAlias()));
         if (expr.getExpr() instanceof SQLPropertyExpr
             || expr.getExpr() instanceof SQLIdentifierExpr) {
             // If no alias was specified, then the base name

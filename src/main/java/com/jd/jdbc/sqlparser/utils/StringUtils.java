@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.jd.jdbc.sqlparser.utils;
 
 import com.jd.jdbc.sqlparser.support.logging.Log;
@@ -131,6 +132,10 @@ public class StringUtils {
 
     public static boolean isEmpty(CharSequence value) {
         return value == null || value.length() == 0;
+    }
+
+    public static boolean isNotEmpty(CharSequence cs) {
+        return !isEmpty(cs);
     }
 
     public static int lowerHashCode(String text) {
@@ -699,5 +704,9 @@ public class StringUtils {
             }
         }
         return true;
+    }
+
+    public static String nullToEmpty(String string) {
+        return (string == null) ? "" : string;
     }
 }

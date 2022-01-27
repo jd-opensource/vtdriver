@@ -19,8 +19,8 @@
     "comment": "# information_schema query using database() func",
     "fields": [
       {
-        "name": "cnt",
-        "javaType": "Integer"
+        "name": "indexLength",
+        "javaType": "Long"
       }
     ],
     "needSort": false,

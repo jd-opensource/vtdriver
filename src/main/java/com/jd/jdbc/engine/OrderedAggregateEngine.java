@@ -201,13 +201,13 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                     return vtResultSet;
                 }
 
+                if (fields == null && vtStreamResultSet.getFields() != null) {
+                    fields = convertFields(vtStreamResultSet.getFields());
+                }
+
                 while (vtStreamResultSet.hasNext()) {
                     isEmpty = false;
                     List<VtResultValue> row = vtStreamResultSet.next();
-
-                    if (fields == null) {
-                        fields = convertFields(vtStreamResultSet.getFields());
-                    }
 
                     if (current == null) {
                         rowProcessResponse response = convertRow(row);
@@ -241,7 +241,6 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                     returnEmpty = true;
                     List<VtResultValue> row = createEmptyRow();
                     vtResultSet.getRows().add(row);
-                    fields = convertFields(vtStreamResultSet.getFields());
                     return vtResultSet;
                 }
 
@@ -359,10 +358,27 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
             if (!aggr.isDistinct()) {
                 continue;
             }
-            fields[aggr.col] = Query.Field.newBuilder()
+            Query.Field.Builder builder = Query.Field.newBuilder()
                 .setName(aggr.alias)
                 .setType(OPCODE_TYPE.get(aggr.opcode))
-                .build();
+                .setIsSigned(true);
+            switch (aggr.opcode) {
+                case AggregateCountDistinct:
+                    fields[aggr.col] = builder
+                        .setPrecision(19)
+                        .setColumnLength(6)
+                        .setJdbcClassName("java.lang.Long")
+                        .build();
+                    break;
+                case AggregateSumDistinct:
+                    fields[aggr.col] = builder
+                        .setPrecision(32)
+                        .setColumnLength(32)
+                        .setJdbcClassName("java.math.BigDecimal")
+                        .build();
+                default:
+                    fields[aggr.col] = builder.build();
+            }
         }
         return fields;
     }
