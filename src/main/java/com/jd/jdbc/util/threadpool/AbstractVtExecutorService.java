@@ -17,7 +17,7 @@ limitations under the License.
 package com.jd.jdbc.util.threadpool;
 
 public abstract class AbstractVtExecutorService {
-    public static final Integer DEFAULT_CORE_POOL_SIZE = Integer.min(10, Runtime.getRuntime().availableProcessors());
+    public static final Integer DEFAULT_CORE_POOL_SIZE = 10;
 
     public static final Integer DEFAULT_MAXIMUM_POOL_SIZE = DEFAULT_CORE_POOL_SIZE * 10;
 

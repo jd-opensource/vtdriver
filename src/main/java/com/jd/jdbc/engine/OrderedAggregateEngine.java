@@ -29,6 +29,7 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
 import com.jd.jdbc.sqltypes.VtStreamResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -137,27 +138,27 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor cursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor cursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse resultResponse = this.orderedAggregateExecute(ctx, cursor, bindVariableMap, wantFields);
         VtResultSet queryResult = (VtResultSet) resultResponse.getVtRowList();
         return new IExecute.ExecuteMultiShardResponse(queryResult.truncate(this.truncateColumnCount));
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet result, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet result, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = this.input.mergeResult(result, bindValues, wantFields);
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
         return getExecuteMultiShardResponse(vtResultSet);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValues);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValues, switchTableMap);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
@@ -176,10 +177,10 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new IExecute.VtStream() {
-            private final VtStreamResultSet vtStreamResultSet = new VtStreamResultSet(vtStream);
+            private final VtStreamResultSet vtStreamResultSet = new VtStreamResultSet(vtStream, wantFields);
 
             private IExecute.VtStream stream = vtStream;
 
@@ -200,13 +201,13 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                     return vtResultSet;
                 }
 
+                if (fields == null && vtStreamResultSet.getFields() != null) {
+                    fields = convertFields(vtStreamResultSet.getFields());
+                }
+
                 while (vtStreamResultSet.hasNext()) {
                     isEmpty = false;
                     List<VtResultValue> row = vtStreamResultSet.next();
-
-                    if (fields == null) {
-                        fields = convertFields(vtStreamResultSet.getFields());
-                    }
 
                     if (current == null) {
                         rowProcessResponse response = convertRow(row);
@@ -240,7 +241,6 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                     returnEmpty = true;
                     List<VtResultValue> row = createEmptyRow();
                     vtResultSet.getRows().add(row);
-                    fields = convertFields(vtStreamResultSet.getFields());
                     return vtResultSet;
                 }
 
@@ -280,7 +280,7 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
      * @return
      * @throws Exception
      */
-    private IExecute.ExecuteMultiShardResponse orderedAggregateExecute(IContext ctx, Vcursor cursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse orderedAggregateExecute(IContext ctx, Vcursor cursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse resultResponse = this.input.execute(ctx, cursor, bindVariableMap, wantFields);
         return getExecuteMultiShardResponse((VtResultSet) resultResponse.getVtRowList());
     }
@@ -358,10 +358,27 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
             if (!aggr.isDistinct()) {
                 continue;
             }
-            fields[aggr.col] = Query.Field.newBuilder()
+            Query.Field.Builder builder = Query.Field.newBuilder()
                 .setName(aggr.alias)
                 .setType(OPCODE_TYPE.get(aggr.opcode))
-                .build();
+                .setIsSigned(true);
+            switch (aggr.opcode) {
+                case AggregateCountDistinct:
+                    fields[aggr.col] = builder
+                        .setPrecision(19)
+                        .setColumnLength(6)
+                        .setJdbcClassName("java.lang.Long")
+                        .build();
+                    break;
+                case AggregateSumDistinct:
+                    fields[aggr.col] = builder
+                        .setPrecision(32)
+                        .setColumnLength(32)
+                        .setJdbcClassName("java.math.BigDecimal")
+                        .build();
+                default:
+                    fields[aggr.col] = builder.build();
+            }
         }
         return fields;
     }
@@ -416,7 +433,7 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         VtResultSet qr = this.input.getFields(vcursor, bindValues);
         Query.Field[] fields = this.convertFields(qr.getFields());
         qr = new VtResultSet();

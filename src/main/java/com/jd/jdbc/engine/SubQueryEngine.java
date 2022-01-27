@@ -23,6 +23,7 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -47,9 +48,9 @@ public class SubQueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse inner = this.subqueryEngine.execute(ctx, vcursor, bindVariableMap, wantFields);
-        VtResultSet result = this.buildResult(inner.getVtRowList());
+        VtResultSet result = this.buildResult(inner.getVtRowList(), true);
         return new IExecute.ExecuteMultiShardResponse(result);
     }
 
@@ -60,11 +61,13 @@ public class SubQueryEngine implements PrimitiveEngine {
      * @param inner
      * @return
      */
-    private VtResultSet buildResult(VtRowList inner) {
+    private VtResultSet buildResult(VtRowList inner, boolean wantFields) {
         VtResultSet innerResult = (VtResultSet) inner;
 
         VtResultSet result = new VtResultSet();
-        result.setFields(innerResult.getFields());
+        if (wantFields) {
+            result.setFields(buildFields(innerResult));
+        }
         result.setRows(new ArrayList<>(innerResult.getRows().size()));
 
         for (List<VtResultValue> innerRow : innerResult.getRows()) {
@@ -79,20 +82,20 @@ public class SubQueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse inner = this.subqueryEngine.mergeResult(vtResultSet, bindValues, wantFields);
-        VtResultSet result = this.buildResult(inner.getVtRowList());
+        VtResultSet result = this.buildResult(inner.getVtRowList(), true);
         return new IExecute.ExecuteMultiShardResponse(result);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.subqueryEngine.resolveShardQuery(ctx, vcursor, bindValues);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, Map<String, String> switchTableMap) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.subqueryEngine.resolveShardQuery(ctx, vcursor, bindValues, switchTableMap);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
@@ -103,7 +106,7 @@ public class SubQueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.VtStream vtStream = this.subqueryEngine.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new IExecute.VtStream() {
             private IExecute.VtStream stream = vtStream;
@@ -111,7 +114,7 @@ public class SubQueryEngine implements PrimitiveEngine {
             @Override
             public VtRowList fetch(boolean wantFields) throws SQLException {
                 VtRowList vtRowList = stream.fetch(wantFields);
-                return buildResult(vtRowList);
+                return buildResult(vtRowList, wantFields);
             }
 
             @Override
@@ -125,7 +128,7 @@ public class SubQueryEngine implements PrimitiveEngine {
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         VtResultSet inner = this.subqueryEngine.getFields(vcursor, bindValues);
         VtResultSet resultSet = new VtResultSet();
         resultSet.setFields(this.buildFields(inner));

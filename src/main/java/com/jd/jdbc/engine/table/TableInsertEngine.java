@@ -38,6 +38,7 @@ import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -132,7 +133,7 @@ public class TableInsertEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantFields) throws SQLException {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("insert is not allowed for read only connection");
         }
@@ -147,7 +148,7 @@ public class TableInsertEngine implements PrimitiveEngine {
         }
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantField)
+    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantField)
         throws SQLException {
 
         List<ActualTable> actualTables = new ArrayList<>();
@@ -158,7 +159,7 @@ public class TableInsertEngine implements PrimitiveEngine {
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, null, innerEngineMidExprList);
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertSharded(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindVariableMap, final boolean wantField)
+    private IExecute.ExecuteMultiShardResponse execInsertSharded(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantField)
         throws SQLException {
 
         List<ActualTable> actualTables = new ArrayList<>();
@@ -172,12 +173,12 @@ public class TableInsertEngine implements PrimitiveEngine {
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, innerEnginePlanValueList, innerEngineMidExprList);
     }
 
-    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantField,
+    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantField,
                                                                             List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable, List<VtPlanValue> innerEnginePlanValueList,
                                                                             List<SQLInsertStatement.ValuesClause> innerEngineMidExprList) throws SQLException {
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
         List<PrimitiveEngine> sourceList = new ArrayList<>();
-        List<Map<String, Query.BindVariable>> batchBindVariableMap = new ArrayList<>();
+        List<Map<String, BindVariable>> batchBindVariableMap = new ArrayList<>();
         Map<String, LogicTable> shardTableLTMap = new HashMap<>();
 
         List<VtPlanValue> tempRouteValueList = new ArrayList<>();
@@ -200,7 +201,7 @@ public class TableInsertEngine implements PrimitiveEngine {
             }
             Map<String, String> switchTables = new HashMap<>();
             switchTables.put(actualTable.getLogicTable().getLogicTable(), actualTable.getActualTableName());
-            Map<String, Query.BindVariable> bindVarClone = new HashMap<>(bindVariableMap);
+            Map<String, BindVariable> bindVarClone = new HashMap<>(bindVariableMap);
 
             tempRouteValueList.get(0).getVtPlanValueList().get(0).setVtPlanValueList(tempInnerPlanValueList);
             shardQueryList.add(getChangedInsertQueries(ctx, vcursor, bindVarClone, switchTables, valuesClauseList, tempRouteValueList));
@@ -212,7 +213,7 @@ public class TableInsertEngine implements PrimitiveEngine {
         return new IExecute.ExecuteMultiShardResponse(resultSet).setUpdate();
     }
 
-    private void buildActualTables(Map<String, Query.BindVariable> bindVariableMap, List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable) throws SQLException {
+    private void buildActualTables(Map<String, BindVariable> bindVariableMap, List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable) throws SQLException {
         Map<String, Integer> actualTableIndex = new HashMap<>();
         // compute target table partitions and their corresponding value's index
         for (int rowNum = 0; rowNum < this.vindexValueList.size(); rowNum++) {
@@ -236,7 +237,7 @@ public class TableInsertEngine implements PrimitiveEngine {
         }
     }
 
-    private IExecute.ResolvedShardQuery getChangedInsertQueries(final IContext ctx, final Vcursor vcursor, final Map<String, Query.BindVariable> bindValues, final Map<String, String> switchTables,
+    private IExecute.ResolvedShardQuery getChangedInsertQueries(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindValues, final Map<String, String> switchTables,
                                                                 final List<SQLInsertStatement.ValuesClause> valuesList, final List<VtPlanValue> tempPlanValueList) throws SQLException {
         StringBuilder prefixBuf = new StringBuilder();
         StringBuilder suffixBuf = new StringBuilder();

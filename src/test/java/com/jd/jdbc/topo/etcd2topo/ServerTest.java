@@ -37,7 +37,9 @@ import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -51,7 +53,15 @@ import vschema.Vschema;
 public class ServerTest {
     private static final String TOPO_IMPLEMENTATION_K8S = "k8s";
 
-    private static final String TOPO_GLOBAL_PROXY_ADDRESS = "http://172.20.128.87:2379";
+    //The ip address needs to be modified to the ip address of the machine where etcd is located
+    private static final String TOPO_ZONE1_PROXY_ADDRESS = "http://127.0.0.1:2379";
+
+    private static final String TOPO_ZONE1_ROOT = "/vitess/zone1/tablets";
+
+    private static final String TOPO_ZONE1_ROOT_END = "/vitess/zone1/tablets1";
+
+    //The ip address needs to be modified to the ip address of the machine where etcd is located
+    private static final String TOPO_GLOBAL_PROXY_ADDRESS = "http://127.0.0.1:2379";
 
     private static final String TOPO_GLOBAL_ROOT = "/vitess/global";
 
@@ -61,7 +71,8 @@ public class ServerTest {
 
     public static Topo.TopoServerImplementType TOPO_IMPLEMENTATION = Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2;
 
-    public static String TOPO_GLOBAL_SERVER_ADDRESS = "http://172.20.128.87:2379";
+    //The ip address needs to be modified to the ip address of the machine where etcd is located
+    public static String TOPO_GLOBAL_SERVER_ADDRESS = "http://127.0.0.1:2379";
 
     /**
      * @return
@@ -178,7 +189,7 @@ public class ServerTest {
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
         VtDaemonExecutorService.initialize(null, null, null);
 
-        List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, new ArrayList<String>() {{
+        List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, new HashSet<String>() {{
             add(TOPO_KEYSPACE);
         }}, new ArrayList<Topodata.TabletType>() {{
             add(Topodata.TabletType.MASTER);
@@ -189,14 +200,14 @@ public class ServerTest {
     }
 
     @Test
-    public void testTimer() throws Exception {
+    public void case08_testTimer() throws Exception {
         TopoServer topoServer = open();
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
         TimeUnit.SECONDS.sleep(10);
     }
 
     private void commonTestServer(TopoServer topoServer) throws TopoException {
-        List<Topodata.TabletAlias> tabletAliasList = topoServer.getTabletsByCell(VtContext.withCancel(VtContext.background()), TOPO_CELL);
+        List<Topodata.TabletAlias> tabletAliasList = topoServer.getTabletAliasByCell(VtContext.withCancel(VtContext.background()), TOPO_CELL);
         for (Topodata.TabletAlias tabletAlias : tabletAliasList) {
             TopoTabletInfo topoTabletInfo = topoServer.getTablet(VtContext.withCancel(VtContext.background()), tabletAlias);
             Assert.assertNotNull(topoTabletInfo);
@@ -208,5 +219,30 @@ public class ServerTest {
 
         Vschema.Keyspace keyspace = topoServer.getVschema(VtContext.withCancel(VtContext.background()), TOPO_KEYSPACE);
         Assert.assertTrue(keyspace.getSharded());
+    }
+
+    @Test
+    public void case09_getTabletsByRange() throws ExecutionException, InterruptedException {
+
+        Client client = Client.builder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .waitForReady(false)
+            .endpoints(TOPO_ZONE1_PROXY_ADDRESS)
+            .build();
+        Assert.assertNotNull(client);
+
+        ByteSequence startSequence = ByteSequence.from(TOPO_ZONE1_ROOT.getBytes());
+        ByteSequence endSequence = ByteSequence.from(TOPO_ZONE1_ROOT_END.getBytes());
+
+        GetOption option = GetOption.newBuilder()
+            .withRange(endSequence)
+            .build();
+        CompletableFuture<GetResponse> future = client.getKVClient().get(startSequence, option);
+        GetResponse resp = future.get();
+        for (KeyValue kv : resp.getKvs()) {
+            String key = kv.getKey().toString(Charset.defaultCharset());
+            Assert.assertNotNull(key);
+        }
+        System.out.println(resp.getCount());
     }
 }

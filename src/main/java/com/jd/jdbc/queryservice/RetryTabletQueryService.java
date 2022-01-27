@@ -27,6 +27,8 @@ import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.Gateway;
 import com.jd.jdbc.srvtopo.TabletGateway;
 import com.jd.jdbc.topo.topoproto.TopoProto;
@@ -99,7 +101,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedID,
+    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables, Long reservedID,
                                          Query.ExecuteOptions options) throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug("beginExecute --> " + sql);
@@ -125,7 +127,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
+    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Long reservedID, Query.ExecuteOptions options)
         throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug("execute [" + transactionID + "] --> " + sql);
@@ -150,7 +152,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options)
+    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionID, Query.ExecuteOptions options)
         throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug("streamExecute --> " + sql);
@@ -164,7 +166,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
+    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
 
         boolean inDedicatedConn = transactionId != 0;
@@ -187,7 +189,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
+    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
 
         return (BeginBatchVtResultSet) retry(asTransaction, target, (IQueryService qs) -> {
             try {
@@ -209,14 +211,14 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
     }
 
     @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                                  Query.ExecuteOptions options) throws Exception {
         //not used.
         return null;
     }
 
     @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                        Query.ExecuteOptions options) throws Exception {
         //not used.
         return null;

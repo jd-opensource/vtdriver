@@ -58,6 +58,11 @@ public class TopoStatsConnection implements TopoConnection {
     }
 
     @Override
+    public List<ConnGetResponse> getTabletsByCell(IContext ctx, String filePath) throws TopoException {
+        return this.topoConnection.getTabletsByCell(ctx, filePath);
+    }
+
+    @Override
     public CompletableFuture<ConnGetResponse> getFuture(IContext ctx, String filePath) {
         return this.topoConnection.getFuture(ctx, filePath);
     }

@@ -25,6 +25,8 @@ import com.jd.jdbc.sqltypes.BatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.BeginVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.vitess.Config;
 import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import io.grpc.ManagedChannel;
@@ -41,7 +43,7 @@ import java.util.Properties;
  * QueryService that combines the NativeProtocol and GRPC
  **/
 public class CombinedQueryService implements IQueryService, IHealthCheckQueryService {
-    private final Topodata.Tablet tablet;
+    private Topodata.Tablet tablet;
 
     private final IQueryService tabletQueryService;
 
@@ -49,14 +51,20 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
 
     public CombinedQueryService(ManagedChannel channel, Topodata.Tablet tablet) {
         this.tablet = tablet;
-        tabletQueryService = new TabletQueryService(channel);
-
+        this.tabletQueryService = new TabletQueryService(channel);
         SecurityCenter.Credential credential = SecurityCenter.INSTANCE.getCredential(this.tablet.getKeyspace());
-        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
-        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tablet.getType()) && Objects.equals(tablet.getType(), VitessJdbcProperyUtil.getTabletType(dsProperties))) {
-            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tablet.getType());
+        Topodata.TabletType tabletType = tablet.getType();
+        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
+        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tabletType) && Objects.equals(tabletType, VitessJdbcProperyUtil.getTabletType(dsProperties))) {
+            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
             nativeQueryService = new NativeQueryService(tablet, credential.getUser(), credential.getPassword(), dsProperties, properties);
         }
+    }
+
+    @Override
+    public void setTablet(Topodata.Tablet tablet) {
+        this.tablet = tablet;
+        nativeQueryService.setTablet(tablet);
     }
 
     private IQueryService getNativeQueryService() {
@@ -69,7 +77,7 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
                 Topodata.TabletType tabletType = tablet.getType();
                 Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
                 Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
-                if ((properties == null || dsProperties == null) && Objects.equals(Topodata.TabletType.RDONLY, tablet.getType())) {
+                if ((properties == null || dsProperties == null) && Objects.equals(Topodata.TabletType.RDONLY, tabletType)) {
                     properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
                     dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), Topodata.TabletType.REPLICA);
                 }
@@ -109,36 +117,36 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     }
 
     @Override
-    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
+    public VtResultSet execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().execute(context, target, sql, bindVariables, transactionId, reservedId, options);
     }
 
     @Override
-    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options)
+    public StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().streamExecute(context, target, sql, bindVariables, transactionId, options);
     }
 
     @Override
-    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
+    public BatchVtResultSet executeBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options)
         throws SQLException {
         return getNativeQueryService().executeBatch(context, target, queries, asTransaction, transactionId, options);
     }
 
     @Override
-    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
+    public BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options) throws SQLException {
         return getNativeQueryService().beginExecuteBatch(context, target, queries, asTransaction, options);
     }
 
     @Override
-    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    public Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                                  Query.ExecuteOptions options) throws Exception {
         return null;
     }
 
     @Override
-    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    public Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                        Query.ExecuteOptions options) throws Exception {
         return null;
     }
@@ -151,7 +159,7 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     }
 
     @Override
-    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedId,
+    public BeginVtResultSet beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long reservedId,
                                          Query.ExecuteOptions options) throws SQLException {
         return getNativeQueryService().beginExecute(context, target, preQueries, sql, bindVariables, reservedId, options);
     }

@@ -116,10 +116,7 @@ public class VitessDriver implements java.sql.Driver {
             SecurityCenter.INSTANCE.addCredential(prop);
             String defaultKeyspace = keySpaces.get(0);
 
-            String role = prop.getProperty(DRIVER_PROPERTY_ROLE_KEY, DRIVER_PROPERTY_ROLE_RW);
-            if (!prop.containsKey(DRIVER_PROPERTY_ROLE_KEY)) {
-                prop.put(DRIVER_PROPERTY_ROLE_KEY, role);
-            }
+            String role = VitessJdbcProperyUtil.getRole(prop);
             Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);
             Config.setConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser(), tabletType);
             TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
@@ -131,7 +128,9 @@ public class VitessDriver implements java.sql.Driver {
                 topoServer.getSrvKeyspace(globalContext, localCell, defaultKeyspace);
             } catch (TopoException e) {
                 if (e.getCode() == TopoExceptionCode.NO_NODE) {
-                    localCell = cells.get(1);
+                    if (cells.size() > 1) {
+                        localCell = cells.get(1);
+                    }
                 }
             }
             Set<String> ksSet = new HashSet<>(keySpaces);

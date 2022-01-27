@@ -19,7 +19,7 @@ limitations under the License.
 package com.jd.jdbc.vindexes;
 
 import com.jd.jdbc.sqltypes.VtResultSet;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Vtgate;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,7 @@ public interface Vcursor {
      * @param commitOrder
      * @return
      */
-    ExecuteResponse execute(String method, String query, Map<String, Query.BindVariable> bindVariables, Boolean rollbackOnError, Vtgate.CommitOrder commitOrder);
+    ExecuteResponse execute(String method, String query, Map<String, BindVariable> bindVariables, Boolean rollbackOnError, Vtgate.CommitOrder commitOrder);
 
     /**
      * @param keyspace
@@ -45,7 +45,7 @@ public interface Vcursor {
      * @param autocommit
      * @return
      */
-    ExecuteResponse executeKeyspaceId(String keyspace, List<Byte> ksid, String query, Map<String, Query.BindVariable> bindVariables, Boolean rollbackOnError, Boolean autocommit);
+    ExecuteResponse executeKeyspaceId(String keyspace, List<Byte> ksid, String query, Map<String, BindVariable> bindVariables, Boolean rollbackOnError, Boolean autocommit);
 
     class ExecuteResponse {
         VtResultSet resultSet;

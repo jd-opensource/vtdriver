@@ -328,6 +328,8 @@ public enum HealthCheck {
                 String oldTargetKey = keyFromTarget(preTarget);
                 this.healthData.get(oldTargetKey).remove(tabletAlias);
                 this.healthData.computeIfAbsent(targetKey, key -> new HashMap<>());
+                Topodata.Tablet tablet = th.getTablet().toBuilder().setType(th.getTarget().getTabletType()).setKeyspace(th.getTarget().getKeyspace()).setShard(th.getTarget().getShard()).build();
+                th.getQueryService().setTablet(tablet);
             }
             this.healthData.get(targetKey).put(tabletAlias, th);
             boolean isPrimary = th.getTarget().getTabletType() == Topodata.TabletType.MASTER;
@@ -462,7 +464,7 @@ public enum HealthCheck {
             }
 
             try {
-                Thread.sleep(100);
+                Thread.sleep(50);
             } catch (InterruptedException e) {
 
             }

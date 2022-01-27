@@ -26,6 +26,7 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
 import com.jd.jdbc.sqltypes.VtStreamResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
@@ -70,11 +71,11 @@ public class ConcatenateEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
         VtResultSet resultSet = new VtResultSet();
 
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
-        List<Map<String, Query.BindVariable>> batchBindVariableMap = new ArrayList<>();
+        List<Map<String, BindVariable>> batchBindVariableMap = new ArrayList<>();
         for (PrimitiveEngine source : sourceList) {
             IExecute.ResolvedShardQuery shardQueries = source.resolveShardQuery(ctx, vcursor, bindValue);
             shardQueryList.add(shardQueries);
@@ -127,7 +128,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
         List<IExecute.VtStream> sourceStreamList = new ArrayList<>();
         ReentrantLock lock = new ReentrantLock();
 
@@ -197,7 +198,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
                 }
                 this.sourceStreamResultList = new ArrayList<>();
                 for (IExecute.VtStream source : sources) {
-                    VtStreamResultSet sourceStreamResultSet = new VtStreamResultSet(source);
+                    VtStreamResultSet sourceStreamResultSet = new VtStreamResultSet(source, true);
                     if (seenFields == null) {
                         seenFields = sourceStreamResultSet.getFields();
                     } else {
@@ -218,7 +219,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         VtResultSet firstQr = this.sourceList.get(0).getFields(vcursor, bindVariableMap);
         for (int i = 0; i < this.sourceList.size(); i++) {
             PrimitiveEngine source = this.sourceList.get(i);

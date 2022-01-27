@@ -129,7 +129,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
 
     @Test
     public void groupBy() throws SQLException {
-        String sql = "select id from auto where id > 50 group by id order by id;;;;;select id from auto where id <= 50 group by id order by id;select id from auto group by id order by id;";
+        String sql = "select id from auto where id > 50 group by id order by id;select id from auto where id <= 50 group by id order by id;select id from auto group by id order by id;";
         try (Statement stmt = conn.createStatement()) {
             boolean hasResult = stmt.execute(sql);
             int sqlIdx = 0;

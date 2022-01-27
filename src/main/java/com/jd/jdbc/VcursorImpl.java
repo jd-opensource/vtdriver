@@ -27,12 +27,15 @@ import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.Comment;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
@@ -93,7 +96,7 @@ public class VcursorImpl implements Vcursor {
      * @return
      */
     @Override
-    public ExecuteMultiShardResponse executeMultiShard(List<ResolvedShard> rss, List<Query.BoundQuery> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException {
+    public ExecuteMultiShardResponse executeMultiShard(List<ResolvedShard> rss, List<BoundQuery> queries, Boolean rollbackOnError, Boolean canAutocommit) throws SQLException {
         ExecuteMultiShardResponse response = this.executor.executeMultiShard(this.ctx, rss, queries, safeSession, canAutocommit, true);
         if (rollbackOnError) {
             this.rollbackOnPartialExec = true;
@@ -102,13 +105,13 @@ public class VcursorImpl implements Vcursor {
     }
 
     @Override
-    public IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(List<ResolvedShard> rss, List<List<Query.BoundQuery>> queries, Boolean rollbackOnError, Boolean canAutocommit)
+    public IExecute.ExecuteBatchMultiShardResponse executeBatchMultiShard(List<ResolvedShard> rss, List<List<BoundQuery>> queries, Boolean rollbackOnError, Boolean canAutocommit)
         throws SQLException {
         return this.executor.executeBatchMultiShard(this.ctx, rss, queries, safeSession, canAutocommit, true, false);
     }
 
     @Override
-    public List<StreamIterator> streamExecuteMultiShard(List<ResolvedShard> rss, List<Query.BoundQuery> queries) throws SQLException {
+    public List<StreamIterator> streamExecuteMultiShard(List<ResolvedShard> rss, List<BoundQuery> queries) throws SQLException {
         return this.executor.streamExecuteMultiShard(this.ctx, rss, queries, safeSession);
     }
 
@@ -142,15 +145,14 @@ public class VcursorImpl implements Vcursor {
     }
 
     @Override
-    public VtRowList executeStandalone(String sql, Map<String, Query.BindVariable> bindVars, ResolvedShard resolvedShard, boolean canAutocommit) throws SQLException {
+    public VtRowList executeStandalone(String sql, Map<String, BindVariable> bindVars, ResolvedShard resolvedShard, boolean canAutocommit) throws SQLException {
         List<ResolvedShard> rss = new ArrayList<>();
         rss.add(resolvedShard);
 
-        List<Query.BoundQuery> queries = new ArrayList<>();
         final String querySql = comment.getLeading() + sql + comment.getTrailing();
-        Query.BoundQuery boundQuery = Query.BoundQuery.newBuilder().setSql(querySql).putAllBindVariables(bindVars).build();
-        queries.add(boundQuery);
-        ExecuteMultiShardResponse response = this.executor.executeMultiShard(this.ctx, rss, queries, SafeSession.newAutoCommitSession(this.safeSession.getVitessConnection()), canAutocommit, true);
+        BoundQuery boundQuery = new BoundQuery(querySql, bindVars);
+        ExecuteMultiShardResponse response =
+            this.executor.executeMultiShard(this.ctx, rss, Collections.singletonList(boundQuery), SafeSession.newAutoCommitSession(safeSession.getVitessConnection()), canAutocommit, true);
         if (null != response) {
             return response.getVtRowList();
         }

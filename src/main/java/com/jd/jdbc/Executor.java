@@ -52,6 +52,8 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtRowList;
 import com.jd.jdbc.sqltypes.VtSqlStatementType;
 import com.jd.jdbc.sqltypes.VtStreamResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.ScatterConn;
 import com.jd.jdbc.srvtopo.TxConn;
@@ -121,7 +123,7 @@ public class Executor implements IExecute {
      * @throws Exception
      */
     @Override
-    public VtRowList execute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public VtRowList execute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws SQLException {
         if (ctx.isDone()) {
             throw new SQLException(VtContextConstant.CONTEXT_CANCELLED + ctx.error());
         }
@@ -142,7 +144,7 @@ public class Executor implements IExecute {
      * @return
      * @throws SQLFeatureNotSupportedException
      */
-    public VtRowList otherExecute(IContext ctx, String method, SafeSession safeSession, String keysapce, String sql, Map<String, Query.BindVariable> bindVariableMap)
+    public VtRowList otherExecute(IContext ctx, String method, SafeSession safeSession, String keysapce, String sql, Map<String, BindVariable> bindVariableMap)
         throws SQLException {
         VtSqlStatementType stmtType = SQLParserUtils.preview(sql);
 
@@ -165,7 +167,7 @@ public class Executor implements IExecute {
      * @throws Exception
      */
     @Override
-    public VtRowList streamExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public VtRowList streamExecute(IContext ctx, String method, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws SQLException {
         if (ctx.isDone()) {
             throw new SQLException(VtContextConstant.CONTEXT_CANCELLED + ctx.error());
         }
@@ -175,7 +177,7 @@ public class Executor implements IExecute {
     @Override
     public List<VtRowList> batchExecute(IContext ctx, String method, SafeSession safeSession, String keyspace,
                                         List<SQLStatement> batchStmts,
-                                        List<Map<String, Query.BindVariable>> bindVariableMapList) throws SQLException {
+                                        List<Map<String, BindVariable>> bindVariableMapList) throws SQLException {
         if (ctx.isDone()) {
             throw new SQLException(VtContextConstant.CONTEXT_CANCELLED + ctx.error());
         }
@@ -193,13 +195,13 @@ public class Executor implements IExecute {
      * @throws Exception
      */
     @Override
-    public ExecuteMultiShardResponse executeMultiShard(IContext ctx, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession, Boolean autocommit, Boolean ignoreMaxMemoryRows)
+    public ExecuteMultiShardResponse executeMultiShard(IContext ctx, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession, Boolean autocommit, Boolean ignoreMaxMemoryRows)
         throws SQLException {
         return ((ScatterConn) ctx.getContextValue(VitessConnection.ContextKey.CTX_SCATTER_CONN)).executeMultiShard(ctx, rss, queries, safeSession, autocommit, ignoreMaxMemoryRows);
     }
 
     @Override
-    public ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext ctx, List<ResolvedShard> rss, List<List<Query.BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
+    public ExecuteBatchMultiShardResponse executeBatchMultiShard(IContext ctx, List<ResolvedShard> rss, List<List<BoundQuery>> queries, SafeSession safeSession, Boolean autocommit,
                                                                  Boolean ignoreMaxMemoryRows, Boolean asTransaction) throws SQLException {
         return ((ScatterConn) ctx.getContextValue(VitessConnection.ContextKey.CTX_SCATTER_CONN)).executeBatchMultiShard(ctx, rss, queries, safeSession, autocommit, ignoreMaxMemoryRows, asTransaction);
     }
@@ -213,7 +215,7 @@ public class Executor implements IExecute {
      * @throws Exception
      */
     @Override
-    public List<StreamIterator> streamExecuteMultiShard(IContext ctx, List<ResolvedShard> rss, List<Query.BoundQuery> queries, SafeSession safeSession) throws SQLException {
+    public List<StreamIterator> streamExecuteMultiShard(IContext ctx, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession) throws SQLException {
         return ((ScatterConn) ctx.getContextValue(VitessConnection.ContextKey.CTX_SCATTER_CONN)).streamExecuteMultiShard(ctx, rss, queries, safeSession);
     }
 
@@ -230,12 +232,12 @@ public class Executor implements IExecute {
         return shard;
     }
 
-    private void checkNullVariable(final Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private void checkNullVariable(final Map<String, BindVariable> bindVariableMap) throws SQLException {
         if (null == bindVariableMap) {
             return;
         }
 
-        for (Map.Entry<String, Query.BindVariable> e : bindVariableMap.entrySet()) {
+        for (Map.Entry<String, BindVariable> e : bindVariableMap.entrySet()) {
             if (null == e.getValue()) {
                 throw new SQLException("No value specified for parameter " + (Integer.parseInt(e.getKey()) + 1));
             }
@@ -251,7 +253,7 @@ public class Executor implements IExecute {
      * @return
      * @throws SQLException
      */
-    public PlanResult getPlan(IContext ctx, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap, Boolean skipQueryPlanCache, String charEncoding) throws SQLException {
+    public PlanResult getPlan(IContext ctx, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap, Boolean skipQueryPlanCache, String charEncoding) throws SQLException {
         checkNullVariable(bindVariableMap);
         totalCounterInc(stmt);
         VSchemaManager vm = (VSchemaManager) ctx.getContextValue(VitessConnection.ContextKey.CTX_VSCHEMA_MANAGER);
@@ -310,7 +312,7 @@ public class Executor implements IExecute {
         return new PlanResult(plan, bindVariableMap);
     }
 
-    private SQLStatement toFullStatement(SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) {
+    private SQLStatement toFullStatement(SQLStatement stmt, Map<String, BindVariable> bindVariableMap) {
         if (bindVariableMap != null && bindVariableMap.isEmpty()) {
             return stmt;
         }
@@ -326,7 +328,7 @@ public class Executor implements IExecute {
      * @param bindVariableMap
      * @return
      */
-    public CurrFunc executePlan(IContext ctx, Plan plan, Vcursor vCursor, Map<String, Query.BindVariable> bindVariableMap) {
+    public CurrFunc executePlan(IContext ctx, Plan plan, Vcursor vCursor, Map<String, BindVariable> bindVariableMap) {
         Integer maxRows = (Integer) ctx.getContextValue(VitessPropertyKey.MAX_ROWS.getKeyName());
         return safeSession -> {
             // 4: Execute!
@@ -350,7 +352,7 @@ public class Executor implements IExecute {
         };
     }
 
-    public CurrFunc streamExecutePlan(IContext ctx, Plan plan, Vcursor vCursor, Map<String, Query.BindVariable> bindVariableMap) {
+    public CurrFunc streamExecutePlan(IContext ctx, Plan plan, Vcursor vCursor, Map<String, BindVariable> bindVariableMap) {
         Integer maxRows = (Integer) ctx.getContextValue(VitessPropertyKey.MAX_ROWS.getKeyName());
         return safeSession -> {
             // 4: Execute!
@@ -368,7 +370,7 @@ public class Executor implements IExecute {
                 }
                 throw e;
             }
-            return new ExecuteResponse(plan.getStatementType(), new VtStreamResultSet(vtStream).reserve(maxRows));
+            return new ExecuteResponse(plan.getStatementType(), new VtStreamResultSet(vtStream, true).reserve(maxRows));
         };
     }
 
@@ -379,7 +381,7 @@ public class Executor implements IExecute {
             List<ExecuteMultiShardResponse> executeMultiShardResponses;
             List<VtRowList> vtRowLists = new ArrayList<>();
             try {
-                executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, false);
+                executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, true);
                 for (ExecuteMultiShardResponse executeResponse : executeMultiShardResponses) {
                     VtRowList resultSet = executeResponse.getVtRowList().reserve(maxRows);
                     vtRowLists.add(resultSet);
@@ -442,7 +444,7 @@ public class Executor implements IExecute {
      * @return
      * @throws Exception
      */
-    private ExecuteResponse newExecute(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteResponse newExecute(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws SQLException {
         // 1: Prepare before planning and execution
 
         // Start an implicit transaction if necessary.
@@ -494,7 +496,7 @@ public class Executor implements IExecute {
             && RoleUtils.notMaster(ctx);
     }
 
-    private ExecuteResponse getConsolidatorResponse(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap, Vcursor vCursor,
+    private ExecuteResponse getConsolidatorResponse(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap, Vcursor vCursor,
                                                     Plan plan) throws SQLException {
         // bulid key
         StringBuilder querySqlBuffer = new StringBuilder();
@@ -572,7 +574,7 @@ public class Executor implements IExecute {
      */
     private BatchExecuteResponse newBatchExecute(IContext ctx, SafeSession safeSession, String keyspace,
                                                  List<SQLStatement> batchStmts,
-                                                 List<Map<String, Query.BindVariable>> bindVariableMapList) throws SQLException {
+                                                 List<Map<String, BindVariable>> bindVariableMapList) throws SQLException {
         // 1: Prepare before planning and execution
 
         // Start an implicit transaction if necessary.
@@ -580,13 +582,13 @@ public class Executor implements IExecute {
 
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
         List<PrimitiveEngine> primitiveEngines = new ArrayList<>();
-        List<Map<String, Query.BindVariable>> batchBindVariableMap = new ArrayList<>();
+        List<Map<String, BindVariable>> batchBindVariableMap = new ArrayList<>();
 
         VSchemaManager vm = (VSchemaManager) ctx.getContextValue(VitessConnection.ContextKey.CTX_VSCHEMA_MANAGER);
 
         for (int stmtIdx = 0; stmtIdx < batchStmts.size(); stmtIdx++) {
             SQLStatement stmt = batchStmts.get(stmtIdx);
-            Map<String, Query.BindVariable> bindVariableMap;
+            Map<String, BindVariable> bindVariableMap;
             if (bindVariableMapList == null || bindVariableMapList.isEmpty()) {
                 bindVariableMap = new HashMap<>(16, 1);
             } else {
@@ -619,7 +621,7 @@ public class Executor implements IExecute {
         return this.batchExecutePlan(ctx, primitive, vCursor).exec(safeSession);
     }
 
-    private ExecuteResponse newStreamExecute(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteResponse newStreamExecute(IContext ctx, SafeSession safeSession, String keyspace, SQLStatement stmt, Map<String, BindVariable> bindVariableMap) throws SQLException {
         // 1: Prepare before planning and execution
 
         // Start an implicit transaction if necessary.
@@ -858,6 +860,6 @@ public class Executor implements IExecute {
     public static class PlanResult {
         private final Plan plan;
 
-        private final Map<String, Query.BindVariable> bindVariableMap;
+        private final Map<String, BindVariable> bindVariableMap;
     }
 }

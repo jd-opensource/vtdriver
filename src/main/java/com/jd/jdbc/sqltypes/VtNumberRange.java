@@ -60,4 +60,8 @@ public class VtNumberRange {
     public static final long UINT64_MIN = 0;
 
     public static final BigInteger UINT64_MAX = new BigInteger("18446744073709551615");
+
+    public static final BigInteger BIGINTEGER_INT64_MIN = BigInteger.valueOf(INT64_MIN);
+
+    public static final BigInteger BIGINTEGER_INT64_MAX = BigInteger.valueOf(INT64_MAX);
 }

@@ -22,6 +22,8 @@ import binlogdata.Binlogdata;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqltypes.BeginBatchVtResultSet;
 import com.jd.jdbc.sqltypes.VtResultSetMessage;
+import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
 import io.vitess.proto.Query;
 import java.util.Iterator;
 import java.util.List;
@@ -147,7 +149,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    VtResultSetMessage execute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
+    VtResultSetMessage execute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Long reservedId, Query.ExecuteOptions options)
         throws Exception;
 
     /**
@@ -160,7 +162,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options);
+    StreamIterator streamExecute(IContext context, Query.Target target, String sql, Map<String, BindVariable> bindVariables, Long transactionId, Query.ExecuteOptions options);
 
     /**
      * Currently always called with transactionID = 0
@@ -172,7 +174,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    Query.ExecuteBatchResponse executeBatch(Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options);
+    Query.ExecuteBatchResponse executeBatch(Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Long transactionId, Query.ExecuteOptions options);
 
     /**
      * Combo methods, they also return the transactionID from the
@@ -188,7 +190,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    VtResultSetMessage beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long reservedId,
+    VtResultSetMessage beginExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long reservedId,
                                     Query.ExecuteOptions options) throws Exception;
 
     /**
@@ -203,7 +205,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<Query.BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options);
+    BeginBatchVtResultSet beginExecuteBatch(IContext context, Query.Target target, List<BoundQuery> queries, Boolean asTransaction, Query.ExecuteOptions options);
 
     /**
      * Messaging methods.
@@ -272,7 +274,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, Query.BindVariable> bindVariables,
+    Query.ReserveBeginExecuteResponse reserveBeginExecute(IContext context, Query.Target target, List<String> preQuries, String sql, Map<String, BindVariable> bindVariables,
                                                           Query.ExecuteOptions options) throws Exception;
 
     /**
@@ -284,7 +286,7 @@ public interface BlockingQueryService {
      * @param options
      * @return
      */
-    Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, Query.BindVariable> bindVariables, Long transactionID,
+    Query.ReserveExecuteResponse reserveExecute(IContext context, Query.Target target, List<String> preQueries, String sql, Map<String, BindVariable> bindVariables, Long transactionID,
                                                 Query.ExecuteOptions options) throws Exception;
 
     /**

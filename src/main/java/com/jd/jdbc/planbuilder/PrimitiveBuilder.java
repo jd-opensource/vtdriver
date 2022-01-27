@@ -666,9 +666,15 @@ public class PrimitiveBuilder {
 
     public void processUnion(SQLUnionQuery unionQuery, Symtab outer) throws SQLException {
         this.processPart(unionQuery.getFirstStatement(), outer, false);
+        if (this.builder.isSplitTablePlan()) {
+            throw new SQLFeatureNotSupportedException("doesn't support union sql on split table");
+        }
         for (SQLUnionQuery.UnionSelect us : unionQuery.getUnionSelectList()) {
             PrimitiveBuilder rpb = new PrimitiveBuilder(this.vm, this.defaultKeyspace, this.jointab);
             rpb.processPart(us, outer, false);
+            if (rpb.builder.isSplitTablePlan()) {
+                throw new SQLFeatureNotSupportedException("doesn't support union sql on split table");
+            }
             try {
                 Builder builder = PlanBuilder.unionRouteMerge(this.getBuilder(), rpb.getBuilder(), us);
                 this.setBuilder(builder);
@@ -722,14 +728,6 @@ public class PrimitiveBuilder {
             if (!hasParens) {
                 this.checkOrderByAndLimit((MySqlSelectQueryBlock) part);
             }
-            // TODO: remove and support union on split table
-            SQLTableSource tableSource = ((MySqlSelectQueryBlock) part).getFrom();
-            PrimitiveBuilder innerpb = new PrimitiveBuilder(this.vm, this.defaultKeyspace, this.jointab);
-            innerpb.processTableSource(tableSource);
-            if (innerpb.getBuilder().isSplitTablePlan()) {
-                throw new SQLFeatureNotSupportedException("doesn't support union sql on split table");
-            }
-
             this.processSelect(new SQLSelectStatement(new SQLSelect(part)), outer);
         } else {
             throw new SQLException("BUG: unexpected SELECT type: " + SQLUtils.toMySqlString(part, SQLUtils.NOT_FORMAT_OPTION));
@@ -1079,7 +1077,7 @@ public class PrimitiveBuilder {
                 if (!(groupByItem instanceof SQLIntegerExpr)) {
                     continue;
                 }
-                Integer num = (Integer) ((SQLIntegerExpr) groupByItem).getNumber();
+                int num = ((SQLIntegerExpr) groupByItem).getNumber().intValue();
                 if (num < 1 || num > sel.getSelectList().size()) {
                     continue;
                 }

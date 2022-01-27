@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.jd.jdbc.sqlparser.utils;
 
 import com.jd.jdbc.sqlparser.support.logging.Log;
@@ -131,6 +132,10 @@ public class StringUtils {
 
     public static boolean isEmpty(CharSequence value) {
         return value == null || value.length() == 0;
+    }
+
+    public static boolean isNotEmpty(CharSequence cs) {
+        return !isEmpty(cs);
     }
 
     public static int lowerHashCode(String text) {
@@ -676,5 +681,32 @@ public class StringUtils {
         }
 
         return replaceEach(result, searchList, replacementList, repeat, timeToLive - 1);
+    }
+
+    /**
+     * @param searchIn
+     * @param searchFor
+     * @param startPos
+     * @return
+     */
+    public static boolean startsWith(String searchIn, String searchFor, int startPos) {
+        if (StringUtils.isEmpty(searchIn) || StringUtils.isEmpty(searchFor)) {
+            return false;
+        }
+        int searchForLength = searchFor.length();
+        int searchInLength = searchIn.length();
+        if (searchForLength > (searchInLength - startPos)) {
+            return false;
+        }
+        for (int i = 0; i < searchForLength; i++) {
+            if (searchFor.charAt(i) != searchIn.charAt(i + startPos)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static String nullToEmpty(String string) {
+        return (string == null) ? "" : string;
     }
 }

@@ -35,6 +35,7 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtValue;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.math.BigInteger;
 import java.sql.SQLException;
@@ -50,7 +51,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
 
     private static final Log LOGGER = LogFactory.getLog(VtRestoreVisitor.class);
 
-    private final Map<String, Query.BindVariable> bindVariableMap;
+    private final Map<String, BindVariable> bindVariableMap;
 
     private String charEncoding;
 
@@ -60,24 +61,24 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
     @Getter
     private Exception exception;
 
-    private VtRestoreVisitor(final Appendable appender, final Map<String, Query.BindVariable> bindVariableMap) {
+    private VtRestoreVisitor(final Appendable appender, final Map<String, BindVariable> bindVariableMap) {
         super(appender, false);
         this.bindVariableMap = bindVariableMap;
         super.setPrettyFormat(false);
         super.setUppCase(false);
     }
 
-    public VtRestoreVisitor(final Appendable appender, final Map<String, Query.BindVariable> bindVariableMap, final String charEncoding) {
+    public VtRestoreVisitor(final Appendable appender, final Map<String, BindVariable> bindVariableMap, final String charEncoding) {
         this(appender, bindVariableMap);
         this.charEncoding = charEncoding;
     }
 
-    private VtRestoreVisitor(final Appendable appender, final Map<String, Query.BindVariable> bindVariableMap, final Map<String, String> switchTables) {
+    private VtRestoreVisitor(final Appendable appender, final Map<String, BindVariable> bindVariableMap, final Map<String, String> switchTables) {
         this(appender, bindVariableMap);
         this.switchTables = switchTables;
     }
 
-    public VtRestoreVisitor(final Appendable appender, final Map<String, Query.BindVariable> bindVariableMap, final Map<String, String> switchTables, final String charEncoding) {
+    public VtRestoreVisitor(final Appendable appender, final Map<String, BindVariable> bindVariableMap, final Map<String, String> switchTables, final String charEncoding) {
         this(appender, bindVariableMap, switchTables);
         this.charEncoding = charEncoding;
     }
@@ -183,7 +184,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
 
         try {
             String name = StringUtils.replaceEach(x.getName(), new String[] {":"}, new String[] {""});
-            Query.BindVariable bindVariable = this.bindVariableMap.get(name);
+            BindVariable bindVariable = this.bindVariableMap.get(name);
             if (bindVariable == null) {
                 bindVariable = this.bindVariableMap.get(String.valueOf(x.getIndex()));
             }

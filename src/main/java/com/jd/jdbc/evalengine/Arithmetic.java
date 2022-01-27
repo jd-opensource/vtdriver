@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
 
 import static io.vitess.proto.Query.Type.DECIMAL;
 import static io.vitess.proto.Query.Type.FLOAT64;
@@ -167,6 +168,8 @@ public class Arithmetic {
                 break;
             case FLOAT64:
                 return floatPlusAny(value1.getFval(), value2);
+            case DECIMAL:
+                return decimalPlusAny(value1.getBigDecimal(), value2);
         }
         throw new SQLException("invalid arithmetic between:" + value1.value().toString() + " " + value2.value().toString());
     }
@@ -387,18 +390,20 @@ public class Arithmetic {
         List<EvalEngine.EvalResult> resultValues = new ArrayList<>();
         switch (value1.getType()) {
             case INT64:
-                if (value2.getType() == UINT64 || value2.getType() == FLOAT64) {
+                if (value2.getType() == UINT64 || value2.getType() == FLOAT64 || value2.getType() == DECIMAL) {
                     resultValues.add(value2);
                     resultValues.add(value1);
                     return resultValues;
                 }
                 break;
             case UINT64:
-                if (value2.getType() == FLOAT64) {
+                if (value2.getType() == FLOAT64 || value2.getType() == DECIMAL) {
                     resultValues.add(value2);
                     resultValues.add(value1);
                     return resultValues;
                 }
+                break;
+            case DECIMAL:
                 break;
         }
         resultValues.add(value1);
@@ -514,6 +519,18 @@ public class Arithmetic {
         return new EvalEngine.EvalResult(value1 + value2.getFval(), FLOAT64);
     }
 
+    private static EvalEngine.EvalResult decimalPlusAny(BigDecimal value1, EvalEngine.EvalResult value2) {
+        switch (value2.getType()) {
+            case INT64:
+                value2.setBigDecimal(BigDecimal.valueOf(value2.getIval()));
+                break;
+            case UINT64:
+                value2.setBigDecimal(new BigDecimal(value2.getUval().toString()));
+                break;
+        }
+        return new EvalEngine.EvalResult(value1.add(value2.getBigDecimal()), DECIMAL);
+    }
+
     /**
      * @param value
      * @param resultType
@@ -591,6 +608,8 @@ public class Arithmetic {
                     return VtResultValue.newVtResultValue(resultType, value.getUval());
                 case FLOAT64:
                     return VtResultValue.newVtResultValue(resultType, value.getFval());
+                case DECIMAL:
+                    return VtResultValue.newVtResultValue(resultType, value.getBigDecimal());
             }
         } else {
             return VtResultValue.newVtResultValue(resultType, value);

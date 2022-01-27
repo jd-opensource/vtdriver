@@ -26,8 +26,8 @@ import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLUpdateStatement;
 import com.jd.jdbc.sqltypes.VtResultSet;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.ResolvedShard;
-import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +53,7 @@ public class UpdateEngine extends DMLEngine implements PrimitiveEngine {
     }
 
     @Override
-    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("delete is not allowed for read only connection");
         }
@@ -87,30 +87,30 @@ public class UpdateEngine extends DMLEngine implements PrimitiveEngine {
         throw new SQLException("Error, expect update statement");
     }
 
-    private ExecuteMultiShardResponse execUpdateUnsharded(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteMultiShardResponse execUpdateUnsharded(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         List<ResolvedShard> rsList = getResolvedShardsUnsharded(vcursor);
         return Engine.execShard(vcursor, super.query, bindVariableMap, rsList.get(0), true, true).setUpdate();
     }
 
 
-    private ExecuteMultiShardResponse execUpdateEqual(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteMultiShardResponse execUpdateEqual(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         ResolvedShard rs = getResolvedShardsEqual(vcursor, bindVariableMap).get(0);
 
         return Engine.execShard(vcursor, super.query, bindVariableMap, rs, true, true).setUpdate();
     }
 
-    private ExecuteMultiShardResponse execUpdateIn(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private ExecuteMultiShardResponse execUpdateIn(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         IExecute.ResolvedShardQuery rsq = resolveShardQueryIn(vcursor, bindVariableMap, null);
         return execMultiShard(vcursor, rsq.getRss(), rsq.getQueries(), super.multiShardAutocommit);
     }
 
-    private ExecuteMultiShardResponse execUpdateByDestination(Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, Destination destination) throws SQLException {
+    private ExecuteMultiShardResponse execUpdateByDestination(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Destination destination) throws SQLException {
         IExecute.ResolvedShardQuery rsq = resolveShardQueryByDestination(vcursor, bindVariableMap, destination, null);
         return execMultiShard(vcursor, rsq.getRss(), rsq.getQueries(), super.multiShardAutocommit);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue) throws SQLException {
         switch (super.opcode) {
             case Unsharded:
                 return resolveShardQueryUnsharded(vcursor, bindValue, null);
@@ -128,7 +128,7 @@ public class UpdateEngine extends DMLEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValue, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, Map<String, String> switchTableMap) throws SQLException {
         switch (super.opcode) {
             case Unsharded:
                 return resolveShardQueryUnsharded(vcursor, bindValue, switchTableMap);
@@ -146,7 +146,7 @@ public class UpdateEngine extends DMLEngine implements PrimitiveEngine {
     }
 
     @Override
-    public ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, Query.BindVariable> bindVariable, boolean wantFields) {
+    public ExecuteMultiShardResponse mergeResult(VtResultSet vtResultSet, Map<String, BindVariable> bindVariable, boolean wantFields) {
         return new ExecuteMultiShardResponse(vtResultSet).setUpdate();
     }
 }

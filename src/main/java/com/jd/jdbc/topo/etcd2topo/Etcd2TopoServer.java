@@ -51,6 +51,8 @@ public class Etcd2TopoServer implements TopoConnection {
 
     private static final String SEPARATOR_DUAL = "//";
 
+    private static final String END_TAG_OF_RANGE_SEARCH = "1";
+
     private Client client;
 
     private String root;
@@ -226,6 +228,35 @@ public class Etcd2TopoServer implements TopoConnection {
         connGetResponse.setContents(response.getKvs().get(0).getValue().getBytes());
         connGetResponse.setVersion(new Etcd2Version(response.getKvs().get(0).getModRevision()));
         return connGetResponse;
+    }
+
+    @Override
+    public List<ConnGetResponse> getTabletsByCell(IContext ctx, String filePath) throws TopoException {
+        String beginTabletsPath = String.format("%s%s%s", this.root, SEPARATOR, filePath);
+        String endTabletsPath = beginTabletsPath + END_TAG_OF_RANGE_SEARCH;
+        ByteSequence beginSequence = ByteSequence.from(beginTabletsPath, StandardCharsets.UTF_8);
+        ByteSequence endSequence = ByteSequence.from(endTabletsPath, StandardCharsets.UTF_8);
+        GetOption option = GetOption.newBuilder().withRange(endSequence).build();
+        CompletableFuture<GetResponse> future = this.client.getKVClient().get(beginSequence, option);
+        GetResponse response;
+        try {
+            response = future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error(e.getMessage(), e);
+            throw TopoException.wrap(e.getMessage());
+        }
+        if (response.getKvs().size() < 1) {
+            throw TopoException.wrap(NO_NODE, beginTabletsPath);
+        }
+        List<ConnGetResponse> connGetResponseList = new ArrayList<>(response.getKvs().size());
+        ConnGetResponse connGetResponse;
+        for (KeyValue kv : response.getKvs()) {
+            connGetResponse = new ConnGetResponse();
+            connGetResponse.setContents(kv.getValue().getBytes());
+            connGetResponse.setVersion(new Etcd2Version(kv.getModRevision()));
+            connGetResponseList.add(connGetResponse);
+        }
+        return connGetResponseList;
     }
 
     @Override

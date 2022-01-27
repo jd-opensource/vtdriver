@@ -19,7 +19,7 @@ package com.jd.jdbc.planbuilder;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.engine.MultiQueryEngine;
 import com.jd.jdbc.engine.PrimitiveEngine;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +28,7 @@ public class MultiQueryPlan {
 
     public static PrimitiveEngine buildMultiQueryPlan(List<PrimitiveEngine> primitiveEngines,
                                                       List<IExecute.ResolvedShardQuery> shardQueryList,
-                                                      List<Map<String, Query.BindVariable>> bindVariableMapList) {
+                                                      List<Map<String, BindVariable>> bindVariableMapList) {
         return new MultiQueryEngine(primitiveEngines, shardQueryList, bindVariableMapList);
     }
 }

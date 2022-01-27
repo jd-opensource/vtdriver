@@ -26,7 +26,7 @@ import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
-import io.vitess.proto.Query;
+import com.jd.jdbc.srvtopo.BindVariable;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -64,7 +64,7 @@ public class MemorySortEngine implements PrimitiveEngine, Truncater {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         int count = this.fetchCount(bindVariableMap);
 
         IExecute.ExecuteMultiShardResponse response = this.input.execute(ctx, vcursor, bindVariableMap, wantFields);
@@ -74,7 +74,7 @@ public class MemorySortEngine implements PrimitiveEngine, Truncater {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         int count = this.fetchCount(bindValues);
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = this.input.mergeResult(resultSet, bindValues, wantFields);
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
@@ -82,12 +82,12 @@ public class MemorySortEngine implements PrimitiveEngine, Truncater {
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
         return this.input.resolveShardQuery(ctx, vcursor, bindVariableMap);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Map<String, String> switchTableMap) throws SQLException {
         return this.input.resolveShardQuery(ctx, vcursor, bindVariableMap, switchTableMap);
     }
 
@@ -105,14 +105,14 @@ public class MemorySortEngine implements PrimitiveEngine, Truncater {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         int count = this.fetchCount(bindValues);
         IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new MemorySortStream(vtStream, orderByParams, truncateColumnCount, count);
     }
 
     @Override
-    public VtResultSet getFields(Vcursor vcursor, Map<String, Query.BindVariable> bindValues) throws SQLException {
+    public VtResultSet getFields(Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
         return this.input.getFields(vcursor, bindValues);
     }
 
@@ -131,7 +131,7 @@ public class MemorySortEngine implements PrimitiveEngine, Truncater {
      * @return
      * @throws SQLException
      */
-    private Integer fetchCount(Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private Integer fetchCount(Map<String, BindVariable> bindVariableMap) throws SQLException {
         VtValue resolved = this.upperLimit.resolveValue(bindVariableMap);
         if (resolved.isNull()) {
             return Integer.MAX_VALUE;

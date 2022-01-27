@@ -16,6 +16,7 @@ limitations under the License.
 
 package com.jd.jdbc.engine;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -58,8 +59,33 @@ public class CharEncodingTest extends TestSuite {
                 int i = rs.getInt(1);
                 String name = rs.getString(2);
                 System.out.println("Expect:" + "赵欣" + i + "; Actual: " + name);
+
+                Assert.assertArrayEquals(("赵欣" + i).getBytes(StandardCharsets.UTF_8), rs.getBytes(2));
+                Assert.assertArrayEquals("小明".getBytes(StandardCharsets.UTF_8), rs.getBytes(3));
+
                 Assert.assertEquals("赵欣" + i, name);
             }
+        }
+    }
+
+    @Test
+    public void testDual() throws SQLException {
+        init("GBK");
+        try (Statement stmt = this.conn.createStatement()) {
+            // dual
+            ResultSet rs = stmt.executeQuery("select 'abc字符串'");
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals("abc字符串", rs.getString(1));
+            Assert.assertArrayEquals("abc字符串".getBytes(StandardCharsets.UTF_8), rs.getBytes(1));
+            Assert.assertFalse(rs.next());
+
+            // dual + stream
+            stmt.setFetchSize(Integer.MIN_VALUE);
+            rs = stmt.executeQuery("select 'abc字符串'");
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals("abc字符串", rs.getString(1));
+            Assert.assertArrayEquals("abc字符串".getBytes(StandardCharsets.UTF_8), rs.getBytes(1));
+            Assert.assertFalse(rs.next());
         }
     }
 

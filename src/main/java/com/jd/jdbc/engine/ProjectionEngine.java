@@ -21,10 +21,15 @@ package com.jd.jdbc.engine;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.evalengine.EvalEngine;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,28 +59,28 @@ public class ProjectionEngine implements PrimitiveEngine {
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse execute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse result = this.input.execute(ctx, vcursor, bindVariableMap, wantFields);
         VtResultSet resultSet = (VtResultSet) result.getVtRowList();
 
-        return getExecuteMultiShardResponse(resultSet, bindVariableMap, wantFields);
+        return getExecuteMultiShardResponse(resultSet, bindVariableMap, wantFields, vcursor.getCharEncoding());
     }
 
     @Override
-    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.ExecuteMultiShardResponse mergeResult(VtResultSet resultSet, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = this.input.mergeResult(resultSet, bindValues, wantFields);
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
-        return getExecuteMultiShardResponse(vtResultSet, bindValues, wantFields);
+        return getExecuteMultiShardResponse(vtResultSet, bindValues, wantFields, null);
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValueList) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValueList) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValueList);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
 
     @Override
-    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValueList, Map<String, String> switchTableMap) throws SQLException {
+    public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValueList, Map<String, String> switchTableMap) throws SQLException {
         IExecute.ResolvedShardQuery resolvedShardQuery = this.input.resolveShardQuery(ctx, vcursor, bindValueList, switchTableMap);
         return new IExecute.ResolvedShardQuery(resolvedShardQuery.getRss(), resolvedShardQuery.getQueries());
     }
@@ -94,7 +99,7 @@ public class ProjectionEngine implements PrimitiveEngine {
      * @throws Exception
      */
     @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, Query.BindVariable> bindValues, boolean wantFields) throws SQLException {
+    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues, boolean wantFields) throws SQLException {
         IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindValues, wantFields);
         return new IExecute.VtStream() {
             private IExecute.VtStream stream = vtStream;
@@ -118,7 +123,7 @@ public class ProjectionEngine implements PrimitiveEngine {
                     env.setRow(row);
                     for (EvalEngine.Expr expr : exprs) {
                         EvalEngine.EvalResult res = expr.evaluate(env);
-                        row.add(res.resultValue());
+                        row.add(convertToVtResultValue(res, vcursor.getCharEncoding()));
                     }
                     rows.add(row);
                 }
@@ -137,7 +142,7 @@ public class ProjectionEngine implements PrimitiveEngine {
         };
     }
 
-    private void addFields(VtResultSet qr, Map<String, Query.BindVariable> bindVariableMap) throws SQLException {
+    private void addFields(VtResultSet qr, Map<String, BindVariable> bindVariableMap) throws SQLException {
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
         Query.Field[] existedFields = qr.getFields();
         if (existedFields == null) {
@@ -146,12 +151,69 @@ public class ProjectionEngine implements PrimitiveEngine {
 
         Query.Field[] newFields = Arrays.copyOf(existedFields, existedFields.length + this.cols.size());
         for (int i = 0; i < this.cols.size(); i++) {
-            String col = this.cols.get(i);
-            Query.Type type = this.exprs.get(i).type(env);
-            Query.Field newField = Query.Field.newBuilder().setName(col).setType(type).build();
-            newFields[existedFields.length + i] = newField;
+            EvalEngine.Expr expr = this.exprs.get(i);
+            String name = getColumnName(cols.get(i), expr, bindVariableMap);
+            Query.Type type = expr.type(env);
+            Query.Field.Builder builder = Query.Field.newBuilder().setName(name).setType(type);
+            switch (type) {
+                case INT32:
+                case INT64:
+                    builder.setType(Query.Type.INT64)
+                        .setJdbcClassName("java.lang.Long")
+                        .setColumnLength(19)
+                        .setPrecision(19)
+                        .setIsSigned(true);
+                    break;
+                case VARBINARY:
+                    int length = expr.evaluate(env).value().toString().length();
+                    builder.setJdbcClassName("java.lang.String")
+                        .setColumnLength(length)
+                        .setPrecision(length);
+                    break;
+                case FLOAT64:
+                    BigDecimal bd = BigDecimal.valueOf(expr.evaluate(env).getFval());
+                    bd = bd.setScale(4, RoundingMode.HALF_UP);
+                    String planString = bd.toPlainString();
+                    int precision = planString.contains(".") ? planString.length() - 1 : planString.length();
+                    if (bd.signum() < 0) {
+                        precision -= 1;
+                    }
+                    builder.setType(Query.Type.DECIMAL)
+                        .setJdbcClassName("java.math.BigDecimal")
+                        .setColumnLength(precision)
+                        .setPrecision(precision)
+                        .setIsSigned(true)
+                        .setDecimals(bd.scale());
+                    break;
+                case DECIMAL:
+                    BigDecimal bd2 = expr.evaluate(env).getBigDecimal();
+                    String planString2 = bd2.toPlainString();
+                    int precision2 = planString2.contains(".") ? planString2.length() - 1 : planString2.length();
+                    if (bd2.signum() < 0) {
+                        precision2 -= 1;
+                    }
+                    if (expr instanceof EvalEngine.BinaryOp) {
+                        precision2 += 1;
+                    }
+                    builder.setJdbcClassName("java.math.BigDecimal")
+                        .setColumnLength(precision2)
+                        .setPrecision(precision2)
+                        .setIsSigned(true)
+                        .setDecimals(bd2.scale());
+                    break;
+            }
+            newFields[existedFields.length + i] = builder.build();
         }
         qr.setFields(newFields);
+    }
+
+    private String getColumnName(final String alias, final EvalEngine.Expr expr, final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        if (StringUtils.isEmpty(alias) || alias.contains("?")) {
+            StringBuilder sb = new StringBuilder();
+            expr.output(sb, false, bindVariableMap);
+            return sb.toString();
+        }
+        return alias;
     }
 
     @Override
@@ -159,7 +221,7 @@ public class ProjectionEngine implements PrimitiveEngine {
         return false;
     }
 
-    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(VtResultSet resultSet, Map<String, Query.BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
+    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(VtResultSet resultSet, Map<String, BindVariable> bindVariableMap, boolean wantFields, String charEncoding) throws SQLException {
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
 
         if (wantFields) {
@@ -171,11 +233,29 @@ public class ProjectionEngine implements PrimitiveEngine {
             env.setRow(row);
             for (EvalEngine.Expr expr : this.exprs) {
                 EvalEngine.EvalResult res = expr.evaluate(env);
-                row.add(res.resultValue());
+                row.add(convertToVtResultValue(res, charEncoding));
             }
             rows.add(row);
         }
         resultSet.setRows(rows);
         return new IExecute.ExecuteMultiShardResponse(resultSet);
+    }
+
+    private static VtResultValue convertToVtResultValue(EvalEngine.EvalResult res, String charEncoding) throws SQLException {
+        VtResultValue resultValue;
+        switch (res.getType()) {
+            case FLOAT64:
+                EvalEngine.EvalResult evalResult1 = new EvalEngine.EvalResult(BigDecimal.valueOf(res.getFval()).setScale(4, RoundingMode.HALF_UP), Query.Type.DECIMAL);
+                resultValue = evalResult1.resultValue();
+                break;
+            case VARBINARY:
+                EvalEngine.EvalResult evalResult2 = new EvalEngine.EvalResult(res.getBytes(), Query.Type.VARBINARY);
+                Charset cs = StringUtils.isEmpty(charEncoding) ? Charset.defaultCharset() : Charset.forName(charEncoding);
+                resultValue = VtResultValue.newVtResultValue(Query.Type.VARBINARY, new String(evalResult2.getBytes(), cs));
+                break;
+            default:
+                resultValue = res.resultValue();
+        }
+        return resultValue;
     }
 }

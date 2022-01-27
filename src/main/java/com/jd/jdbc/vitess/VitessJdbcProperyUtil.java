@@ -98,7 +98,7 @@ public class VitessJdbcProperyUtil {
     }
 
     public static Topodata.TabletType getTabletType(Properties props) {
-        String role = props.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
+        String role = getRole(props);
         switch (role.toLowerCase()) {
             case Constant.DRIVER_PROPERTY_ROLE_RW:
                 return Topodata.TabletType.MASTER;

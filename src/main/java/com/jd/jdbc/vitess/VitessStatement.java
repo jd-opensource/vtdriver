@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
-import com.google.common.base.Splitter;
 import com.jd.jdbc.Executor;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
@@ -55,11 +54,14 @@ import com.jd.jdbc.sqlparser.parser.Lexer;
 import com.jd.jdbc.sqlparser.parser.ParserException;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.SplitMultiQueryUtils;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
+import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.netty.util.internal.StringUtil;
 import io.prometheus.client.Histogram;
@@ -102,7 +104,7 @@ public class VitessStatement extends AbstractVitessStatement {
 
     protected List<String> batchSqls;
 
-    protected List<Map<String, Query.BindVariable>> bindVariableMapList;
+    protected List<Map<String, BindVariable>> bindVariableMapList;
 
     protected final int CURRENT_RESULT_INDEX = 0;
 
@@ -284,7 +286,7 @@ public class VitessStatement extends AbstractVitessStatement {
             this.fetchSize == Integer.MIN_VALUE);
     }
 
-    protected ResultSet executeQueryInternal(IContext ctx, String sql, Map<String, Query.BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
+    protected ResultSet executeQueryInternal(IContext ctx, String sql, Map<String, BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         this.batchedGeneratedKeys = null;
 
@@ -325,7 +327,7 @@ public class VitessStatement extends AbstractVitessStatement {
         }
     }
 
-    protected ResultSet executeMultiQueryInternal(IContext ctx, List<String> sqls, List<Map<String, Query.BindVariable>> bindVariableMapList, boolean returnGeneratedKeys) throws SQLException {
+    protected ResultSet executeMultiQueryInternal(IContext ctx, List<String> sqls, List<Map<String, BindVariable>> bindVariableMapList, boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         this.batchedGeneratedKeys = null;
         List<ParseResult> parseResults = new ArrayList<>(sqls.size());
@@ -345,7 +347,7 @@ public class VitessStatement extends AbstractVitessStatement {
         }
     }
 
-    protected int executeMultiQueryUpdateInternal(IContext ctx, List<String> sqls, List<Map<String, Query.BindVariable>> bindVariableMapList, boolean clearBatchedGeneratedKeys,
+    protected int executeMultiQueryUpdateInternal(IContext ctx, List<String> sqls, List<Map<String, BindVariable>> bindVariableMapList, boolean clearBatchedGeneratedKeys,
                                                   boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         if (clearBatchedGeneratedKeys) {
@@ -377,7 +379,7 @@ public class VitessStatement extends AbstractVitessStatement {
         }
     }
 
-    protected ResultSet executeStreamQueryInternal(IContext ctx, String sql, Map<String, Query.BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
+    protected ResultSet executeStreamQueryInternal(IContext ctx, String sql, Map<String, BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         this.batchedGeneratedKeys = null;
 
@@ -406,7 +408,7 @@ public class VitessStatement extends AbstractVitessStatement {
         }
     }
 
-    protected void executeInternal(IContext ctx, String sql, Map<String, Query.BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
+    protected void executeInternal(IContext ctx, String sql, Map<String, BindVariable> bindVariableMap, boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         this.batchedGeneratedKeys = null;
 
@@ -458,7 +460,7 @@ public class VitessStatement extends AbstractVitessStatement {
         openedResultSets.remove(result);
     }
 
-    protected int executeUpdateInternal(IContext ctx, String sql, Map<String, Query.BindVariable> bindVariableMap, boolean clearBatchedGeneratedKeys, boolean returnGeneratedKeys) throws SQLException {
+    protected int executeUpdateInternal(IContext ctx, String sql, Map<String, BindVariable> bindVariableMap, boolean clearBatchedGeneratedKeys, boolean returnGeneratedKeys) throws SQLException {
         this.retrieveGeneratedKeys = returnGeneratedKeys;
         if (clearBatchedGeneratedKeys) {
             batchedGeneratedKeys = null;
@@ -567,7 +569,7 @@ public class VitessStatement extends AbstractVitessStatement {
         int commandIndex = 0;
         try {
             for (commandIndex = 0; commandIndex < nbrCommands; commandIndex++) {
-                Map<String, Query.BindVariable> bindVariableMap = (commandIndex < bindVarSize) ? bindVariableMapList.get(commandIndex) : new HashMap<>(16, 1);
+                Map<String, BindVariable> bindVariableMap = (commandIndex < bindVarSize) ? bindVariableMapList.get(commandIndex) : new HashMap<>(16, 1);
                 updateCounts[commandIndex] = executeUpdateInternal(ctx, batchSqls.get(commandIndex), bindVariableMap, false, returnGeneratedKeys);
                 getBatchedGeneratedKeys(0);
             }
@@ -612,7 +614,10 @@ public class VitessStatement extends AbstractVitessStatement {
     }
 
     protected List<String> split(String sql) throws SQLException {
-        List<String> sqls = new ArrayList<>(Splitter.on(";").omitEmptyStrings().trimResults().splitToList(sql));
+        if (StringUtils.isEmpty(sql)) {
+            throw new SQLException("trying to execute empty queries " + sql);
+        }
+        List<String> sqls = SplitMultiQueryUtils.splitMulti(sql);
         if (sqls.isEmpty()) {
             throw new SQLException("trying to execute empty queries " + sqls);
         }
@@ -1104,6 +1109,9 @@ public class VitessStatement extends AbstractVitessStatement {
 
             Query.Field field = Query.Field.newBuilder()
                 .setName(StringUtil.isNullOrEmpty(alias) ? methodName : alias)
+                .setJdbcClassName("java.math.BigInteger")
+                .setPrecision(20)
+                .setColumnLength(20)
                 .setType(Query.Type.UINT64).build();
 
             this.resultSets.add(new VtResultSet(new Query.Field[] {field}, rows));
@@ -1138,7 +1146,7 @@ public class VitessStatement extends AbstractVitessStatement {
         StatementCollector.getStatementCounter().inc();
     }
 
-    private void errorCount(String sql, Map<String, Query.BindVariable> bindVariableMap, SQLException e) {
+    private void errorCount(String sql, Map<String, BindVariable> bindVariableMap, SQLException e) {
         String charEncoding = connection.getProperties().getProperty(VitessPropertyKey.CHARACTER_ENCODING.getKeyName());
         SqlErrorCollector.getInstance().add(connection.getDefaultKeyspace(), sql, bindVariableMap, charEncoding, e);
         StatementCollector.getStatementErrorCounter().labels(connection.getDefaultKeyspace(), VitessJdbcProperyUtil.getRole(connection.getProperties())).inc();
