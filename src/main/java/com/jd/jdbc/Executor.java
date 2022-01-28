@@ -503,6 +503,9 @@ public class Executor implements IExecute {
         String charEncoding = safeSession.getCharEncoding();
         VtRestoreVisitor restoreVisitor = new VtRestoreVisitor(querySqlBuffer, bindVariableMap, charEncoding);
         stmt.accept(restoreVisitor);
+        if (restoreVisitor.getException() != null) {
+            throw restoreVisitor.getException();
+        }
         String consolidatorKey = keyspace + ":" + querySqlBuffer;
 
         // find consolidatorResultInMap

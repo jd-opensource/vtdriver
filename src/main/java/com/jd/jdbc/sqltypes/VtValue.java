@@ -203,7 +203,7 @@ public class VtValue {
                 BigInteger x = new BigInteger(new String(val));
                 if (x.compareTo(new BigInteger(String.valueOf(VtNumberRange.UINT64_MIN))) < 0 ||
                     x.compareTo(new BigInteger(String.valueOf(VtNumberRange.UINT64_MAX))) > 0) {
-                    throw new SQLException(String.format("wrong data type %s for %s", typ, Arrays.toString(val)));
+                    throw new SQLException(String.format("wrong data type %s for %s", typ, x));
                 }
                 vtValue.vtValue = val;
                 return vtValue;
