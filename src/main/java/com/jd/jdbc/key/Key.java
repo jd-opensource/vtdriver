@@ -347,7 +347,7 @@ public class Key {
     public static KeyRange[] parseShardingSpec(String spec) {
         String[] parts = Strings.split(spec, "-");
         if (parts.length == 1) {
-            log.info(String.format("malformed spec: doesn't define a range: %s", spec));
+            log.info("malformed spec: doesn't define a range: " + spec);
             return null;
         }
         String old = parts[0];
@@ -357,12 +357,12 @@ public class Key {
         for (int j = 1; j < parts.length; j++) {
             String p = parts[j];
             if (p.equals("") && i != (parts.length - 2)) {
-                log.info(String.format("malformed spec: MinKey/MaxKey cannot be in the middle of the spec: %s", spec));
+                log.info("malformed spec: MinKey/MaxKey cannot be in the middle of the spec: " + spec);
                 return null;
             }
             if (!p.equals("") && p.compareTo(old) == -1) {
                 //throw new RuntimeException(System.out.format("malformed spec: shard limits should be in order: %s", spec).toString());
-                log.info(String.format("malformed spec: shard limits should be in order: %s", spec));
+                log.info("malformed spec: shard limits should be in order: " + spec);
                 return null;
             }
 

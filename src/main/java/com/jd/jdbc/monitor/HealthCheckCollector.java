@@ -21,6 +21,7 @@ import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.discovery.TabletHealthCheck;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import io.prometheus.client.Collector;
+import io.prometheus.client.Gauge;
 import io.prometheus.client.GaugeMetricFamily;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
@@ -35,13 +36,31 @@ public final class HealthCheckCollector extends Collector {
 
     private static final String COLLECT_HELP = "health check info.";
 
-    private static final HealthCheckCollector healthCheckCollector = new HealthCheckCollector();
+    private static final HealthCheckCollector HEALTH_CHECK_COLLECTOR = new HealthCheckCollector();
+
+    private static final Gauge HEALTH_CHECK_LAST_SUCCESS = Gauge.build()
+        .name("health_check_last_success")
+        .help("timestamp of last succeed grpc invoke streamHealth()")
+        .register(MonitorServer.getCollectorRegistry());
+
+    private static final Gauge HEALTH_CHECK_LAST_ERROR = Gauge.build()
+        .name("health_check_last_error")
+        .help("timestamp of last failed grpc invoke streamHealth()")
+        .register(MonitorServer.getCollectorRegistry());
 
     private HealthCheckCollector() {
     }
 
     public static HealthCheckCollector getInstance() {
-        return healthCheckCollector;
+        return HEALTH_CHECK_COLLECTOR;
+    }
+
+    public static Gauge getHealthCheckSuccessTimeRecorder() {
+        return HEALTH_CHECK_LAST_SUCCESS;
+    }
+
+    public static Gauge getHealthCheckErrorTimeRecorder() {
+        return HEALTH_CHECK_LAST_ERROR;
     }
 
     @Override

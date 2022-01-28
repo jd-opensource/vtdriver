@@ -78,7 +78,7 @@ public class Resolver {
             }
             srvKeyspace = response.getSrvKeyspace();
         } catch (Exception e) {
-            throw new SQLException("keyspace %v fetch error: " + keyspace);
+            throw new SQLException("keyspace :" + keyspace + " fetch error: " + e.getMessage());
         }
 
         // check if the keyspace has been redirected for this tabletType.

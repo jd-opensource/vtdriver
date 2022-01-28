@@ -23,13 +23,13 @@ public class TopologyCollector {
     private static final Counter COUNTER = Counter.build()
         .name("Topology_counter")
         .labelNames("Cell")
-        .help("watch SrvKeyspace counter info")
+        .help("TopologyWatcher counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter ERROR_COUNTER = Counter.build()
         .name("Topology_error_counter")
         .labelNames("Cell")
-        .help("watch SrvKeyspace error counter info")
+        .help("TopologyWatcher error counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     public static Counter getCounter() {

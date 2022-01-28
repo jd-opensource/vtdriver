@@ -25,7 +25,7 @@ public class NetUtil {
         try {
             localAddress = getLocalHostAddress().getHostAddress();
         } catch (UnknownHostException | SocketException e) {
-            log.error("getLocalAddr error! causeby:%s" + e.getMessage());
+            log.error("getLocalAddr error! causeby:" + e.getMessage());
         }
     }
 
