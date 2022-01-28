@@ -38,10 +38,13 @@ public class VtDaemonExecutorService extends AbstractVtExecutorService {
             synchronized (VtDaemonExecutorService.class) {
                 if (executorService == null) {
                     if (corePoolSize == null || corePoolSize <= 0) {
-                        corePoolSize = DEFAULT_CORE_POOL_SIZE;
+                        corePoolSize = DEFAULT_DAEMON_CORE_POOL_SIZE;
                     }
                     if (maximumPoolSize == null || maximumPoolSize <= 0 || maximumPoolSize < corePoolSize) {
-                        maximumPoolSize = DEFAULT_MAXIMUM_POOL_SIZE;
+                        maximumPoolSize = DEFAULT_DAEMON_MAXIMUM_POOL_SIZE;
+                        if (maximumPoolSize < corePoolSize) {
+                            maximumPoolSize += corePoolSize;
+                        }
                     }
                     if (rejectedExecutionTimeoutMillis == null || rejectedExecutionTimeoutMillis <= 0) {
                         rejectedExecutionTimeoutMillis = DEFAULT_REJECTED_EXECUTION_TIMEOUT_MILLIS;
