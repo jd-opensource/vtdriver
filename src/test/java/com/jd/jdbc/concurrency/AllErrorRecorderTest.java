@@ -28,6 +28,7 @@ public class AllErrorRecorderTest extends TestSuite {
 
     @Test
     public void testNull() throws SQLException, NoSuchFieldException, IllegalAccessException {
+        printNormal("testNull");
         VitessConnection conn = (VitessConnection) getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         VitessStatement stmt = (VitessStatement) conn.createStatement();
         stmt.executeUpdate("delete from user");
