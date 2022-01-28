@@ -79,6 +79,10 @@ public class VSchemaManager {
         }
     }
 
+    public void refreshVschema(String ks) throws TopoException {
+        this.ksMap.put(ks, this.topoServer.getVschema(null, ks));
+    }
+
     /**
      * @param keyspace
      * @param table

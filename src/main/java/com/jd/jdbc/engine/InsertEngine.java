@@ -498,6 +498,9 @@ public class InsertEngine implements PrimitiveEngine {
                 if (keyspaceIds[Math.toIntExact(index)] != null) {
                     SQLInsertStatement.ValuesClause valuesClause = exMidExprList.get(Math.toIntExact(index));
                     valuesClause.accept(vtRestoreVisitor);
+                    if (vtRestoreVisitor.getException() != null) {
+                        throw vtRestoreVisitor.getException();
+                    }
                     mids.add(output.toString());
                 }
             }
@@ -649,7 +652,7 @@ public class InsertEngine implements PrimitiveEngine {
     }
 
     private List<BoundQuery> getUnshardQueries(Map<String, BindVariable> bindValues, List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix,
-                                               List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
+                                               List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) throws SQLException {
         String newSuffix = getNewSuffix(bindValues, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
         List<BoundQuery> queries = new ArrayList<>();
         List<String> mids = new ArrayList<>();
@@ -657,6 +660,9 @@ public class InsertEngine implements PrimitiveEngine {
             StringBuilder output = new StringBuilder();
             VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(output, bindValues, charEncoding);
             valuesClause.accept(vtRestoreVisitor);
+            if (vtRestoreVisitor.getException() != null) {
+                throw vtRestoreVisitor.getException();
+            }
             mids.add(output.toString());
         }
         String rewritten = exPrefix + String.join(",", mids) + newSuffix;
@@ -664,7 +670,7 @@ public class InsertEngine implements PrimitiveEngine {
         return queries;
     }
 
-    private String getNewSuffix(Map<String, BindVariable> bindVariableMap, String exSuffix, List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) {
+    private String getNewSuffix(Map<String, BindVariable> bindVariableMap, String exSuffix, List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) throws SQLException {
         String newSuffix = exSuffix;
         if (!StringUtil.isNullOrEmpty(exSuffix)) {
             newSuffix = "on duplicate key update ";
@@ -673,6 +679,9 @@ public class InsertEngine implements PrimitiveEngine {
                 StringBuilder output = new StringBuilder();
                 VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(output, bindVariableMap, switchTableMap, charEncoding);
                 expr.accept(vtRestoreVisitor);
+                if (vtRestoreVisitor.getException() != null) {
+                    throw vtRestoreVisitor.getException();
+                }
                 sj.add(output.toString());
             }
             newSuffix += sj.toString();

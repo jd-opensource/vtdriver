@@ -1,0 +1,559 @@
+[
+  {
+    "comment": "# tinyint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.tinyint_1 = b.tinyint_1",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# utinyint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_tinyint_1 = b.u_tinyint_1",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# smallint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.smallint = b.smallint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# usmallint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_smallint = b.u_smallint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# mediumint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.mediumint = b.mediumint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# umediumint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_mediumint = b.u_mediumint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# int data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.int = b.int",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# uint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_int = b.u_int",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# bigint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.bigint = b.bigint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# ubigint data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_bigint = b.u_bigint",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# bit1 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.bit_1 = b.bit_1",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# bit64 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.bit_64 = b.bit_64",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# float data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.bit_64 = b.bit_64",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# ufloat data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_float = b.u_float",
+    "verifyResult": [
+    ]
+  },
+  {
+    "comment": "# double data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.double = b.double",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# u_double data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.u_double = b.u_double",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# char data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.char = b.char",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# varchar data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.varchar = b.varchar",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# tinytext data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.tinytext = b.tinytext",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# text data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.text = b.text",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# mediumtext data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.mediumtext = b.mediumtext",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# longtext data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.longtext = b.longtext",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# binary data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.binary = b.binary",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# tinyblob data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.tinyblob = b.tinyblob",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# blob data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.blob = b.blob",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# mediumblob data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.mediumblob = b.mediumblob",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# longblob data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.longblob = b.longblob",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# date data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.date = b.date",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# time_1 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.time_1 = b.time_1",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# time_1 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.time_3 = b.time_3",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# year data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.year = b.year",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# datetime_3 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.datetime_3 = b.datetime_3",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# datetime_6 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.datetime_6 = b.datetime_6",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# timestamp_3 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.timestamp_3 = b.timestamp_3",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  {
+    "comment": "# timestamp_6 data join",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "Integer"
+      }
+    ],
+    "needSort": true,
+    "query": "select a.tinyint as id from all_type_test a join all_type_test b on a.timestamp_6 = b.timestamp_6",
+    "verifyResult": [
+      {
+        "id": 1
+      }
+    ]
+  }
+]

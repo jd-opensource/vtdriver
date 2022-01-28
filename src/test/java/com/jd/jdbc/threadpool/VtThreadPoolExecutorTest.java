@@ -30,7 +30,7 @@ public class VtThreadPoolExecutorTest extends TestSuite {
     public void testRejectedExecution() {
         printInfo("Test VtDriver thread pool executor rejected execution!");
         VtQueryExecutorService.initialize(null, null, null, null);
-        int max = AbstractVtExecutorService.DEFAULT_MAXIMUM_POOL_SIZE + AbstractVtExecutorService.DEFAULT_QUEUE_SIZE;
+        int max = AbstractVtExecutorService.DEFAULT_QUERY_MAXIMUM_POOL_SIZE + AbstractVtExecutorService.DEFAULT_QUEUE_SIZE;
         for (int i = 0; i < max; i++) {
             VtQueryExecutorService.execute(() -> {
                 try {

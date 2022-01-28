@@ -57,7 +57,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
     private Map<String, String> switchTables = null;
 
     @Getter
-    private Exception exception;
+    private SQLException exception;
 
     private VtRestoreVisitor(final Appendable appender, final Map<String, BindVariable> bindVariableMap) {
         super(appender, false);
@@ -213,6 +213,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
         SQLValuableExpr valuableExpr = null;
 
         switch (vtValue.getVtType()) {
+            case CHAR:
             case VARBINARY:
             case VARCHAR:
             case TEXT:
@@ -223,10 +224,15 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
                 valuableExpr = new SQLBooleanExpr(vtValue.toBoolean());
                 break;
             case INT8:
+            case UINT8:
             case INT16:
+            case UINT16:
+            case INT24:
+            case UINT24:
             case INT32:
                 valuableExpr = new SQLIntegerExpr(vtValue.toInt());
                 break;
+            case UINT32:
             case INT64:
                 valuableExpr = new SQLIntegerExpr(vtValue.toLong());
                 break;
@@ -234,11 +240,12 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
                 valuableExpr = new SQLIntegerExpr(new BigInteger(vtValue.toString()));
                 break;
             case DECIMAL:
-            case FLOAT64:
             case FLOAT32:
+            case FLOAT64:
                 valuableExpr = new SQLNumberExpr(vtValue.toDecimal());
                 break;
             case DATE:
+            case YEAR:
                 valuableExpr = new SQLDateExpr(vtValue.toString());
                 break;
             case DATETIME:
@@ -253,7 +260,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
                 valuableExpr = new SQLNullExpr();
                 break;
             default:
-                break;
+                throw new SQLException("unknown data type:" +  vtValue.getVtType());
         }
         return valuableExpr;
     }

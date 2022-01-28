@@ -21,6 +21,8 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.jd.jdbc.api.VtApiServerResponse.FAILURE;
 import static com.jd.jdbc.api.VtApiServerResponse.SUCCESS;
@@ -67,5 +69,19 @@ public abstract class VtHttpHandler implements HttpHandler {
             os.write(errorMessage.getBytes(StandardCharsets.UTF_8));
             os.flush();
         }
+    }
+
+    protected Map<String, String> queryToMap(String query) {
+        if (query == null) {
+            return null;
+        }
+        Map<String, String> result = new HashMap<>();
+        for (String param : query.split("&")) {
+            String[] entry = param.trim().split("=");
+            if (entry.length > 1) {
+                result.put(entry[0], entry[1]);
+            }
+        }
+        return result;
     }
 }
