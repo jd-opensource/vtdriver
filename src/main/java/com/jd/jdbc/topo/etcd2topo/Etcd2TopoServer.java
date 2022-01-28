@@ -41,6 +41,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
@@ -211,8 +213,8 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
         GetResponse response;
         try {
-            response = future.get();
-        } catch (InterruptedException | ExecutionException e) {
+            response = future.get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
         }
