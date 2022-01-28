@@ -19,6 +19,7 @@ package com.jd.jdbc.planbuilder;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.engine.MultiQueryEngine;
 import com.jd.jdbc.engine.PrimitiveEngine;
+import com.jd.jdbc.engine.table.TableQueryEngine;
 import com.jd.jdbc.srvtopo.BindVariable;
 import java.util.List;
 import java.util.Map;
@@ -30,5 +31,12 @@ public class MultiQueryPlan {
                                                       List<IExecute.ResolvedShardQuery> shardQueryList,
                                                       List<Map<String, BindVariable>> bindVariableMapList) {
         return new MultiQueryEngine(primitiveEngines, shardQueryList, bindVariableMapList);
+    }
+
+    public static PrimitiveEngine buildTableQueryPlan(List<PrimitiveEngine> primitiveEngines,
+                                                      List<IExecute.ResolvedShardQuery> shardQueryList,
+                                                      List<Map<String, BindVariable>> bindVariableMapList,
+                                                      Map<String, String> shardTableLTMap) {
+        return new TableQueryEngine(primitiveEngines, shardQueryList, bindVariableMapList, shardTableLTMap);
     }
 }

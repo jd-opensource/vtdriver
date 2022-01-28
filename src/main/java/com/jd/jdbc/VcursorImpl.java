@@ -166,4 +166,12 @@ public class VcursorImpl implements Vcursor {
         }
         return this.safeSession.getCharEncoding();
     }
+
+    @Override
+    public int getMaxParallelNum() {
+        if (this.safeSession == null) {
+            return 1;
+        }
+        return this.safeSession.getMaxParallelNum();
+    }
 }

@@ -71,8 +71,8 @@ public enum SecurityCenter {
     @EqualsAndHashCode
     @AllArgsConstructor
     public class Credential {
-        private String user;
+        private final String user;
 
-        private String password;
+        private final String password;
     }
 }

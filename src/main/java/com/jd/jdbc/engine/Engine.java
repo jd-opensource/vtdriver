@@ -21,6 +21,7 @@ package com.jd.jdbc.engine;
 import com.google.common.collect.Lists;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
+import com.jd.jdbc.engine.table.TableQueryEngine;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.planbuilder.MultiQueryPlan;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
@@ -32,7 +33,6 @@ import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.tindexes.ActualTable;
-import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.vindexes.SingleColumn;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -247,46 +247,27 @@ public class Engine {
         List<Map<String, BindVariable>> values = resolvedShardsEqual.getTableVarList();
         List<PrimitiveEngine> sourceList = new ArrayList<>();
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
-        Map<String, LogicTable> shardTableLTMap = new HashMap<>();
+        Map<String, String> shardTableLTMap = new HashMap<>();
         for (List<ActualTable> destionation : tableDestinations) {
             Map<String, String> switchTable = new HashMap<>(16);
             for (ActualTable act : destionation) {
-                shardTableLTMap.put(act.getActualTableName(), act.getLogicTable());
+                shardTableLTMap.put(act.getActualTableName(), act.getLogicTable().getLogicTable());
                 switchTable.put(act.getLogicTable().getActualTableList().get(0).getActualTableName(), act.getActualTableName());
             }
             sourceList.add(executeEngine);
             shardQueryList.add(executeEngine.resolveShardQuery(ctx, vcursor, bindVariableMap, switchTable));
         }
-        PrimitiveEngine primitive = MultiQueryPlan.buildMultiQueryPlan(sourceList, shardQueryList, values);
-        return execCollectMultQueries(ctx, primitive, vcursor, false, shardTableLTMap);
+        PrimitiveEngine primitive = MultiQueryPlan.buildTableQueryPlan(sourceList, shardQueryList, values, shardTableLTMap);
+        return execCollectMultQueries(ctx, primitive, vcursor, false);
     }
 
-    public static VtResultSet execCollectMultQueries(IContext ctx, PrimitiveEngine primitive, Vcursor vcursor, boolean wantField, Map<String, LogicTable> shardTableLTMap) throws SQLException {
-        if (!(primitive instanceof MultiQueryEngine)) {
-            throw new SQLException("wrong engine type: execute multiqueries must be MultiQueryEngine");
+    public static VtResultSet execCollectMultQueries(IContext ctx, PrimitiveEngine primitive, Vcursor vcursor, boolean wantField) throws SQLException {
+        if (!(primitive instanceof TableQueryEngine)) {
+            throw new SQLException("wrong engine type: execute table query must be TableQueryEngine");
         }
 
-        VtResultSet resultSet = new VtResultSet();
-        List<IExecute.ExecuteMultiShardResponse> executeMultiShardResponses = primitive.batchExecute(ctx, vcursor, wantField);
-        for (IExecute.ExecuteMultiShardResponse executeMultiShardResponse : executeMultiShardResponses) {
-            VtResultSet innerResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
-            resultSet.appendResultIgnoreTable(innerResultSet);
-        }
-        if (resultSet.getFields() == null) {
-            return resultSet;
-        }
-        for (int i = 0; i < resultSet.getFields().length; i++) {
-            Query.Field[] fields = resultSet.getFields();
-            if (fields[i] == null) {
-                continue;
-            }
-            String actualTableName = fields[i].getTable();
-            if (shardTableLTMap.containsKey(actualTableName)) {
-                String logicTable = shardTableLTMap.get(actualTableName).getLogicTable();
-                fields[i] = fields[i].toBuilder().setTable(logicTable).build();
-            }
-        }
-        return resultSet;
+        IExecute.ExecuteMultiShardResponse executeMultiShardResponses = primitive.execute(ctx, vcursor, null, wantField);
+        return (VtResultSet) executeMultiShardResponses.getVtRowList();
     }
 
     /**

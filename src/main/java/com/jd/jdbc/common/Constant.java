@@ -27,6 +27,8 @@ public class Constant {
 
     public static final String DRIVER_PROPERTY_ROLE_KEY = "role";
 
+    public static final String DRIVER_PROPERTY_QUERY_PARALLEL_NUM = "queryParallelNum";
+
     public static final String DRIVER_PROPERTY_ROLE_RW = "rw";
 
     public static final String DRIVER_PROPERTY_ROLE_RR = "rr";

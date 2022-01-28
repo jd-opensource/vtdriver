@@ -214,7 +214,7 @@
       "delete from table_engine_test",
       "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
     ],
-    "query": "select * from table_engine_test where (f_key ='11') AND f_bit = true limit 2",
+    "query": "select id, f_key, f_tinyint, f_bit from table_engine_test where (f_key ='11') AND f_bit = true order by id limit 2",
     "fields": [
       {
         "name": "id",
@@ -646,7 +646,7 @@
       "delete from table_engine_test",
       "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
     ],
-    "query": "select * from table_engine_test where (f_key ='11') AND f_bit = true limit 2;",
+    "query": "select ID, F_KEY, F_TINYINT, F_BIT from table_engine_test where (f_key ='11') AND f_bit = true order by id limit 2;",
     "fields": [
       {
         "name": "id",
