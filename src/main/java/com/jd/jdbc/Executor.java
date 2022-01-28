@@ -113,6 +113,10 @@ public class Executor implements IExecute {
         return singletonInstance;
     }
 
+    public static Executor getInstanceNoInit() {
+        return singletonInstance;
+    }
+
     /**
      * @param ctx
      * @param method
