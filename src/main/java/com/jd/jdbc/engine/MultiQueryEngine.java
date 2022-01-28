@@ -31,29 +31,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MultiQueryEngine implements PrimitiveEngine {
-
-    private final List<PrimitiveEngine> primitiveEngineList;
-
-    private final List<IExecute.ResolvedShardQuery> shardQueryList;
-
-    private final List<Map<String, BindVariable>> bindVariableMapList;
+public class MultiQueryEngine extends AbstractMultiQueryEngine implements PrimitiveEngine {
 
     public MultiQueryEngine(List<PrimitiveEngine> primitiveEngineList, List<IExecute.ResolvedShardQuery> shardQueryList,
                             List<Map<String, BindVariable>> bindVariableMapList) {
-        this.primitiveEngineList = primitiveEngineList;
-        this.shardQueryList = shardQueryList;
-        this.bindVariableMapList = bindVariableMapList;
-    }
-
-    @Override
-    public String getKeyspaceName() {
-        return null;
-    }
-
-    @Override
-    public String getTableName() {
-        return null;
+        super(primitiveEngineList, shardQueryList, bindVariableMapList);
     }
 
     @Override
@@ -64,24 +46,15 @@ public class MultiQueryEngine implements PrimitiveEngine {
     @Override
     public List<IExecute.ExecuteMultiShardResponse> batchExecute(IContext ctx, Vcursor vcursor, boolean wantFields) throws SQLException {
         // 1.reorganizeQuries
-        Map<ResolvedShard, List<BoundQuery>> resolvedShardListMap = new HashMap<>(shardQueryList.size());
         // resolvedShardQuery:
         // originSql1---> shards---sqls1
         // originSql2---> shards---sqls2
         // originSql3---> shards---sqls3
         // originSql4---> shards---sqls4
-        for (IExecute.ResolvedShardQuery resolvedShardQuery : shardQueryList) {
-            if (resolvedShardQuery == null) {
-                continue;
-            }
-            for (int i = 0; i < resolvedShardQuery.getRss().size(); i++) {
-                ResolvedShard resolvedShard = resolvedShardQuery.getRss().get(i);
-                BoundQuery boundQuery = resolvedShardQuery.getQueries().get(i);
-                resolvedShardListMap.computeIfAbsent(resolvedShard, k -> new ArrayList<>()).add(boundQuery);
-            }
-        }
-        List<ResolvedShard> rss = new ArrayList<>();
-        List<List<BoundQuery>> queries = new ArrayList<>();
+        Map<ResolvedShard, List<BoundQuery>> resolvedShardListMap = getResolvedShardListMap();
+
+        List<ResolvedShard> rss = new ArrayList<>(resolvedShardListMap.size());
+        List<List<BoundQuery>> queries = new ArrayList<>(resolvedShardListMap.size());
         resolvedShardListMap.forEach((k, v) -> {
             rss.add(k);
             queries.add(v);
@@ -90,15 +63,11 @@ public class MultiQueryEngine implements PrimitiveEngine {
         // 2.parallelToShards
         // rss      queries
         // shard1 sql1;sql2;sql3;
-        // shard2 	      sql2;sql3;sql4
+        // shard2       sql2;sql3;sql4
         // shard3 sql1;       sql3;sql4
         // shard4        sql2;sql3;
-        int sqlSize = 0;
-        for (List<BoundQuery> boundQueryList : queries) {
-            sqlSize += boundQueryList.size();
-        }
-        boolean autocommit = rss.size() == 1 && sqlSize == 1 && vcursor.autocommitApproval();
-        IExecute.ExecuteBatchMultiShardResponse response = vcursor.executeBatchMultiShard(rss, queries, true, autocommit);
+        IExecute.ExecuteBatchMultiShardResponse response = parallelShardsExecute(vcursor, rss, queries);
+
         // 3.getQuriesResult
         List<List<VtResultSet>> vtResultSetList = response.getVtResultSetList();
         List<ResolvedShard> resulRss = response.getRss();
@@ -128,15 +97,5 @@ public class MultiQueryEngine implements PrimitiveEngine {
             batchResult.add(primitive.mergeResult(resultSet, bindVariableMapList.get(i), wantFields));
         }
         return batchResult;
-    }
-
-    @Override
-    public Boolean needsTransaction() {
-        for (PrimitiveEngine primitiveEngine : primitiveEngineList) {
-            if (primitiveEngine.needsTransaction()) {
-                return true;
-            }
-        }
-        return false;
     }
 }

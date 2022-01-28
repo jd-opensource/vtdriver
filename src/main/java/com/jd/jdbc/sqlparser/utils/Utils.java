@@ -16,8 +16,18 @@
 
 package com.jd.jdbc.sqlparser.utils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
@@ -29,13 +39,11 @@ public class Utils {
 
     public final static int DEFAULT_BUFFER_SIZE = 1024 * 4;
 
+    private static Date startTime;
+
     public static String read(InputStream in) {
         InputStreamReader reader;
-        try {
-            reader = new InputStreamReader(in, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new IllegalStateException(e.getMessage(), e);
-        }
+        reader = new InputStreamReader(in, StandardCharsets.UTF_8);
         return read(reader);
     }
 
@@ -179,6 +187,11 @@ public class Utils {
         return null;
     }
 
+    public static Integer getInteger(Properties properties, String key, int defaultValue) {
+        Integer result = getInteger(properties, key);
+        return result != null ? result : defaultValue;
+    }
+
     public static Long getLong(Properties properties, String key) {
         String property = properties.getProperty(key);
 
@@ -218,8 +231,6 @@ public class Utils {
         return clazz;
     }
 
-    private static Date startTime;
-
     public final static Date getStartTime() {
         if (startTime == null) {
             startTime = new Date(ManagementFactory.getRuntimeMXBean().getStartTime());
@@ -249,13 +260,13 @@ public class Utils {
         for (int i = 0; i < length8; i++) {
             final int i8 = i * 8;
             long k = ((long) data[i8 + 0] & 0xff) //
-                    + (((long) data[i8 + 1] & 0xff) << 8) //
-                    + (((long) data[i8 + 2] & 0xff) << 16)//
-                    + (((long) data[i8 + 3] & 0xff) << 24) //
-                    + (((long) data[i8 + 4] & 0xff) << 32)//
-                    + (((long) data[i8 + 5] & 0xff) << 40)//
-                    + (((long) data[i8 + 6] & 0xff) << 48) //
-                    + (((long) data[i8 + 7] & 0xff) << 56);
+                + (((long) data[i8 + 1] & 0xff) << 8) //
+                + (((long) data[i8 + 2] & 0xff) << 16)//
+                + (((long) data[i8 + 3] & 0xff) << 24) //
+                + (((long) data[i8 + 4] & 0xff) << 32)//
+                + (((long) data[i8 + 5] & 0xff) << 40)//
+                + (((long) data[i8 + 6] & 0xff) << 48) //
+                + (((long) data[i8 + 7] & 0xff) << 56);
 
             k *= m;
             k ^= k >>> r;
@@ -279,10 +290,9 @@ public class Utils {
             case 2:
                 h ^= (long) (data[(length & ~7) + 1] & 0xff) << 8;
             case 1:
-                h ^= (long) (data[length & ~7] & 0xff);
+                h ^= data[length & ~7] & 0xff;
                 h *= m;
         }
-        ;
 
         h ^= h >>> r;
         h *= m;

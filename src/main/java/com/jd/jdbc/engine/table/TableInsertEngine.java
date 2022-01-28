@@ -179,7 +179,7 @@ public class TableInsertEngine implements PrimitiveEngine {
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
         List<PrimitiveEngine> sourceList = new ArrayList<>();
         List<Map<String, BindVariable>> batchBindVariableMap = new ArrayList<>();
-        Map<String, LogicTable> shardTableLTMap = new HashMap<>();
+        Map<String, String> shardTableLTMap = new HashMap<>();
 
         List<VtPlanValue> tempRouteValueList = new ArrayList<>();
         List<VtPlanValue> bList = new ArrayList<>();
@@ -188,7 +188,7 @@ public class TableInsertEngine implements PrimitiveEngine {
 
         for (int i = 0; i < actualTables.size(); i++) {
             ActualTable actualTable = actualTables.get(i);
-            shardTableLTMap.put(actualTable.getActualTableName(), actualTable.getLogicTable());
+            shardTableLTMap.put(actualTable.getActualTableName(), actualTable.getLogicTable().getLogicTable());
             List<Query.Value> indexes = indexesPerTable.get(i);
             List<VtPlanValue> tempInnerPlanValueList = new ArrayList<>();
             List<SQLInsertStatement.ValuesClause> valuesClauseList = new ArrayList<>();
@@ -208,8 +208,8 @@ public class TableInsertEngine implements PrimitiveEngine {
             sourceList.add(this.insertEngine);
             batchBindVariableMap.add(bindVariableMap);
         }
-        PrimitiveEngine primitive = MultiQueryPlan.buildMultiQueryPlan(sourceList, shardQueryList, batchBindVariableMap);
-        VtResultSet resultSet = Engine.execCollectMultQueries(ctx, primitive, vcursor, wantField, shardTableLTMap);
+        PrimitiveEngine primitive = MultiQueryPlan.buildTableQueryPlan(sourceList, shardQueryList, batchBindVariableMap, shardTableLTMap);
+        VtResultSet resultSet = Engine.execCollectMultQueries(ctx, primitive, vcursor, wantField);
         return new IExecute.ExecuteMultiShardResponse(resultSet).setUpdate();
     }
 

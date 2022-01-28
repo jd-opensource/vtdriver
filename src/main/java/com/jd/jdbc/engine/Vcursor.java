@@ -87,4 +87,6 @@ public interface Vcursor {
     Boolean getRollbackOnPartialExec();
 
     String getCharEncoding();
+
+    int getMaxParallelNum();
 }

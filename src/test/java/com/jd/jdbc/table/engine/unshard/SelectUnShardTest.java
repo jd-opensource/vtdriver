@@ -17,14 +17,24 @@ limitations under the License.
 package com.jd.jdbc.table.engine.unshard;
 
 import com.jd.jdbc.table.engine.SelectTest;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import testsuite.internal.TestSuiteShardSpec;
 
 public class SelectUnShardTest extends SelectTest {
 
     @Override
     protected void getConn() throws SQLException {
-        conn = getConnection(Driver.of(TestSuiteShardSpec.NO_SHARDS));
+        baseUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.NO_SHARDS));
+        Connection conn_0 = DriverManager.getConnection(baseUrl + "&queryParallelNum=0");
+        Connection conn_1 = DriverManager.getConnection(baseUrl + "&queryParallelNum=1");
+        Connection conn_8 = DriverManager.getConnection(baseUrl + "&queryParallelNum=2");
+        this.connectionList = new ArrayList<>();
+        this.connectionList.add(conn_0);
+        this.connectionList.add(conn_1);
+        this.connectionList.add(conn_8);
     }
 
     @Override

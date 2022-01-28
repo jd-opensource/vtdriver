@@ -214,7 +214,7 @@
       "delete from table_engine_test",
       "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true),(2,'11',1,false),(3,'11',2,true),(7,'11',5,true),(8,'12',8,false),(9,'43',127,true),(4,'12',-1,true),(5,'11',3,false),(6,'14',6,true)"
     ],
-    "query": "SELECT * FROM TABLE_ENGINE_TEST WHERE (F_KEY ='11') AND F_BIT = TRUE LIMIT 2",
+    "query": "SELECT ID, F_KEY, F_TINYINT, F_BIT FROM TABLE_ENGINE_TEST WHERE (F_KEY ='11') AND F_BIT = TRUE order by id LIMIT 2",
     "fields": [
       {
         "name": "id",
