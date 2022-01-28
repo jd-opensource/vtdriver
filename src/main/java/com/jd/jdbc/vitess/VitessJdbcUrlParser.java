@@ -28,6 +28,7 @@ import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.addDefaultProperties;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCell;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCredentials;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkSchema;
+import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkServerTimezone;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.replaceLegacyPropertyValues;
 
 public class VitessJdbcUrlParser {
@@ -67,11 +68,15 @@ public class VitessJdbcUrlParser {
         parameters = StringUtils.replaceEach(parameters, new String[] {":", "&nbsp;"}, new String[] {"", " "});
         String[] parameterPairs = parameters.split("&");
         for (String parameterPair : parameterPairs) {
-            parsedProperties.setProperty(parameterPair.split("=")[0], parameterPair.split("=")[1]);
+            String[] pair = parameterPair.trim().split("=");
+            if (pair.length == 2) {
+                parsedProperties.setProperty(pair[0], pair[1]);
+            }
         }
 
         checkCell(parsedProperties);
         checkCredentials(path, parsedProperties);
+        checkServerTimezone(parsedProperties);
         addDefaultProperties(parsedProperties);
         replaceLegacyPropertyValues(parsedProperties);
 

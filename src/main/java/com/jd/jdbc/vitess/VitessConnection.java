@@ -32,12 +32,11 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.topo.TopoServer;
+import com.jd.jdbc.util.TimeUtil;
 import com.jd.jdbc.vitess.metadata.CachedDatabaseMetaData;
 import com.jd.jdbc.vitess.metadata.VitessDatabaseMetaData;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
-import com.mysql.cj.Session;
 import com.mysql.cj.jdbc.JdbcConnection;
-import com.mysql.cj.protocol.ServerSession;
 import io.vitess.proto.Query;
 import io.vitess.proto.Vtgate;
 import java.sql.Connection;
@@ -449,13 +448,11 @@ public class VitessConnection extends AbstractVitessConnection {
     private void buildServerSessionPropertiesMap() throws SQLException {
         try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, RoleUtils.getTabletType(ctx))) {
             JdbcConnection connectionImpl = innerConnection.getConnectionImpl();
-            Session session = connectionImpl.getSession();
-            ServerSession serverSession = session.getServerSession();
-            serverSessionPropertiesMap.put(VitessPropertyKey.SERVER_TIMEZONE.getKeyName(), serverSession.getServerTimeZone());
             Integer maxAllowedPacket = connectionImpl.getPropertySet().getIntegerProperty(VitessPropertyKey.MAX_ALLOWED_PACKET.getKeyName()).getValue();
             serverSessionPropertiesMap.put(VitessPropertyKey.MAX_ALLOWED_PACKET.getKeyName(), maxAllowedPacket);
-            serverSessionPropertiesMap.put("DEFAULT_TIME_ZONE", TimeZone.getDefault());
         }
+        serverSessionPropertiesMap.put("DEFAULT_TIME_ZONE", TimeZone.getDefault());
+        serverSessionPropertiesMap.put(VitessPropertyKey.SERVER_TIMEZONE.getKeyName(), TimeUtil.getTimeZone(this.properties));
     }
 
     public enum ContextKey {
