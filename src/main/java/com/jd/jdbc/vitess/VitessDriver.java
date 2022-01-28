@@ -21,14 +21,12 @@ package com.jd.jdbc.vitess;
 import com.google.common.collect.Lists;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.api.VtApiServer;
-import com.jd.jdbc.api.handler.VtVschemaRefreshHandler;
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.discovery.SecurityCenter;
 import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.monitor.ConnectionCollector;
-import com.jd.jdbc.monitor.MonitorServer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
@@ -41,8 +39,6 @@ import com.jd.jdbc.srvtopo.TxConn;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
-import com.jd.jdbc.topo.TopoException;
-import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
@@ -64,7 +60,6 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_RW;
 
 public class VitessDriver implements java.sql.Driver {
@@ -73,10 +68,6 @@ public class VitessDriver implements java.sql.Driver {
     private static final IContext globalContext = VtContext.withCancel(VtContext.background());
 
     private static final Histogram HISTOGRAM = ConnectionCollector.getConnectionHistogram();
-
-    private static final MonitorServer monitorServer;
-
-    private static VtApiServer apiServer;
 
     static {
         // Register ourselves with the DriverManager
@@ -90,7 +81,6 @@ public class VitessDriver implements java.sql.Driver {
     static {
         Map<String, Map<String, LogicTable>> tableIndexesMap = SplitTableUtil.getTableIndexesMap(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH);
         VitessDataSource.setTableIndexesMap(tableIndexesMap);
-        monitorServer = MonitorServer.getInstance();
     }
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -124,17 +114,7 @@ public class VitessDriver implements java.sql.Driver {
 
             List<String> cells = Arrays.asList(prop.getProperty("cell").split(","));
             String localCell = cells.get(0);
-            try {
-                topoServer.getSrvKeyspace(globalContext, localCell, defaultKeyspace);
-            } catch (TopoException e) {
-                if (e.getCode() == TopoExceptionCode.NO_NODE) {
-                    if (cells.size() > 1) {
-                        localCell = cells.get(1);
-                    }
-                }
-            }
             Set<String> ksSet = new HashSet<>(keySpaces);
-
             for (String cell : cells) {
                 TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, ksSet);
             }
@@ -162,13 +142,12 @@ public class VitessDriver implements java.sql.Driver {
              * */
             VSchemaManager vSchemaManager = VSchemaManager.getInstance(topoServer);
             vSchemaManager.initVschema(ksSet);
-
-            if (apiServer == null) {
-                String uniquePrefix = "/" + prop.getProperty("host") + "/" + prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
-                apiServer = VtApiServer.getInstance(uniquePrefix);
-                if (apiServer != null) {
-                    apiServer.regiest("/vschema/refresh", new VtVschemaRefreshHandler(vSchemaManager));
-                    apiServer.start();
+            VtApiServer apiServer = VtApiServer.getInstance();
+            if (apiServer != null) {
+                apiServer.register(defaultKeyspace, vSchemaManager);
+            } else {
+                if (log.isWarnEnabled()) {
+                    log.warn("cannot get apiServer, register:" + defaultKeyspace + "skipped.");
                 }
             }
             return new VitessConnection(url, prop, topoServer, resolver, ksSet, vSchemaManager, defaultKeyspace);

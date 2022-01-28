@@ -16,29 +16,34 @@ limitations under the License.
 
 package com.jd.jdbc.api;
 
+import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.api.handler.VtStatusHandler;
+import com.jd.jdbc.api.handler.VtVschemaRefreshHandler;
 import com.jd.jdbc.monitor.PortCollector;
 import com.jd.jdbc.sqlparser.parser.VitessRuntimeException;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class VtApiServer {
     private static final Log LOGGER = LogFactory.getLog(VtApiServer.class);
 
     private static final int DEFAULT_PROMETHEUS_SERVER_PORT = 15002;
 
-    public static String uniquePrefix;
+    public static String rootPrefix = "/apiserver";
 
     public static Integer port = null;
 
     private volatile static VtApiServer instance;
 
     private static HttpServer httpServer;
+
+    private static final Map<String, VSchemaManager> vSchemaManagerMap = new ConcurrentHashMap<>();
 
     static {
         String apiPort = System.getProperty("vtdriver.api.port");
@@ -55,22 +60,25 @@ public class VtApiServer {
         Runtime.getRuntime().addShutdownHook(new Thread(VtApiServer::stop));
     }
 
-    private VtApiServer(final String uniquePrefix) {
-        VtApiServer.uniquePrefix = uniquePrefix;
-        initHttpServer();
-        if (httpServer == null) {
-            throw new VitessRuntimeException("VtApiServer:Monitoring function failed to start!");
-        }
-        PortCollector.getApiServerPortGauge().labels(uniquePrefix).set(port.doubleValue());
-        httpServer.setExecutor(null);
-        httpServer.createContext(uniquePrefix + "/status", new VtStatusHandler(uniquePrefix));
+    private VtApiServer() {
+        new Thread(() -> {
+            initHttpServer();
+            if (httpServer == null) {
+                throw new VitessRuntimeException("VtApiServer failed to start!");
+            }
+            PortCollector.getApiServerPortGauge().labels(rootPrefix).set(port.doubleValue());
+            httpServer.setExecutor(null);
+            httpServer.createContext(rootPrefix + "/status", new VtStatusHandler(rootPrefix, vSchemaManagerMap));
+            httpServer.createContext(rootPrefix + "/vschema", new VtVschemaRefreshHandler(vSchemaManagerMap));
+            httpServer.start();
+        }).start();
     }
 
-    public static VtApiServer getInstance(String uniquePrefix) {
+    public static VtApiServer getInstance() {
         if (instance == null) {
             synchronized (VtApiServer.class) {
                 if (instance == null) {
-                    instance = new VtApiServer(uniquePrefix);
+                    instance = new VtApiServer();
                 }
             }
         }
@@ -109,15 +117,7 @@ public class VtApiServer {
         }
     }
 
-    public void regiest(String path, HttpHandler handler) {
-        if (httpServer != null) {
-            httpServer.createContext(VtApiServer.uniquePrefix + path, handler);
-        }
-    }
-
-    public void start() {
-        if (httpServer != null) {
-            httpServer.start();
-        }
+    public void register(String keyspace, VSchemaManager vSchemaManager) {
+        VtApiServer.vSchemaManagerMap.put(keyspace, vSchemaManager);
     }
 }

@@ -26,11 +26,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public final class MonitorServer {
-    private static final Log log = LogFactory.getLog(MonitorServer.class);
+    private static final Log LOG = LogFactory.getLog(MonitorServer.class);
 
     private static final int DEFAULT_PROMETHEUS_SERVER_PORT = 15001;
 
-    private static final CollectorRegistry collectorRegistry = new CollectorRegistry();
+    private static final CollectorRegistry COLLECTOR_REGISTRY = new CollectorRegistry();
 
     private static volatile MonitorServer INSTANCE;
 
@@ -44,7 +44,7 @@ public final class MonitorServer {
             try {
                 port = Integer.parseInt(monitorPort);
             } catch (NumberFormatException ex) {
-                log.error("get monitor.port error!" + ex.getMessage());
+                LOG.error("get monitor.port error!" + ex.getMessage());
             }
         }
     }
@@ -54,15 +54,17 @@ public final class MonitorServer {
     }
 
     private MonitorServer() {
-        initHttpServer();
-        if (server == null) {
-            throw new VitessRuntimeException("MonitorServer:init prometheus HTTPServer error");
-        }
-        ThreadPoolCollector.getInstance().register(collectorRegistry);
-        HealthCheckCollector.getInstance().register(collectorRegistry);
-        SqlErrorCollector.getInstance().register(collectorRegistry);
-        SrvKeyspaceCollector.getInstance().register(collectorRegistry);
-        PlanCollector.PlanCacheSizeCollector.getInstance().register(collectorRegistry);
+        new Thread(() -> {
+            initHttpServer();
+            if (server == null) {
+                throw new VitessRuntimeException("MonitorServer:init prometheus HTTPServer error");
+            }
+            ThreadPoolCollector.getInstance().register(COLLECTOR_REGISTRY);
+            HealthCheckCollector.getInstance().register(COLLECTOR_REGISTRY);
+            SqlErrorCollector.getInstance().register(COLLECTOR_REGISTRY);
+            SrvKeyspaceCollector.getInstance().register(COLLECTOR_REGISTRY);
+            PlanCollector.PlanCacheSizeCollector.getInstance().register(COLLECTOR_REGISTRY);
+        }).start();
     }
 
     public static MonitorServer getInstance() {
@@ -79,20 +81,20 @@ public final class MonitorServer {
     public static void stop() {
         if (server != null) {
             server.stop();
-            log.info(" Stop monitorServer succeed");
+            LOG.info(" Stop monitorServer succeed");
         }
     }
 
     public static CollectorRegistry getCollectorRegistry() {
-        return collectorRegistry;
+        return COLLECTOR_REGISTRY;
     }
 
     private void initHttpServer() {
         if (port != null) {
             try {
-                server = new HTTPServer(new InetSocketAddress(port), collectorRegistry);
+                server = new HTTPServer(new InetSocketAddress(port), COLLECTOR_REGISTRY);
             } catch (IOException e) {
-                log.error("Create MONITOR server on " + port + " failed!");
+                LOG.error("Create MONITOR server on " + port + " failed!");
             }
             return;
         }
@@ -100,9 +102,9 @@ public final class MonitorServer {
         port = DEFAULT_PROMETHEUS_SERVER_PORT;
         while (retryCount < 20) {
             try {
-                server = new HTTPServer(new InetSocketAddress(port), collectorRegistry);
+                server = new HTTPServer(new InetSocketAddress(port), COLLECTOR_REGISTRY);
             } catch (IOException e) {
-                log.info("Create MONITOR server on " + port + " failed!");
+                LOG.info("Create MONITOR server on " + port + " failed!");
                 port += 2;
             }
             retryCount++;
