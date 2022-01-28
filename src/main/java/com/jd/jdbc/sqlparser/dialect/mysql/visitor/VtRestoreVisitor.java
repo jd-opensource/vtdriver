@@ -209,7 +209,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
         return valuableExprList;
     }
 
-    private SQLValuableExpr getValueableExpr(final VtValue vtValue) {
+    private SQLValuableExpr getValueableExpr(final VtValue vtValue) throws SQLException {
         SQLValuableExpr valuableExpr = null;
 
         switch (vtValue.getVtType()) {
@@ -225,18 +225,10 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
             case INT8:
             case INT16:
             case INT32:
-                try {
-                    valuableExpr = new SQLIntegerExpr(vtValue.toInt());
-                } catch (SQLException e) {
-                    LOGGER.error(e.getMessage(), e);
-                }
+                valuableExpr = new SQLIntegerExpr(vtValue.toInt());
                 break;
             case INT64:
-                try {
-                    valuableExpr = new SQLIntegerExpr(vtValue.toLong());
-                } catch (SQLException e) {
-                    LOGGER.error(e.getMessage(), e);
-                }
+                valuableExpr = new SQLIntegerExpr(vtValue.toLong());
                 break;
             case UINT64:
                 valuableExpr = new SQLIntegerExpr(new BigInteger(vtValue.toString()));
