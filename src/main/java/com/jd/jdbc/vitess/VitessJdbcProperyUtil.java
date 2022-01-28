@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class VitessJdbcProperyUtil {
@@ -87,8 +88,18 @@ public class VitessJdbcProperyUtil {
     }
 
     public static void checkSchema(String path) {
-        if (path == null || path.isEmpty() || !path.startsWith("/")) {
+        if (path == null || !path.startsWith("/")) {
             throw new IllegalArgumentException("wrong database name path: '" + path + "'");
+        }
+    }
+
+    public static void checkServerTimezone(Properties info) {
+        String canonicalTimezone = info.getProperty(VitessPropertyKey.SERVER_TIMEZONE.getKeyName());
+        if (canonicalTimezone == null) {
+            throw new IllegalArgumentException("serverTimezone is not found in jdbc url");
+        }
+        if (!"GMT".equalsIgnoreCase(canonicalTimezone) && TimeZone.getTimeZone(canonicalTimezone).getID().equals("GMT")) {
+            throw new IllegalArgumentException("invalid serverTimezone in jdbc url");
         }
     }
 
