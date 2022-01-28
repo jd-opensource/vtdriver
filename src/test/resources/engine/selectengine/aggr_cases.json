@@ -1064,6 +1064,215 @@
     ]
   },
   {
+    "comment": "# multi avg exception",
+    "fields": [
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      },
+      {
+        "name": "f_decimal",
+        "alias": "b"
+      }
+    ],
+    "query": "select avg(f_int) as a, avg(f_tinyint) as b from plan_test",
+    "exception": "java.sql.SQLException",
+    "errorMessage": "unsupported: only one avg aggregation allowed in a select"
+  },
+  {
+    "comment": "# scatter avg",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_int) values (1, 111)",
+      "insert into plan_test(f_tinyint, f_int) values (2, 222)",
+      "insert into plan_test(f_tinyint, f_int) values (3, 333)",
+      "insert into plan_test(f_tinyint, f_int) values (4, 444)",
+      "insert into plan_test(f_tinyint, f_int) values (5, 555)"
+    ],
+    "query": "select avg(f_int) as a from plan_test",
+    "fields": [
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_decimal": 333.0000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with no value",
+    "initSql": [
+      "delete from plan_test"
+    ],
+    "query": "select avg(f_int) as a from plan_test",
+    "fields": [
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_decimal": null
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with groupby",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (1, 1, 111)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (2, 1, 222)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (3, 1, 333)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (4, 4, 444)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (5, 4, 555)"
+    ],
+    "query": "select f_midint as b, avg(f_int) as a from plan_test group by b",
+    "fields": [
+      {
+        "name": "f_midint",
+        "alias": "b"
+      },
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "f_decimal": 222.0000
+      },
+      {
+        "f_midint": 4,
+        "f_decimal": 499.5000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with groupby",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (1, 1, 111)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (2, 1, 222)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (3, 1, 333)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (4, 4, 444)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (5, 4, 555)"
+    ],
+    "query": "select f_midint as b, avg(f_int) as a from plan_test group by b",
+    "fields": [
+      {
+        "name": "f_midint",
+        "alias": "b"
+      },
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "f_decimal": 222.0000
+      },
+      {
+        "f_midint": 4,
+        "f_decimal": 499.5000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg null with groupby",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (1, 1, null)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (2, 1, null)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (3, 1, null)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (4, 4, 444)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (5, 4, 555)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (6, 5, null)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (7, 5, 8)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (8, 5, 1)"
+    ],
+    "query": "select f_midint as b, avg(f_int) as a from plan_test group by b",
+    "fields": [
+      {
+        "name": "f_midint",
+        "alias": "b"
+      },
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "f_decimal": null
+      },
+      {
+        "f_midint": 4,
+        "f_decimal": 499.5000
+      },
+      {
+        "f_midint": 5,
+        "f_decimal": 4.5000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg null with groupby and order by",
+    "initSql": [
+      "delete from plan_test",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (1, 1, 111)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (2, 1, 222)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (3, 1, 333)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (4, 4, 444)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (5, 4, 555)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (6, 5, 200)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (7, 5, 300)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (8, 7, 400)",
+      "insert into plan_test(f_tinyint, f_midint, f_int) values (9, 8, 555)"
+    ],
+    "needSort": false,
+    "query": "select f_midint as b, avg(f_int) as a from plan_test group by b order by a",
+    "fields": [
+      {
+        "name": "f_midint",
+        "alias": "b"
+      },
+      {
+        "name": "f_decimal",
+        "alias": "a"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "f_decimal": 222.0000
+      },
+      {
+        "f_midint": 5,
+        "f_decimal": 250.0000
+      },
+      {
+        "f_midint": 7,
+        "f_decimal": 400.0000
+      },
+      {
+        "f_midint": 4,
+        "f_decimal": 499.5000
+      },
+      {
+        "f_midint": 8,
+        "f_decimal": 555.0000
+      }
+    ]
+  },
+  {
     "comment": "# Group by invalid column number (code is duplicated from symab).",
     "initSql": [
       "delete from plan_test",

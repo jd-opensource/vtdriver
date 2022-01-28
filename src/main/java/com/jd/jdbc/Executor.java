@@ -158,7 +158,7 @@ public class Executor implements IExecute {
                     return ShardQueryService.handleShow(safeSession, ctx, keysapce, Topodata.TabletType.MASTER);
                 }
         }
-        throw new SQLFeatureNotSupportedException("unrecognized statement: %s" + sql);
+        throw new SQLFeatureNotSupportedException("unrecognized statement: " + sql);
     }
 
     /**

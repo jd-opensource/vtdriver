@@ -50,6 +50,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvg;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgCount;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgSum;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCount;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCountDistinct;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateSum;
@@ -335,7 +338,35 @@ public class OrderedAggregatePlan extends ResultsBuilder implements Builder {
         }
         NeedDistinctHandlingResponse needDistinctHandlingResponse = this.needDistinctHandling(pb, aggrExpr, opcode);
         Boolean handleDistinct = needDistinctHandlingResponse.getHandleDistinct();
-        if (handleDistinct) {
+        if (opcode == AggregateAvg) {
+            if (this.eaggr.isHasAvg()) {
+                throw new SQLException("unsupported: only one avg aggregation allowed in a select: " + aggrExpr);
+            }
+            SQLExpr innerExpr = aggrExpr.getArguments().get(0);
+            if (!(innerExpr instanceof SQLName)) {
+                throw new SQLException("syntax error: " + aggrExpr);
+            }
+
+            String alias;
+            if (StringUtil.isNullOrEmpty(expr.getAlias())) {
+                alias = SQLUtils.toSQLString(expr.getExpr());
+            } else {
+                alias = expr.getAlias();
+            }
+            this.eaggr.setHasAvg(true);
+
+            SQLAggregateExpr sumAggr = new SQLAggregateExpr("sum");
+            sumAggr.addArgument(innerExpr);
+            PushSelectResponse pushSumAggResponse = this.getBldr().pushSelect(pb, new SQLSelectItem(sumAggr), origin);
+            Integer pushSumAggCol = pushSumAggResponse.getColNumber();
+            this.eaggr.getAggregateParamsList().add(new AggregateParams(AggregateAvgSum, pushSumAggCol, alias));
+
+            SQLAggregateExpr countAggr = new SQLAggregateExpr("count");
+            countAggr.addArgument(innerExpr);
+            PushSelectResponse pushCountAggResponse = this.getBldr().pushSelect(pb, new SQLSelectItem(countAggr), origin);
+            Integer pushCountAggCol = pushCountAggResponse.getColNumber();
+            this.eaggr.getAggregateParamsList().add(new AggregateParams(AggregateAvgCount, pushCountAggCol));
+        } else if (handleDistinct) {
             if (this.extraDistinct != null) {
                 throw new SQLException("unsupported: only one distinct aggregation allowed in a select: " + aggrExpr);
             }

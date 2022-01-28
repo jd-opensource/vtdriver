@@ -257,32 +257,40 @@ public class PlanTest extends AbstractPlanTest {
 
         List<OrderedAggregateEngine.AggregateParams> aggregateParamsList = engine.getAggregateParamsList();
         if (aggregateParamsList != null && !aggregateParamsList.isEmpty()) {
-            OrderedAggregateEngine.AggregateParams aggregateParams = aggregateParamsList.get(0);
-            Engine.AggregateOpcode opcode = aggregateParams.getOpcode();
-            Integer col = aggregateParams.getCol();
-            switch (opcode) {
-                case AggregateCount:
-                    instructions.setAggregates("count(" + col + ")");
-                    break;
-                case AggregateSum:
-                    instructions.setAggregates("sum(" + col + ")");
-                    break;
-                case AggregateMin:
-                    instructions.setAggregates("min(" + col + ")");
-                    break;
-                case AggregateMax:
-                    instructions.setAggregates("max(" + col + ")");
-                    break;
-                case AggregateCountDistinct:
-                    instructions.setAggregates("count_distinct(" + col + ") AS " + aggregateParams.getAlias().toLowerCase());
-                    break;
-                case AggregateSumDistinct:
-                    instructions.setAggregates("sum_distinct(" + col + ") AS " + aggregateParams.getAlias().toLowerCase());
-                    break;
+            for (OrderedAggregateEngine.AggregateParams aggregateParams : aggregateParamsList) {
+                Engine.AggregateOpcode opcode = aggregateParams.getOpcode();
+                Integer col = aggregateParams.getCol();
+                switch (opcode) {
+                    case AggregateCount:
+                        instructions.setAggregates("count(" + col + ")");
+                        break;
+                    case AggregateSum:
+                        instructions.setAggregates("sum(" + col + ")");
+                        break;
+                    case AggregateMin:
+                        instructions.setAggregates("min(" + col + ")");
+                        break;
+                    case AggregateMax:
+                        instructions.setAggregates("max(" + col + ")");
+                        break;
+                    case AggregateCountDistinct:
+                        instructions.setAggregates("count_distinct(" + col + ") AS " + aggregateParams.getAlias().toLowerCase());
+                        break;
+                    case AggregateSumDistinct:
+                        instructions.setAggregates("sum_distinct(" + col + ") AS " + aggregateParams.getAlias().toLowerCase());
+                        break;
+                    case AggregateAvgSum:
+                        instructions.setAggregates("avg_sum(" + col + ") AS " + aggregateParams.getAlias().toLowerCase() + ";");
+                        break;
+                    case AggregateAvgCount:
+                        String pre = instructions.getAggregates();
+                        instructions.setAggregates(pre + "avg_count(" + col + ")");
+                        break;
+                }
             }
         }
 
-        instructions.setDistinct(engine.getHasDistinct());
+        instructions.setDistinct(engine.isHasDistinct());
 
         List<Integer> keyList = engine.getKeyList();
         if (keyList != null && !keyList.isEmpty()) {

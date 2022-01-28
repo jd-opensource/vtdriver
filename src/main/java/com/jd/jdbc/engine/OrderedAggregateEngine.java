@@ -59,6 +59,7 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
     public static Map<AggregateOpcode, Query.Type> OPCODE_TYPE = new HashMap<AggregateOpcode, Query.Type>() {{
         put(AggregateOpcode.AggregateCountDistinct, Query.Type.INT64);
         put(AggregateOpcode.AggregateSumDistinct, Query.Type.DECIMAL);
+        put(AggregateOpcode.AggregateAvgSum, Query.Type.DECIMAL);
     }};
 
     public static VtResultValue COUNT_ZERO = null;
@@ -81,7 +82,12 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
     /**
      * HasDistinct is true if one of the aggregates is distinct.
      */
-    private Boolean hasDistinct = false;
+    private boolean hasDistinct = false;
+
+    /**
+     * HasAvg is true if one of the aggregates is Avg
+     */
+    private boolean hasAvg = false;
 
     /**
      * Aggregates specifies the aggregation parameters for each
@@ -118,6 +124,8 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
             case AggregateCount:
                 return COUNT_ZERO;
             case AggregateSumDistinct:
+            case AggregateAvgCount:
+            case AggregateAvgSum:
             case AggregateSum:
             case AggregateMin:
             case AggregateMax:
@@ -224,7 +232,7 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                         continue;
                     }
 
-                    vtResultSet.getRows().add(current);
+                    vtResultSet.getRows().add(convertAvgRow(current));
                     rowProcessResponse response = convertRow(row);
                     current = response.getRow();
                     curDistinct = response.getCurDistinct();
@@ -240,12 +248,12 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
                     }
                     returnEmpty = true;
                     List<VtResultValue> row = createEmptyRow();
-                    vtResultSet.getRows().add(row);
+                    vtResultSet.getRows().add(convertAvgRow(row));
                     return vtResultSet;
                 }
 
                 if (current != null) {
-                    vtResultSet.getRows().add(current);
+                    vtResultSet.getRows().add(convertAvgRow(current));
                     current = null;
                     return vtResultSet;
                 }
@@ -310,6 +318,8 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
             switch (aggr.getOpcode()) {
                 case AggregateCount:
                 case AggregateSum:
+                case AggregateAvgSum:
+                case AggregateAvgCount:
                     result.set(aggr.col, EvalEngine.nullSafeAdd(row1.get(aggr.col), row2.get(aggr.col), fields[aggr.col].getType()));
                     break;
                 case AggregateMin:
@@ -350,37 +360,100 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
      * @return
      */
     private Query.Field[] convertFields(Query.Field[] fields) {
-        if (!this.hasDistinct) {
+        if (!this.hasDistinct && !this.hasAvg) {
             return fields;
         }
+        Query.Field[] newFields;
 
+        if (this.hasAvg) {
+            newFields = new Query.Field[fields.length - 1];
+        } else {
+            newFields = new Query.Field[fields.length];
+        }
+        Map<Integer, AggregateParams> indexOpcodeMap = new HashMap<>();
         for (AggregateParams aggr : this.aggregateParamsList) {
-            if (!aggr.isDistinct()) {
+            if (!aggr.isDistinct() && !aggr.isAvg()) {
+                continue;
+            }
+
+            indexOpcodeMap.put(aggr.col, aggr);
+        }
+
+        int skipIndex = 0;
+        for (int i = 0; i < newFields.length; ) {
+            if (!indexOpcodeMap.containsKey(i + skipIndex)) {
+                newFields[i] = fields[i + skipIndex];
+                i++;
+                continue;
+            }
+            // visit the AvgCount， continue and i doesn't self-increment
+            AggregateParams aggr = indexOpcodeMap.get(i + skipIndex);
+            if (aggr.getOpcode() == AggregateOpcode.AggregateAvgCount) {
+                skipIndex += 1;
                 continue;
             }
             Query.Field.Builder builder = Query.Field.newBuilder()
                 .setName(aggr.alias)
+                .setOrgName(aggr.alias)
                 .setType(OPCODE_TYPE.get(aggr.opcode))
                 .setIsSigned(true);
+
             switch (aggr.opcode) {
                 case AggregateCountDistinct:
-                    fields[aggr.col] = builder
+                    newFields[i] = builder
                         .setPrecision(19)
                         .setColumnLength(6)
                         .setJdbcClassName("java.lang.Long")
                         .build();
                     break;
                 case AggregateSumDistinct:
-                    fields[aggr.col] = builder
-                        .setPrecision(32)
-                        .setColumnLength(32)
+                    newFields[i] = builder
+                        .setPrecision(-1)
+                        .setColumnLength(0)
                         .setJdbcClassName("java.math.BigDecimal")
                         .build();
+                    break;
+                case AggregateAvgSum:
+                    newFields[i] = builder
+                        .setPrecision(4)
+                        .setColumnLength(14)
+                        .setJdbcClassName("java.math.BigDecimal")
+                        .build();
+                    break;
                 default:
-                    fields[aggr.col] = builder.build();
+                    newFields[i] = builder.build();
+            }
+            i++;
+        }
+        return newFields;
+    }
+
+    private List<VtResultValue> convertAvgRow(final List<VtResultValue> row) throws SQLException {
+        if (!this.hasAvg) {
+            return row;
+        }
+
+        int avgSumIndex = -1;
+        int avgCountIndex = -1;
+        VtResultValue sum = null;
+        VtResultValue count = null;
+        for (AggregateParams aggr : this.aggregateParamsList) {
+            if (aggr.getOpcode() == AggregateOpcode.AggregateAvgSum) {
+                avgSumIndex = aggr.getCol();
+                sum = row.get(avgSumIndex);
+            }
+            if (aggr.getOpcode() == AggregateOpcode.AggregateAvgCount) {
+                avgCountIndex = aggr.getCol();
+                count = row.get(avgCountIndex);
             }
         }
-        return fields;
+        if (sum == null || count == null) {
+            return row;
+        }
+        VtResultValue avg = EvalEngine.divideNumericWithError(sum, count);
+        row.set(avgSumIndex, avg);
+        row.remove(avgCountIndex);
+        return row;
     }
 
     /**
@@ -482,12 +555,17 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
             // When doing aggregation without grouping keys, we need to produce a single row containing zero-value for the
             // different aggregation functions
             List<VtResultValue> row = this.createEmptyRow();
-            out.getRows().add(row);
+            out.getRows().add(convertAvgRow(row));
         }
 
         if (current != null) {
             out.getRows().add(current);
         }
+
+        for (int i = 0; i < out.getRows().size(); i++) {
+            out.getRows().set(i, convertAvgRow(out.getRows().get(i)));
+        }
+
         out.setRowsAffected(out.getRows().size());
 
         return new IExecute.ExecuteMultiShardResponse(out.truncate(this.truncateColumnCount));
@@ -515,6 +593,10 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
 
         public Boolean isDistinct() {
             return this.opcode == AggregateOpcode.AggregateCountDistinct || this.opcode == AggregateOpcode.AggregateSumDistinct;
+        }
+
+        public Boolean isAvg() {
+            return this.opcode == AggregateOpcode.AggregateAvgSum || this.opcode == AggregateOpcode.AggregateAvgSum;
         }
     }
 
