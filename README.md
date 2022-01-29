@@ -1,5 +1,6 @@
 # VtDriver
-
+[![build&test](https://github.com/vtdriverio/vtdriver/actions/workflows/maven_test.yml/badge.svg?branch=main)](https://github.com/vtdriverio/vtdriver/actions/workflows/maven_test.yml)
+---
 [English Docs](./docs/readme.en.md)
 
 VtDriver是一套基于分布式数据库Vitess而开发的Vitess
