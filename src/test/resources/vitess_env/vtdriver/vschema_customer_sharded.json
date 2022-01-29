@@ -317,6 +317,14 @@
                     "name": "hash"
                 }
             ]
+        },
+        "all_type_test": {
+            "column_vindexes": [
+                {
+                    "column": "u_tinyint",
+                    "name": "hash"
+                }
+            ]
         }
     }
 }

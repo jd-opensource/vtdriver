@@ -74,7 +74,7 @@ public class TimeTest extends TestSuite {
 
     @Before
     public void init() throws SQLException {
-        serverTimezone = TimeZone.getTimeZone("Asia/Shanghai");
+        serverTimezone = TimeZone.getTimeZone("UTC");
         String url = getConnectionUrl(Driver.of(testsuite.internal.TestSuiteShardSpec.TWO_SHARDS));
         conn = DriverManager.getConnection(url);
         Assert.assertEquals(serverTimezone.getID(), ((VitessConnection) conn).getProperties().getProperty("serverTimezone"));
