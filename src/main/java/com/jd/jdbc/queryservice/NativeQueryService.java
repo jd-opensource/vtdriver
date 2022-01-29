@@ -182,6 +182,7 @@ public class NativeQueryService implements IQueryService {
             resultSet = connection.streamExecute(sql);
         } catch (SQLException e) {
             connection.close();
+            context.cancel(e.getMessage());
             throw SQLExceptionTranslator.translate(getReason(e), e);
         }
         return new StreamIterator(connection, resultSet);

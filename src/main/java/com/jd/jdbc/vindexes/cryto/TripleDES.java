@@ -32,8 +32,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESedeKeySpec;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
 
 public final class TripleDES {
 
@@ -101,33 +99,6 @@ public final class TripleDES {
     }
 
     /**
-     * Returns String From An Array Of Bytes
-     */
-    private static String bytes2String(final byte[] bytes) {
-        StringBuffer stringBuffer = new StringBuffer();
-        for (byte aByte : bytes) {
-            stringBuffer.append((char) aByte);
-        }
-        return stringBuffer.toString();
-    }
-
-    /**
-     * Method To Encrypt The String
-     */
-    public synchronized String encryptstr(String unencryptedString) {
-        String encryptedString;
-        try {
-            byte[] plainText = unencryptedString.getBytes(UNICODE_FORMAT);
-            byte[] encryptedText = ENC_CIPHER.doFinal(plainText);
-            BASE64Encoder base64encoder = new BASE64Encoder();
-            encryptedString = base64encoder.encode(encryptedText);
-            return encryptedString;
-        } catch (Exception e) {
-            throw new RuntimeException("TripleDES encryptstr failed", e);
-        }
-    }
-
-    /**
      * Method To Encrypt The String
      */
     public synchronized byte[] encrypt(BigInteger i) {
@@ -140,22 +111,6 @@ public final class TripleDES {
         } catch (Exception e) {
             log.error("TripleDES.encrypt.exception", e);
             throw new RuntimeException("TripleDES encrypt failed", e);
-        }
-    }
-
-    /**
-     * Method To Decrypt An Ecrypted String
-     */
-    public synchronized String decryptstr(final String encryptedString) {
-        String decryptedText;
-        try {
-            BASE64Decoder base64decoder = new BASE64Decoder();
-            byte[] encryptedText = base64decoder.decodeBuffer(encryptedString);
-            byte[] plainText = DEC_CIPHER.doFinal(encryptedText);
-            decryptedText = bytes2String(plainText);
-            return decryptedText;
-        } catch (Exception e) {
-            throw new RuntimeException("TripleDES decryptstr failed", e);
         }
     }
 

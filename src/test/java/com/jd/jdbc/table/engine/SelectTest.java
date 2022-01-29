@@ -16,11 +16,14 @@ limitations under the License.
 
 package com.jd.jdbc.table.engine;
 
+import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.table.TableTestUtil;
+import com.jd.jdbc.vitess.VitessConnection;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -42,14 +45,17 @@ import testsuite.internal.testcase.TestSuiteCase;
 
 public class SelectTest extends TestSuite {
 
-    protected Connection conn;
+    protected String baseUrl;
 
     protected List<TestCase> testCaseList;
+
+    protected List<Connection> connectionList;
 
     @Before
     public void init() throws SQLException, IOException {
         getConn();
         testCaseList = new ArrayList<>();
+        Connection conn = this.connectionList.get(0);
         testCaseList.addAll(initCase("src/test/resources/engine/tableengine/select_case.json", TestCase.class, conn.getCatalog()));
         testCaseList.addAll(initCase("src/test/resources/engine/tableengine/select_case_upperCase.json", TestCase.class, conn.getCatalog()));
         testCaseList.addAll(initCase("src/test/resources/engine/tableengine/select_aggr_case.json", TestCase.class, conn.getCatalog()));
@@ -63,12 +69,25 @@ public class SelectTest extends TestSuite {
     }
 
     protected void getConn() throws SQLException {
-        conn = getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        baseUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        Connection conn_0 = DriverManager.getConnection(baseUrl + "&queryParallelNum=0");
+        Connection conn_1 = DriverManager.getConnection(baseUrl + "&queryParallelNum=1");
+        Connection conn_8 = DriverManager.getConnection(baseUrl + "&queryParallelNum=2");
+        this.connectionList = new ArrayList<>();
+        this.connectionList.add(conn_0);
+        this.connectionList.add(conn_1);
+        this.connectionList.add(conn_8);
     }
 
     @After
     public void clean() throws SQLException {
-        closeConnection(conn);
+        if (this.connectionList != null) {
+            for (Connection conn : this.connectionList) {
+                if (conn != null) {
+                    conn.close();
+                }
+            }
+        }
     }
 
     protected void printResultRow(ResultRow[] rows, String message) {
@@ -81,14 +100,14 @@ public class SelectTest extends TestSuite {
     @Test
     public void test01() throws Exception {
         // 分片分表键一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", baseUrl);
         select();
     }
 
     @Test
     public void test02() throws Exception {
         // 分片分表键不一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", baseUrl);
         select();
     }
 
@@ -106,54 +125,57 @@ public class SelectTest extends TestSuite {
             if (!shardFlag && testCase.getShardFlag()) {
                 continue;
             }
-            try (Statement stmt = conn.createStatement()) {
-                printNormal("initSql:");
-                for (String initSql : testCase.getInitSql()) {
-                    printNormal("\t" + initSql);
-                    stmt.execute(initSql);
-                }
-
-                printNormal("query: \n\t" + testCase.getQuery());
-                if (testCase.getException() != null) {
-                    printNormal("expected exception: \n\t" + testCase.getException());
-                }
-
-                List<ResultRow> queryResult = new ArrayList<>();
-                try {
-                    ResultSet rs = stmt.executeQuery(testCase.getQuery());
-                    while (rs.next()) {
-                        ResultRow row = new ResultRow();
-                        for (TestSuiteCase.Field field : testCase.getFields()) {
-                            String fieldName = field.getName();
-                            String colName =
-                                "".equals(field.getAlias()) ? fieldName : field.getAlias();
-                            Integer colId = field.getColumnIndex();
-                            row.getClass().getField(fieldName).set(row,
-                                colId == null ? rs.getObject(colName) : rs.getObject(colId));
-                        }
-                        queryResult.add(row);
+            for (Connection conn : this.connectionList) {
+                int maxParallelNum = SafeSession.newSafeSession((VitessConnection) conn).getMaxParallelNum();
+                System.out.println("parallel num:" + maxParallelNum);
+                try (Statement stmt = conn.createStatement()) {
+                    printNormal("initSql:");
+                    for (String initSql : testCase.getInitSql()) {
+                        printNormal("\t" + initSql);
+                        stmt.execute(initSql);
                     }
-                } catch (Exception e) {
-                    System.out.println(e.getMessage());
-                    Assert.assertEquals(printFail("exception: " + testCase.getException()), testCase.getException(), e.getClass().getName());
-                    Assert.assertTrue(printFail("wrong errorMessage,error message: " + e.getMessage()), e.getMessage().contains(testCase.getErrorMessage()));
+
+                    printNormal("query: \n\t" + testCase.getQuery());
+                    if (testCase.getException() != null) {
+                        printNormal("expected exception: \n\t" + testCase.getException());
+                    }
+
+                    List<ResultRow> queryResult = new ArrayList<>();
+                    try {
+                        ResultSet rs = stmt.executeQuery(testCase.getQuery());
+                        while (rs.next()) {
+                            ResultRow row = new ResultRow();
+                            for (TestSuiteCase.Field field : testCase.getFields()) {
+                                String fieldName = field.getName();
+                                String colName =
+                                    "".equals(field.getAlias()) ? fieldName : field.getAlias();
+                                Integer colId = field.getColumnIndex();
+                                row.getClass().getField(fieldName).set(row,
+                                    colId == null ? rs.getObject(colName) : rs.getObject(colId));
+                            }
+                            queryResult.add(row);
+                        }
+                    } catch (Exception e) {
+                        Assert.assertEquals(printFail("exception: " + testCase.getException()), testCase.getException(), e.getClass().getName());
+                        Assert.assertTrue(printFail("wrong errorMessage,error message: " + e.getMessage()), e.getMessage().contains(testCase.getErrorMessage()));
+                        printOk();
+                        continue;
+                    }
+                    Assert.assertTrue(testCase.getException() == null || "".equals(testCase.getException()));
+
+                    ResultRow[] expected = testCase.getVerifyResult();
+                    ResultRow[] actual = queryResult.toArray(new ResultRow[0]);
+                    if (testCase.getNeedSort()) {
+                        Arrays.sort(expected);
+                        Arrays.sort(actual);
+                    }
+
+                    printResultRow(expected, "expected result:");
+                    printResultRow(actual, "actual result:");
+
+                    Assert.assertArrayEquals(printFail("[Fail] sql: " + testCase.getQuery()), expected, actual);
                     printOk();
-                    continue;
                 }
-                Assert.assertTrue(testCase.getException() == null || "".equals(testCase.getException()));
-
-                ResultRow[] expected = testCase.getVerifyResult();
-                ResultRow[] actual = queryResult.toArray(new ResultRow[0]);
-                if (testCase.getNeedSort()) {
-                    Arrays.sort(expected);
-                    Arrays.sort(actual);
-                }
-
-                printResultRow(expected, "expected result:");
-                printResultRow(actual, "actual result:");
-
-                Assert.assertArrayEquals(printFail("[Fail] sql: " + testCase.getQuery()), expected, actual);
-                printOk();
             }
         }
     }

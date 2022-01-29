@@ -18,6 +18,8 @@ limitations under the License.
 
 package com.jd.jdbc.session;
 
+import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
@@ -309,6 +311,19 @@ public class SafeSession {
         }
 
         return this.vitessConnection.getProperties().getProperty(VitessPropertyKey.CHARACTER_ENCODING.getKeyName());
+    }
+
+    public int getMaxParallelNum() {
+        if (this.vitessConnection == null) {
+            return 1;
+        }
+
+        if (this.vitessConnection.getProperties() == null) {
+            return 1;
+        }
+
+        int maxParallel = Utils.getInteger(this.vitessConnection.getProperties(), Constant.DRIVER_PROPERTY_QUERY_PARALLEL_NUM, 1);
+        return maxParallel > 0 ? maxParallel : 1;
     }
 
     /**

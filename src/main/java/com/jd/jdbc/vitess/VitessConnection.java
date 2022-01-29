@@ -19,6 +19,7 @@ limitations under the License.
 package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.VSchemaManager;
+import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.pool.InnerConnection;
@@ -55,8 +56,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.Setter;
-
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_KEY;
 
 public class VitessConnection extends AbstractVitessConnection {
     public static final Integer MAX_MEMORY_ROWS = 300000;
@@ -108,7 +107,7 @@ public class VitessConnection extends AbstractVitessConnection {
         this.executor = com.jd.jdbc.Executor.getInstance(Utils.getInteger(prop, "vtPlanCacheCapacity"));
         this.vm = vSchemaManager;
         this.ctx = VtContext.withCancel(VtContext.background());
-        this.ctx.setContextValue(DRIVER_PROPERTY_ROLE_KEY, VitessJdbcProperyUtil.getTabletType(prop));
+        this.ctx.setContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY, VitessJdbcProperyUtil.getTabletType(prop));
         this.ctx.setContextValue(ContextKey.CTX_TOPOSERVER, topoServer);
         this.ctx.setContextValue(ContextKey.CTX_SCATTER_CONN, resolver.getScatterConn());
         this.ctx.setContextValue(ContextKey.CTX_TX_CONN, resolver.getScatterConn().getTxConn());

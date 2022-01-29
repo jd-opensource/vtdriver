@@ -48,9 +48,11 @@ import static com.jd.jdbc.sqltypes.SqlTypes.valueBindVariable;
 
 @Getter
 public class VtVisitor extends SQLASTVisitorAdapter {
-    private static final Log log = LogFactory.getLog(VtVisitor.class);
     public static final String BIND_VAR_PREFIX = "__vtg";
+
     public static final String BIND_VAR_PREFIX_WITH_COLON = ":__vtg";
+
+    private static final Log log = LogFactory.getLog(VtVisitor.class);
 
     private final String vIndex;
 
@@ -330,7 +332,7 @@ public class VtVisitor extends SQLASTVisitorAdapter {
                 }
 
                 Set<SQLExpr> interset = intersection(null == left ? null : Sets.newHashSet(left),
-                        null == right ? null : Sets.newHashSet(right));
+                    null == right ? null : Sets.newHashSet(right));
                 if (null == interset) {
                     return null;
                 }
