@@ -63,6 +63,7 @@ jobs:
           com.jd.jdbc.cache.LRUCacheTest,\
           com.jd.jdbc.evalengine.ArithmeticTest,\
           com.jd.jdbc.planbuilder.PlanTest,\
+          com.jd.jdbc.planbuilder.AdvancedPlanTest,\
           com.jd.jdbc.sqlparser.NormalizeRewritePutTest,\
           com.jd.jdbc.sqlparser.SmartNormalizeDateTest,\
           com.jd.jdbc.sqlparser.SmartNormalizeTest1,\
