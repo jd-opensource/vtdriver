@@ -102,6 +102,7 @@ public class DestinationTest extends TestSuite {
 
     @Test
     public void selectRR() throws IOException, SQLException {
+        sleep(5);
         this.execute(rrConnection, "src/test/resources/engine/destination/select_cases.json");
     }
 

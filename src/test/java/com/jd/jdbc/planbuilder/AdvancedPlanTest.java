@@ -30,7 +30,8 @@ import org.junit.Test;
 
 public class AdvancedPlanTest extends AbstractPlanTest {
 
-    public static void main(String[] args) {
+    @Test
+    public void case01() {
         SQLStatement stmt = SQLUtils.parseSingleMysqlStatement("select m1.col from unsharded as m1 join unsharded as m2");
         System.out.println("stmt = " + stmt);
 
@@ -46,7 +47,7 @@ public class AdvancedPlanTest extends AbstractPlanTest {
         stmt = SQLUtils.parseSingleMysqlStatement("select t1.col from t1 union select t2.col from t2");
         System.out.println("stmt = " + stmt);
 
-        stmt = SQLUtils.parseSingleMysqlStatement("select * from where id = ?");
+        stmt = SQLUtils.parseSingleMysqlStatement("select * from t1 where id = ?");
         System.out.println("stmt = " + stmt);
 
         stmt = SQLUtils.parseSingleMysqlStatement("select * from t1 left join t2 on t1.id = t2.id");
@@ -83,7 +84,7 @@ public class AdvancedPlanTest extends AbstractPlanTest {
     }
 
     @Test
-    public void case01() throws Exception {
+    public void case02() throws Exception {
         VSchemaManager vm = loadSchema("src/test/resources/plan/plan_schema.json");
         Plan plan = build("select * from unsharded_a left join unsharded_b on unsharded_a.id = unsharded_b.id", vm);
         System.out.println("plan = " + plan);
