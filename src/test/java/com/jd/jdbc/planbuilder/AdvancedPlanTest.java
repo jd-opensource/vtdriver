@@ -46,7 +46,7 @@ public class AdvancedPlanTest extends AbstractPlanTest {
         stmt = SQLUtils.parseSingleMysqlStatement("select t1.col from t1 union select t2.col from t2");
         System.out.println("stmt = " + stmt);
 
-        stmt = SQLUtils.parseSingleMysqlStatement("select * from where id = ?");
+        stmt = SQLUtils.parseSingleMysqlStatement("select * from t1 where id = ?");
         System.out.println("stmt = " + stmt);
 
         stmt = SQLUtils.parseSingleMysqlStatement("select * from t1 left join t2 on t1.id = t2.id");
