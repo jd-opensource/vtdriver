@@ -12,6 +12,7 @@
 | role | String |  | role=rr时优先读取replica节点，role=ro时读取rdonly节点 |
 | vtPlanCacheCapacity  | int | 300 | 该参数用来设置执行计划缓存cache大小，最大值10240 |
 | queryConsolidator | boolean | false | 用来开启Consolidator，仅在role=rr场景生效；相同的sql语句只执行一次，其余线程等待第一次查询返回结果后返回 |
+| queryParallelNum | int | 1 | 在分表场景下，执行事务外的SQL语句时每个分片上可开启的最大并发数 |
 
 ##### 2.支持MySQL驱动参数
 
@@ -33,21 +34,21 @@
 | connectTimeout | long | 0 | 套接字连接的超时（单位为毫秒），0表示无超时 |
 | useSSL | boolean | false | 在与服务器通信时使用SSL |
 | useAffectedRows | boolean | false | 当连接到服务器时不要设置“client_found_rows”标签 （这个是不符合JDBC标准的，它会破坏大部分依赖“found”VS   DML语句下的”affected”应用程序）。但是会导致“insert”里面的“Correct”更新数据。服务器会返回“ON Duplicate Key   update”的状态 |
-| rewriteBatchedStatements | boolean | false | 开启批处理，使用multiquery方式批量执行，默认不开启 |
+| rewriteBatchedStatements | boolean | false | 针对Statement.executeBatch(), 是否使用MultiQuery方式执行。在分表场景下，由于分表底层已开启MultiQuery，不能开启这个参数 |
 
 ##### 3.线程池参数（内部线程池仅以第一次创建Connection的参数为准）
 
 | 属性 | 数据类型 | 默认值 | 备注 |
 |---|---|---|---|
-| daemonCoreSize | int | 当前cpu核心线程数和10中较小的一个 | Daemon线程池核心线程数 |
-| daemonMaximumSize | int | daemonCoreSize*10 | Daemon线程池最大线程数 |
+| daemonCoreSize | int | 10 | Daemon线程池核心线程数 |
+| daemonMaximumSize | int | 100 | Daemon线程池最大线程数 |
 | daemonRejectedTimeout | long | 3000 | Daemon线程池拒绝任务丢弃超时（毫秒） |
-| queryCoreSize | int | 当前cpu核心线程数和10中较小的一个 | 执行SQL线程池核心线程数 |
-| queryMaximumSize | int | queryCoreSize*10 | 执行SQL线程池最大线程数 |
+| queryCoreSize | int | 当前cpu核心线程数 | 执行SQL线程池核心线程数 |
+| queryMaximumSize | int | 100 | 执行SQL线程池最大线程数 |
 | queryQueueSize | int | 1000 | 执行SQL线程池任务队列长度 |
 | queryRejectedTimeout | long | 3000 | 执行SQL线程池拒绝任务丢弃超时（毫秒） |
-| healthCheckCoreSize | int | 当前cpu核心线程数和10中较小的一个 | healthCheck线程池核心线程数 |
-| healthCheckMaximumSize | int | healthCheckCoreSize*10 | healthCheck线程池最大线程数 |
+| healthCheckCoreSize | int | 10 | healthCheck线程池核心线程数 |
+| healthCheckMaximumSize | int | 100 | healthCheck线程池最大线程数 |
 | healthCheckQueueSize | int | 10000 | healthCheck线程池任务队列长度 |
 | healthCheckRejectedTimeout | long | 3000 | healthCheck线程池拒绝任务丢弃超时（毫秒） |
 

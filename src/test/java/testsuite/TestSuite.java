@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +58,7 @@ public abstract class TestSuite extends TestSuitePrinter {
                 conn.close();
             } catch (SQLException throwables) {
                 printFail(throwables.getMessage());
+                throw new RuntimeException(throwables);
             }
         }
     }
@@ -111,5 +114,23 @@ public abstract class TestSuite extends TestSuitePrinter {
         public static DriverEnv of(TestSuiteShardSpec shardSpec, String charEncoding) {
             return new DriverEnv(shardSpec, charEncoding);
         }
+    }
+
+    public static void printResult(ResultSet resultSet) throws SQLException {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        for (int i = 0; i < columnCount; i++) {
+            System.out.print(metaData.getColumnLabel(i + 1) + " ");
+        }
+        System.out.println();
+        int count = 0;
+        while (resultSet.next()) {
+            for (int i = 0; i < columnCount; i++) {
+                System.out.print(resultSet.getObject(i + 1) + " ");
+            }
+            count++;
+            System.out.println();
+        }
+        System.out.println("count:" + count);
     }
 }
