@@ -1171,6 +1171,141 @@
     ]
   },
   {
+    "comment": "# scatter avg",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'111',1,2, 111),(2,'222',1,2,222),(3,'333',0,2,333), (4,'444',0,2,444), (5,'555',0,2,555),(6,'666',0, 2, 666),(7,'777',0,2,777),(8,'888',0,2,888),(9,'999',0,2,999)"
+    ],
+    "fields": [
+      {
+        "name": "_bigDecimal",
+        "alias": "a"
+      }
+    ],
+    "needSort": false,
+    "query": "select avg(f_int) as a from table_engine_test",
+    "verifyResult": [
+      {
+        "_bigDecimal": 555.0000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with no value",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "fields": [
+      {
+        "name": "_bigDecimal",
+        "alias": "a"
+      }
+    ],
+    "needSort": false,
+    "query": "select avg(f_int) as a from table_engine_test",
+    "verifyResult": [
+      {
+        "_bigDecimal": null
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with groupby",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'111',1,1, 111),(2,'222',1,1,222),(3,'333',0,1,333), (4,'444',0,4,444), (5,'555',0,4,555)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "_bigDecimal",
+        "alias": "a"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_midint, avg(f_int) as a from table_engine_test group by f_midint",
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "_bigDecimal": 222.0000
+      },
+      {
+        "f_midint": 4,
+        "_bigDecimal": 499.5000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg null with groupby",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'111',1,1, null),(2,'222',1,1,null),(3,'333',0,1,null), (4,'444',0,4,444), (5,'555',0,4,555)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "_bigDecimal",
+        "alias": "a"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_midint, avg(f_int) as a from table_engine_test group by f_midint",
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "_bigDecimal": null
+      },
+      {
+        "f_midint": 4,
+        "_bigDecimal": 499.5000
+      }
+    ]
+  },
+  {
+    "comment": "# scatter avg with groupby with orderby",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_midint,f_int) values(1,'111',1,1, 111),(2,'222',1,1,222),(3,'333',0,1,333), (4,'444',0,4,444), (5,'555',0,4,555), (6, '666', 0, 5, 200), (7, '777', 0, 5, 300), (8, '888', 0, 7, 400), (9, '999', 0, 8, 555)"
+    ],
+    "fields": [
+      {
+        "name": "f_midint"
+      },
+      {
+        "name": "_bigDecimal",
+        "alias": "a"
+      }
+    ],
+    "needSort": false,
+    "query": "select f_midint, avg(f_int) as a from table_engine_test group by f_midint order by a",
+    "verifyResult": [
+      {
+        "f_midint": 1,
+        "_bigDecimal": 222.0000
+      },
+      {
+        "f_midint": 5,
+        "_bigDecimal": 250.0000
+      },
+      {
+        "f_midint": 7,
+        "_bigDecimal": 400.0000
+      },
+      {
+        "f_midint": 4,
+        "_bigDecimal": 499.5000
+      },
+      {
+        "f_midint": 8,
+        "_bigDecimal": 555.0000
+      }
+    ]
+  },
+  {
     "comment": "# invalid order by column numner for scatter",
     "initSql": [
       "delete from table_engine_test",

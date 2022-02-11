@@ -49,6 +49,9 @@ import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvg;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgCount;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgSum;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCount;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCountDistinct;
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateMax;
@@ -73,10 +76,13 @@ public class Engine {
         put("sum", AggregateSum);
         put("min", AggregateMin);
         put("max", AggregateMax);
+        put("avg", AggregateAvg);
         // These functions don't exist in mysql, but are used
         // to display the plan.
         put("count_distinct", AggregateCountDistinct);
         put("sum_distinct", AggregateSumDistinct);
+        put("avg_sum", AggregateAvgSum);
+        put("avg_count", AggregateAvgCount);
     }};
 
     public static Map<PulloutOpcode, String> pulloutName = new HashMap<PulloutOpcode, String>(4) {{
@@ -341,7 +347,10 @@ public class Engine {
         AggregateMin(2),
         AggregateMax(3),
         AggregateCountDistinct(4),
-        AggregateSumDistinct(5);
+        AggregateSumDistinct(5),
+        AggregateAvg(6),
+        AggregateAvgSum(7),
+        AggregateAvgCount(8);
 
         @Getter
         private final Integer value;

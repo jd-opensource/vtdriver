@@ -140,6 +140,25 @@ public class EvalEngine {
         throw new SQLException("nullSafeAdd error");
     }
 
+    public static VtResultValue divideNumericWithError(VtResultValue value1, VtResultValue value2) throws SQLException {
+        if (value2.isNull()) {
+            return VtResultValue.NULL;
+        }
+        if (value1.isNull()) {
+            return VtResultValue.NULL;
+        }
+
+        BigDecimal b1 = (BigDecimal) ResultSetUtil.convertValue(value1, BigDecimal.class);
+        BigDecimal b2 = (BigDecimal) ResultSetUtil.convertValue(value2, BigDecimal.class);
+
+        if (b2.equals(BigDecimal.ZERO)) {
+            return VtResultValue.NULL;
+        }
+
+        BigDecimal bResult = b1.divide(b2, 4, BigDecimal.ROUND_HALF_UP);
+        return VtResultValue.newVtResultValue(Query.Type.DECIMAL, bResult);
+    }
+
     /**
      * Min returns the minimum of v1 and v2. If one of the
      * Min returns the minimum of v1 and v2. If one of the

@@ -1117,3 +1117,108 @@
     ]
   }
 }
+
+# scatter avg
+"select avg(costly) from user"
+{
+  "QueryType": "SELECT",
+  "Original": "select avg(costly) from user",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "Aggregates": "avg_sum(0) AS avg(costly);avg_count(1)",
+    "Distinct": "false",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select sum(costly), count(costly) from user where 1 != 1",
+        "Query": "select sum(costly), count(costly) from user",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# scatter avg group by non-vindex column
+"select id, avg(costly) from user group by id"
+{
+  "QueryType": "SELECT",
+  "Original": "select id, avg(costly) from user group by id",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "Aggregates": "avg_sum(1) AS avg(costly);avg_count(2)",
+    "Distinct": "false",
+    "GroupBy": "0",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select id, sum(costly), count(costly) from user where 1 != 1 group by id",
+        "Query": "select id, sum(costly), count(costly) from user group by id order by id asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# scatter avg group by non-vindex column order by avg_cost
+"select id, avg(costly) as avg_cost from user group by id order by avg_cost"
+{
+  "QueryType": "SELECT",
+  "Original": "select id, avg(costly) as avg_cost from user group by id order by avg_cost",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "1 ASC",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "avg_sum(1) AS avg_cost;avg_count(2)",
+        "Distinct": "false",
+        "GroupBy": "0",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select id, sum(costly), count(costly) from user where 1 != 1 group by id",
+            "Query": "select id, sum(costly), count(costly) from user group by id order by id asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# scatter avg group by vindex column
+"select name, avg(costly) from user group by name"
+{
+  "QueryType": "SELECT",
+  "Original": "select name, avg(costly) from user group by name",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select name, avg(costly) from user where 1 != 1 group by name",
+    "Query": "select name, avg(costly) from user group by name",
+    "Table": "user"
+  }
+}
