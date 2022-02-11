@@ -273,6 +273,7 @@ public class InsertEngineTest extends TestSuite {
                 printOk();
                 System.out.println();
             } catch (Exception e) {
+                e.printStackTrace();
                 printNormal("exception:\n\texpected: [" + testCase.getException() + "] " + testCase.getErrorMessage());
                 printNormal("\tactual: [" + e.getClass().getName() + "] " + e.getMessage());
 
@@ -288,15 +289,11 @@ public class InsertEngineTest extends TestSuite {
     }
 
     protected void afterUnsharded() throws SQLException {
-        if (unshardedDriverConnection != null) {
-            unshardedDriverConnection.close();
-        }
+        closeConnection(unshardedDriverConnection);
     }
 
     protected void afterSharded() throws SQLException {
-        if (shardedDriverConnection != null) {
-            shardedDriverConnection.close();
-        }
+        closeConnection(shardedDriverConnection);
     }
 
     private String replaceNextLong(String sql) {

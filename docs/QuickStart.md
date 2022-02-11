@@ -24,7 +24,8 @@ git clone git@github.com:vtdriverio/vtdriver.git
 
 #### 2. 切换当前目录到`src/test/resources/vitess_env`, 执行`./setup.sh`:
 ```shell
-cd vtdriver/src/test/resource/vitess_env
+cd vtdriver/src/test/resources/vitess_env
+chmod 755 setup.sh
 ./setup.sh
 ```
 
