@@ -28,13 +28,13 @@ public class PlanCollector {
 
     private static final Counter TOTAL_COUNTER = Counter.build()
         .name("plan_hit_total")
-        .help("plan hit total info")
+        .help("total query count of plan cache")
         .labelNames("sqlType")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter CACHE_COUNTER = Counter.build()
-        .name("plan_hit_cache")
-        .help("plan hit cache info")
+        .name("plan_hit_cache_total")
+        .help("hit count of plan cache")
         .labelNames("sqlType")
         .register(MonitorServer.getCollectorRegistry());
 

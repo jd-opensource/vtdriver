@@ -30,7 +30,7 @@
 
         <!-- dependencies -->
         <lombok.version>1.18.14</lombok.version>
-        <prometheus.version>0.9.0</prometheus.version>
+        <prometheus.version>0.15.0</prometheus.version>
         <commons-codec.version>1.13</commons-codec.version>
         <hierynomus.version>0.9.0</hierynomus.version>
         <protobuf-java.version>3.11.0</protobuf-java.version>

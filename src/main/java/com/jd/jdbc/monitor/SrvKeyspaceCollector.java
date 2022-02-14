@@ -33,25 +33,25 @@ public final class SrvKeyspaceCollector extends Collector {
     private static final String COLLECT_HELP = "SrvKeyspaceCollector info.";
 
     private static final Counter COUNTER = Counter.build()
-        .name("watch_SrvKeyspace_counter")
+        .name("watch_SrvKeyspace_counter_total")
         .labelNames("Keyspace", "Cell")
         .help("watch SrvKeyspace counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter ERROR_COUNTER = Counter.build()
-        .name("watch_SrvKeyspace_error_counter")
+        .name("watch_SrvKeyspace_error_counter_total")
         .labelNames("Keyspace", "Cell")
         .help("watch SrvKeyspace error counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter SRV_KEYSPACE_TASK_COUNTER = Counter.build()
-        .name("SrvKeyspaceTask_counter")
+        .name("SrvKeyspaceTask_counter_total")
         .labelNames("Keyspace", "Cell")
         .help("SrvKeyspaceTask counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter SRV_KEYSPACE_TASK_ERROR_COUNTER = Counter.build()
-        .name("SrvKeyspaceTask_error_counter")
+        .name("SrvKeyspaceTask_error_counter_total")
         .labelNames("Keyspace", "Cell")
         .help("SrvKeyspaceTaskerror counter info")
         .register(MonitorServer.getCollectorRegistry());

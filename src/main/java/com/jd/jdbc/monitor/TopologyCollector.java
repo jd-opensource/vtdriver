@@ -21,13 +21,13 @@ import io.prometheus.client.Counter;
 public class TopologyCollector {
 
     private static final Counter COUNTER = Counter.build()
-        .name("Topology_counter")
+        .name("Topology_counter_total")
         .labelNames("Cell")
         .help("TopologyWatcher counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter ERROR_COUNTER = Counter.build()
-        .name("Topology_error_counter")
+        .name("Topology_error_counter_total")
         .labelNames("Cell")
         .help("TopologyWatcher error counter info")
         .register(MonitorServer.getCollectorRegistry());
