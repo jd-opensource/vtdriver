@@ -29,12 +29,12 @@ public class StatementCollector {
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter COUNTER = Counter.build()
-        .name("statement_counter")
+        .name("statement_counter_total")
         .help("statement counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter ERROR_COUNTER = Counter.build()
-        .name("statement_error_counter")
+        .name("statement_error_counter_total")
         .labelNames("Keyspace", "Role")
         .help("statement error counter info")
         .register(MonitorServer.getCollectorRegistry());

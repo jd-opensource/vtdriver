@@ -29,12 +29,12 @@ public class QueryServiceCollector {
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter COUNTER = Counter.build()
-        .name("query_service_counter")
+        .name("query_service_counter_total")
         .help("query service counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final Counter ERROR_COUNTER = Counter.build()
-        .name("query_service_error_counter")
+        .name("query_service_error_counter_total")
         .labelNames("Keyspace")
         .help("query service error counter info")
         .register(MonitorServer.getCollectorRegistry());

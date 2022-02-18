@@ -50,53 +50,6 @@ public class BatchTest extends TestSuite {
     }
 
     @Test
-    public void testConcurrency() throws InterruptedException, SQLException {
-        int threadCount = 10;
-        CountDownLatch latch = new CountDownLatch(threadCount);
-        ExecutorService service = Executors.newFixedThreadPool(threadCount);
-        AtomicInteger inserted = new AtomicInteger(0);
-        for (int i = 0; i < 10; i++) {
-            final int finalI = i;
-            service.execute(() -> {
-                try {
-                    Statement statement = driverConnection.createStatement();
-                    String sql = "insert into table_engine_test (id,f_key,f_tinyint,f_bit) values(%d, 'zhangSan', 1, true)";
-                    int count = 3000;
-                    for (int j = 0; j < count; j++) {
-                        if (j % 10 != finalI) {
-                            continue;
-                        }
-                        inserted.incrementAndGet();
-                        String format = String.format(sql, j);
-                        statement.addBatch(format);
-                    }
-                    int[] counts = statement.executeBatch();
-
-                    Assert.assertEquals(counts.length, 300);
-                    for (int k : counts) {
-                        Assert.assertEquals(k, 1);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Assert.fail();
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-        latch.await();
-
-        Statement stmt = driverConnection.createStatement();
-        ResultSet resultSet = stmt.executeQuery("select * from table_engine_test");
-        int rows = 0;
-        while (resultSet.next()) {
-            rows++;
-            Assert.assertEquals(resultSet.getString("f_key"), "zhangSan");
-        }
-        Assert.assertEquals(inserted.get(), rows);
-    }
-
-    @Test
     public void statementBatchTest() throws SQLException {
         Statement statement = driverConnection.createStatement();
         String sql = "insert into table_engine_test (id,f_key,f_tinyint,f_bit) values(%d, 'zhangSan', 1, true)";
