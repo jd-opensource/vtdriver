@@ -122,7 +122,6 @@ public class VitessConnection extends AbstractVitessConnection {
                 .setWorkload(Query.ExecuteOptions.Workload.OLTP))
             .setAutocommit(true)
             .build();
-        buildMetaDataInfo();
         buildServerSessionPropertiesMap();
         if (log.isDebugEnabled()) {
             log.debug("create VitessConnection");
@@ -423,23 +422,19 @@ public class VitessConnection extends AbstractVitessConnection {
 
     public CachedDatabaseMetaData getCachedDatabaseMetaData() throws SQLException {
         CachedDatabaseMetaData cachedDatabaseMetaData = vitessMetaDataInfoMap.get(defaultKeyspace);
-        if (cachedDatabaseMetaData == null) {
-            throw new SQLException("no cachedDatabaseMetaData found for " + defaultKeyspace);
-        }
-        return cachedDatabaseMetaData;
-    }
-
-    private void buildMetaDataInfo() throws SQLException {
-        if (vitessMetaDataInfoMap.containsKey(defaultKeyspace)) {
-            return;
+        if (cachedDatabaseMetaData != null) {
+            return cachedDatabaseMetaData;
         }
         synchronized (VitessConnection.class) {
-            if (vitessMetaDataInfoMap.containsKey(defaultKeyspace)) {
-                return;
+            cachedDatabaseMetaData = vitessMetaDataInfoMap.get(defaultKeyspace);
+            if (cachedDatabaseMetaData != null) {
+                return cachedDatabaseMetaData;
             }
             try (InnerConnection innerConnection = StatefulConnectionPool.getJdbcConnection(defaultKeyspace, RoleUtils.getTabletType(ctx))) {
                 Connection connection = innerConnection.getConnection();
-                vitessMetaDataInfoMap.putIfAbsent(defaultKeyspace, new CachedDatabaseMetaData(connection.getMetaData()));
+                cachedDatabaseMetaData = new CachedDatabaseMetaData(connection.getMetaData());
+                vitessMetaDataInfoMap.putIfAbsent(defaultKeyspace, cachedDatabaseMetaData);
+                return cachedDatabaseMetaData;
             }
         }
     }
