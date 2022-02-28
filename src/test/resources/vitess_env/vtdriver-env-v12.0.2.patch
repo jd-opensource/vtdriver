@@ -1,0 +1,587 @@
+Index: examples/local/vtdriver/etcd-up.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/etcd-up.sh b/examples/local/vtdriver/etcd-up.sh
+new file mode 100644
+--- /dev/null	(date 1646049319728)
++++ b/examples/local/vtdriver/etcd-up.sh	(date 1646049319728)
+@@ -0,0 +1,51 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++# 
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++# 
++#     http://www.apache.org/licenses/LICENSE-2.0
++# 
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# This is an example script that creates a quorum of ZooKeeper servers.
++
++source ./vtdriver/env.sh
++
++cell=${CELL:-'test'}
++export ETCDCTL_API=2
++
++# Check that etcd is not already running
++curl "http://${ETCD_SERVER}" > /dev/null 2>&1 && fail "etcd is already running. Exiting."
++
++etcd --enable-v2=true --data-dir "${VTDATAROOT}/etcd/"  --listen-client-urls "http://0.0.0.0:2379" --advertise-client-urls "http://${ETCD_SERVER}" > "${VTDATAROOT}"/tmp/etcd.out 2>&1 &
++PID=$!
++echo $PID > "${VTDATAROOT}/tmp/etcd.pid"
++sleep 5
++
++echo "add /vitess/global"
++etcdctl --endpoints "http://${ETCD_SERVER}" mkdir /vitess/global &
++
++echo "add /vitess/$cell"
++etcdctl --endpoints "http://${ETCD_SERVER}" mkdir /vitess/$cell &
++
++# And also add the CellInfo description for the cell.
++# If the node already exists, it's fine, means we used existing data.
++echo "add $cell CellInfo"
++set +e
++# shellcheck disable=SC2086
++vtctl $TOPOLOGY_FLAGS VtctldCommand AddCellInfo \
++  --root /vitess/$cell \
++  --server-address "${ETCD_SERVER}" \
++  $cell
++set -e
++
++echo "etcd start done..."
++
++
+Index: Makefile
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/Makefile b/Makefile
+--- a/Makefile	(revision d620dab5bc9c26ba51b724c8e3c050ae90f1622b)
++++ b/Makefile	(date 1646049319798)
+@@ -292,6 +292,9 @@
+ docker_local:
+ 	${call build_docker_image,docker/local/Dockerfile,vitess/local}
+ 
++docker_vtdriver:
++	${call build_docker_image,docker/local/Dockerfile.vtdriver,vitess/vtdriver-env}
++
+ docker_mini:
+ 	${call build_docker_image,docker/mini/Dockerfile,vitess/mini}
+ 
+Index: examples/local/vtdriver/env.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/env.sh b/examples/local/vtdriver/env.sh
+new file mode 100644
+--- /dev/null	(date 1646047895808)
++++ b/examples/local/vtdriver/env.sh	(date 1646047895808)
+@@ -0,0 +1,83 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++# 
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++# 
++#     http://www.apache.org/licenses/LICENSE-2.0
++# 
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++hostname=${HOST_IP}
++vtctld_web_port=15000
++export VTDATAROOT="${VTDATAROOT:-${PWD}/vtdataroot}"
++
++function fail() {
++  echo "ERROR: $1"
++  exit 1
++}
++
++if [[ $EUID -eq 0 ]]; then
++  fail "This script refuses to be run as root. Please switch to a regular user."
++fi
++
++# mysqld might be in /usr/sbin which will not be in the default PATH
++PATH="/usr/sbin:$PATH"
++for binary in mysqld etcd etcdctl curl vtctlclient vttablet vtgate vtctld mysqlctl; do
++  command -v "$binary" > /dev/null || fail "${binary} is not installed in PATH. See https://vitess.io/docs/get-started/local/ for install instructions."
++done;
++
++if [ "${TOPO}" = "zk2" ]; then
++    # Each ZooKeeper server needs a list of all servers in the quorum.
++    # Since we're running them all locally, we need to give them unique ports.
++    # In a real deployment, these should be on different machines, and their
++    # respective hostnames should be given.
++    zkcfg=(\
++        "1@$hostname:28881:38881:21811" \
++        "2@$hostname:28882:38882:21812" \
++        "3@$hostname:28883:38883:21813" \
++        )
++    printf -v zkcfg ",%s" "${zkcfg[@]}"
++    zkcfg=${zkcfg:1}
++
++    zkids='1 2 3'
++
++    # Set topology environment parameters.
++    ZK_SERVER="localhost:21811,localhost:21812,localhost:21813"
++    # shellcheck disable=SC2034
++    TOPOLOGY_FLAGS="-topo_implementation zk2 -topo_global_server_address ${ZK_SERVER} -topo_global_root /vitess/global"
++
++    mkdir -p "${VTDATAROOT}/tmp"
++elif [ "${TOPO}" = "k8s" ]; then
++    # Set topology environment parameters.
++    K8S_ADDR="localhost"
++    K8S_PORT="8443"
++    K8S_KUBECONFIG=$VTDATAROOT/tmp/k8s.kubeconfig
++    # shellcheck disable=SC2034
++    TOPOLOGY_FLAGS="-topo_implementation k8s -topo_k8s_kubeconfig ${K8S_KUBECONFIG} -topo_global_server_address ${K8S_ADDR}:${K8S_PORT} -topo_global_root /vitess/global"
++else
++    ETCD_SERVER="${HOST_IP}:2379"
++    TOPOLOGY_FLAGS="-topo_implementation etcd2 -topo_global_server_address $ETCD_SERVER -topo_global_root /vitess/global"
++
++    mkdir -p "${VTDATAROOT}/etcd"
++fi
++
++mkdir -p "${VTDATAROOT}/tmp"
++
++# Set aliases to simplify instructions.
++# In your own environment you may prefer to use config files,
++# such as ~/.my.cnf
++
++alias mysql="command mysql -h 127.0.0.1 -P 15306"
++alias vtctlclient="command vtctlclient -server localhost:15999 -log_dir ${VTDATAROOT}/tmp -alsologtostderr"
++alias vtctldclient="command vtctldclient --server localhost:15999"
++
++# Make sure aliases are expanded in non-interactive shell
++shopt -s expand_aliases
++
+Index: docker/local/Dockerfile.vtdriver
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/docker/local/Dockerfile.vtdriver b/docker/local/Dockerfile.vtdriver
+new file mode 100644
+--- /dev/null	(date 1646047895808)
++++ b/docker/local/Dockerfile.vtdriver	(date 1646047895808)
+@@ -0,0 +1,43 @@
++ARG bootstrap_version=4
++ARG image="vitess/bootstrap:${bootstrap_version}-common"
++
++FROM "${image}"
++
++RUN apt-get update
++RUN apt-get install -y sudo curl vim jq
++
++# Install dependencies
++COPY docker/lite/install_dependencies.sh /vt/dist/install_dependencies.sh
++RUN /vt/dist/install_dependencies.sh mysql57
++
++COPY docker/local/install_local_dependencies.sh /vt/dist/install_local_dependencies.sh
++RUN /vt/dist/install_local_dependencies.sh
++RUN echo "source /vt/local/env.sh" >> /etc/bash.bashrc
++
++# Allows some docker builds to disable CGO
++ARG CGO_ENABLED=0
++
++# Re-copy sources from working tree.
++COPY --chown=vitess:vitess . /vt/src/vitess.io/vitess
++
++# Build and install Vitess in a temporary output directory.
++USER vitess
++
++WORKDIR /vt/src/vitess.io/vitess
++RUN make install PREFIX=/vt/install
++
++ENV VTROOT /vt/src/vitess.io/vitess
++ENV VTDATAROOT /vt/vtdataroot
++ENV PATH $VTROOT/bin:$PATH
++ENV PATH="/var/opt/etcd:${PATH}"
++
++RUN mkdir /vt/local
++RUN cp -r /vt/src/vitess.io/vitess/examples/local/* /vt/local
++# COPY examples/local /vt/local
++
++RUN mkdir /vt/common
++RUN cp -r /vt/src/vitess.io/vitess/examples/common/* /vt/common
++# COPY examples/common /vt/common
++
++
++CMD cd /vt/local && ./vtdriver/vtdriver_init.sh && /bin/bash
+Index: examples/local/vtdriver/vtgate-up.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/vtgate-up.sh b/examples/local/vtdriver/vtgate-up.sh
+new file mode 100644
+--- /dev/null	(date 1646047895808)
++++ b/examples/local/vtdriver/vtgate-up.sh	(date 1646047895808)
+@@ -0,0 +1,57 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++# 
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++# 
++#     http://www.apache.org/licenses/LICENSE-2.0
++# 
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# This is an example script that starts a single vtgate.
++
++source ./vtdriver/env.sh
++
++cell=${CELL:-'test'}
++web_port=15001
++grpc_port=15991
++mysql_server_port=15306
++mysql_server_socket_path="/tmp/mysql.sock"
++
++# Start vtgate.
++# shellcheck disable=SC2086
++vtgate \
++  $TOPOLOGY_FLAGS \
++  -log_dir $VTDATAROOT/tmp \
++  -log_queries_to_file $VTDATAROOT/tmp/vtgate_querylog.txt \
++  -port $web_port \
++  -grpc_port $grpc_port \
++  -mysql_server_port $mysql_server_port \
++  -mysql_server_socket_path $mysql_server_socket_path \
++  -cell $cell \
++  -cells_to_watch $cell \
++  -tablet_types_to_wait PRIMARY,REPLICA \
++  -service_map 'grpc-vtgateservice' \
++  -pid_file $VTDATAROOT/tmp/vtgate.pid \
++  -mysql_auth_server_impl none \
++  > $VTDATAROOT/tmp/vtgate.out 2>&1 &
++
++# Block waiting for vtgate to be listening
++# Not the same as healthy
++
++echo "Waiting for vtgate to be up..."
++while true; do
++ curl -I "http://$hostname:$web_port/debug/status" >/dev/null 2>&1 && break
++ sleep 0.1
++done;
++echo "vtgate is up!"
++
++echo "Access vtgate at http://$hostname:$web_port/debug/status"
++
++disown -a
+Index: examples/local/vtdriver/vttablet-up.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/vttablet-up.sh b/examples/local/vtdriver/vttablet-up.sh
+new file mode 100644
+--- /dev/null	(date 1646047895808)
++++ b/examples/local/vtdriver/vttablet-up.sh	(date 1646047895808)
+@@ -0,0 +1,70 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++# 
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++# 
++#     http://www.apache.org/licenses/LICENSE-2.0
++# 
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++source ./vtdriver/env.sh # source ./env.sh
++
++cell=${CELL:-'test'}
++keyspace=${KEYSPACE:-'test_keyspace'}
++shard=${SHARD:-'0'}
++uid=$TABLET_UID
++mysql_port=$[17000 + $uid]
++port=$[15000 + $uid]
++grpc_port=$[16000 + $uid]
++printf -v alias '%s-%010d' $cell $uid
++printf -v tablet_dir 'vt_%010d' $uid
++tablet_hostname=${hostname} # tablet_hostname=''
++printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
++
++tablet_type=replica
++if [[ "${uid: -1}" -gt 1 ]]; then
++ tablet_type=rdonly
++fi
++
++echo "Starting vttablet for $alias..."
++
++# shellcheck disable=SC2086
++vttablet \
++ $TOPOLOGY_FLAGS \
++ -log_dir $VTDATAROOT/tmp \
++ -log_queries_to_file $VTDATAROOT/tmp/$tablet_logfile \
++ -tablet-path $alias \
++ -tablet_hostname "$tablet_hostname" \
++ -init_keyspace $keyspace \
++ -init_shard $shard \
++ -init_tablet_type $tablet_type \
++ -health_check_interval 5s \
++ -enable_semi_sync \
++ -enable_replication_reporter \
++ -backup_storage_implementation file \
++ -file_backup_storage_root $VTDATAROOT/backups \
++ -restore_from_backup \
++ -port $port \
++ -grpc_port $grpc_port \
++ -service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
++ -pid_file $VTDATAROOT/$tablet_dir/vttablet.pid \
++ -vtctld_addr http://$hostname:$vtctld_web_port/ \
++ > $VTDATAROOT/$tablet_dir/vttablet.out 2>&1 &
++
++# Block waiting for the tablet to be listening
++# Not the same as healthy
++
++for i in $(seq 0 300); do
++ curl -I "http://$hostname:$port/debug/status" >/dev/null 2>&1 && break
++ sleep 0.1
++done
++
++# check one last time
++curl -I "http://$hostname:$port/debug/status" || fail "tablet could not be started!"
+Index: examples/local/vtdriver/vtctld-up.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/vtctld-up.sh b/examples/local/vtdriver/vtctld-up.sh
+new file mode 100644
+--- /dev/null	(date 1646049319688)
++++ b/examples/local/vtdriver/vtctld-up.sh	(date 1646049319688)
+@@ -0,0 +1,38 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++# 
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++# 
++#     http://www.apache.org/licenses/LICENSE-2.0
++# 
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# This is an example script that starts vtctld.
++
++source ./vtdriver/env.sh
++
++cell=${CELL:-'test'}
++grpc_port=15999
++
++echo "Starting vtctld..."
++# shellcheck disable=SC2086
++vtctld \
++ $TOPOLOGY_FLAGS \
++ -cell $cell \
++ -workflow_manager_init \
++ -workflow_manager_use_election \
++ -service_map 'grpc-vtctl,grpc-vtctld' \
++ -backup_storage_implementation file \
++ -file_backup_storage_root $VTDATAROOT/backups \
++ -log_dir $VTDATAROOT/tmp \
++ -port $vtctld_web_port \
++ -grpc_port $grpc_port \
++ -pid_file $VTDATAROOT/tmp/vtctld.pid \
++  > $VTDATAROOT/tmp/vtctld.out 2>&1 &
+Index: examples/local/vtdriver/vtdriver_init.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/examples/local/vtdriver/vtdriver_init.sh b/examples/local/vtdriver/vtdriver_init.sh
+new file mode 100644
+--- /dev/null	(date 1646049319668)
++++ b/examples/local/vtdriver/vtdriver_init.sh	(date 1646049319668)
+@@ -0,0 +1,141 @@
++#!/bin/bash
++
++# Copyright 2019 The Vitess Authors.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# this script brings up zookeeper and all the vitess components
++# required for a single shard deployment.
++
++# create a unshard keyspace "commerce" and a sharded keyspace "customer"
++
++set -e
++
++# initialize keyspace commerce
++unsharded_start() {
++    echo "init unsharded keyspace 'commerce'..."
++
++    # start vttablets
++    for i in 100 101 102; do
++        CELL=zone1 TABLET_UID=$i ./scripts/mysqlctl-up.sh
++        CELL=zone1 KEYSPACE=commerce TABLET_UID=$i ./vtdriver/vttablet-up.sh
++    done
++
++    # set one of the replicas to primary
++    vtctldclient InitShardPrimary --server 127.0.0.1:15999 --force commerce/0 zone1-100
++
++    # Add remote user in MySQL
++    for i in 100
++    do
++        mysql -hlocalhost -P $[17000 + $i] -uroot \
++            --socket ../vtdataroot/vt_0000000$i/mysql.sock \
++            -e "source ./vtdriver/mysql_user.sql"
++    done
++
++    # set sql_mode
++    for i in 100 101 102
++    do
++        mysql -hlocalhost -P $[17000 + $i] -uroot \
++            --socket ../vtdataroot/vt_0000000$i/mysql.sock \
++            -e "set global sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';"
++    done
++
++    # Create test tables
++    vtctlclient -server localhost:15999 ApplySchema \
++        -sql-file ./vtdriver/commerce_unsharded.sql commerce
++
++    # change the vschema
++    vtctlclient -server localhost:15999 ApplyVSchema \
++        -vschema_file ./vtdriver/vschema_commerce_unsharded.json commerce
++
++    echo "unsharded keyspace 'commerce' initialized."
++}
++
++# initialize keyspace customer
++sharded_start() {
++    echo "init sharded keyspace 'customer'..."
++
++    # start vttablets
++    for i in 300 301 302; do
++        CELL=zone1 TABLET_UID=$i ./scripts/mysqlctl-up.sh
++        SHARD=-80 CELL=zone1 KEYSPACE=customer TABLET_UID=$i ./vtdriver/vttablet-up.sh
++    done
++
++    for i in 400 401 402; do
++        CELL=zone1 TABLET_UID=$i ./scripts/mysqlctl-up.sh
++        SHARD=80- CELL=zone1 KEYSPACE=customer TABLET_UID=$i ./vtdriver/vttablet-up.sh
++    done
++
++    # set one of the replicas to primary
++    vtctldclient --server 127.0.0.1:15999 InitShardPrimary --force customer/-80 zone1-300
++    vtctldclient --server 127.0.0.1:15999 InitShardPrimary --force customer/80- zone1-400
++
++    # Add remote user in MySQL
++    for i in 300 400
++    do
++        mysql -hlocalhost -P $[17000 + $i] -uroot \
++            --socket ../vtdataroot/vt_0000000$i/mysql.sock \
++            -e "source ./vtdriver/mysql_user.sql"
++    done
++
++    # set sql_mode
++    for i in 300 301 302 400 401 402
++    do
++        mysql -hlocalhost -P $[17000 + $i] -uroot \
++            --socket ../vtdataroot/vt_0000000$i/mysql.sock \
++            -e "set global sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';"
++    done
++
++    # Create test tables
++    vtctlclient --server 127.0.0.1:15999 ApplySchema \
++        -sql-file ./vtdriver/customer_sharded.sql customer
++
++    # change the vschema
++    vtctlclient --server 127.0.0.1:15999 ApplyVSchema \
++        -vschema_file ./vtdriver/vschema_customer_sharded.json customer
++
++    echo "two-shard keyspace 'customer' initialized."
++}
++
++#####################################################
++
++if [ -z "${HOST_IP}" ]; then
++    echo "HOST_IP not provided, will use `cat /etc/hosts | awk 'END {print}' | awk '{print $1}'`"
++    export HOST_IP=`cat /etc/hosts | awk 'END {print}' | awk '{print $1}'`
++fi
++
++echo "HOST_IP=${HOST_IP}"
++
++source ./vtdriver/env.sh
++
++# start topo server
++CELL=zone1 ./vtdriver/etcd-up.sh
++
++# start vtctld
++CELL=zone1 ./vtdriver/vtctld-up.sh
++
++if [ -n "${ONE_SHARD_ONLY}" ]; then
++    unsharded_start
++elif [ -n "${TWO_SHARD_ONLY}" ]; then
++    sharded_start
++else
++    unsharded_start
++    sharded_start
++fi
++
++# start vtgate if NO_VTGATE not defined.
++if [ -n "$NO_VTGATE" ]; then
++    echo "NO_VTGATE defined, will not to run vtgate."
++else
++    CELL=zone1 ./vtdriver/vtgate-up.sh
++fi
+Index: docker/lite/install_dependencies.sh
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/docker/lite/install_dependencies.sh b/docker/lite/install_dependencies.sh
+--- a/docker/lite/install_dependencies.sh	(revision d620dab5bc9c26ba51b724c8e3c050ae90f1622b)
++++ b/docker/lite/install_dependencies.sh	(date 1646049408628)
+@@ -156,6 +156,7 @@
+ mysql56|mysql57|mysql80)
+     # repo.mysql.com
+     add_apt_key 8C718D3B5072E1F5
++    add_apt_key 467B942D3A79BD29
+     ;;
+ mariadb|mariadb103)
+     # digitalocean.com
