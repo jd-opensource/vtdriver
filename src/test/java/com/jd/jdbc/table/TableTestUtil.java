@@ -29,23 +29,25 @@ import org.yaml.snakeyaml.constructor.Constructor;
 
 public class TableTestUtil {
 
-    public static void setSplitTableConfig(final String path) throws Exception {
+    public static void setSplitTableConfig(final String path) {
         Yaml yaml = new Yaml(new Constructor(SplitTableConfig.class));
         InputStream inputStream = TableTestUtil.class.getClassLoader().getResourceAsStream(path);
-
         SplitTableConfig splitTableConfig = yaml.load(inputStream);
-
         Map<String, Map<String, LogicTable>> tableIndexesMap = SplitTableUtil.buildTableIndexesMap(splitTableConfig);
 
-        Field field = VitessDataSource.class.getDeclaredField("tableIndexesMap");
-        field.setAccessible(true);
-        field.set(null, tableIndexesMap);
+        try {
+            Field field = VitessDataSource.class.getDeclaredField("tableIndexesMap");
+            field.setAccessible(true);
+            field.set(null, tableIndexesMap);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
 
         Executor executor = Executor.getInstance(300);
         executor.getPlans().clear();
     }
 
-    public static void setDefaultTableConfig() throws Exception {
+    public static void setDefaultTableConfig() {
         setSplitTableConfig("vtdriver-split-table.yml");
     }
 
