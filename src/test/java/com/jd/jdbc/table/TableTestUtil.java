@@ -22,14 +22,14 @@ import com.jd.jdbc.tindexes.config.SplitTableConfig;
 import com.jd.jdbc.vitess.VitessDataSource;
 import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import java.io.InputStream;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.util.Map;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 public class TableTestUtil {
 
-    public static void setSplitTableConfig(final String path, final String jdbcurl) throws Exception {
+    public static void setSplitTableConfig(final String path) throws Exception {
         Yaml yaml = new Yaml(new Constructor(SplitTableConfig.class));
         InputStream inputStream = TableTestUtil.class.getClassLoader().getResourceAsStream(path);
 
@@ -37,16 +37,16 @@ public class TableTestUtil {
 
         Map<String, Map<String, LogicTable>> tableIndexesMap = VitessJdbcProperyUtil.buildTableIndexesMap(splitTableConfig);
 
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        Field field = VitessDataSource.class.getDeclaredField("tableIndexesMap");
+        field.setAccessible(true);
+        field.set(null, tableIndexesMap);
 
-        Class clazz = classLoader.loadClass("com.jd.jdbc.vitess.VitessDataSource");
-        java.lang.reflect.Constructor constructor = clazz.getConstructor(String.class);
-        VitessDataSource obj = (VitessDataSource) constructor.newInstance(jdbcurl);
-        Method method = clazz.getDeclaredMethod("setTableIndexesMap", Map.class);
-        method.setAccessible(true);
-        method.invoke(obj, tableIndexesMap);
         Executor executor = Executor.getInstance(300);
         executor.getPlans().clear();
+    }
+
+    public static void setDefaultTableConfig() throws Exception {
+        setSplitTableConfig("vtdriver-split-table.yml");
     }
 
 }

@@ -139,7 +139,7 @@ public class DeleteEngine extends DMLEngine implements PrimitiveEngine {
             case Scatter:
                 return resolveShardQueryByDestination(vcursor, bindValue, new DestinationAllShard(), switchTableMap);
             case ByDestination:
-                return resolveShardQueryByDestination(vcursor, bindValue, super.targetDestination, null);
+                return resolveShardQueryByDestination(vcursor, bindValue, super.targetDestination, switchTableMap);
             default:
                 throw new SQLException("unsupported query route: " + super.opcode);
         }

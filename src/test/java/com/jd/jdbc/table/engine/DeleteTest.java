@@ -52,21 +52,22 @@ public class DeleteTest extends TestSuite {
     }
 
     @After
-    public void clean() throws SQLException {
+    public void clean() throws Exception {
         closeConnection(conn);
+        TableTestUtil.setDefaultTableConfig();
     }
 
     @Test
     public void test01() throws Exception {
         // 分片分表键一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         delete();
     }
 
     @Test
     public void test02() throws Exception {
         // 分片分表键不一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
         delete();
     }
 

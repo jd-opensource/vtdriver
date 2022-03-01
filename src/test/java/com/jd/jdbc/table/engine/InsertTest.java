@@ -62,8 +62,9 @@ public class InsertTest extends TestSuite {
     }
 
     @After
-    public void clean() throws SQLException {
+    public void clean() throws Exception {
         closeConnection(conn);
+        TableTestUtil.setDefaultTableConfig();
     }
 
     protected void printResultRow(InsertTest.ResultRow[] rows, String message) {
@@ -76,14 +77,15 @@ public class InsertTest extends TestSuite {
     @Test
     public void testSamekey() throws Exception {
         // 分片分表键一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", getUrl());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         insert();
+
     }
 
     @Test
     public void testDifferentKey() throws Exception {
         // 分片分表键不一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", getUrl());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
         insert();
     }
 

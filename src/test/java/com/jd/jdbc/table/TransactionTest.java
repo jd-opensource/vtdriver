@@ -67,7 +67,7 @@ public class TransactionTest extends TestSuite {
     }
 
     @After
-    public void after() throws SQLException {
+    public void after() throws Exception {
         if (this.connectionList != null) {
             for (Connection conn : this.connectionList) {
                 if (conn != null) {
@@ -75,18 +75,19 @@ public class TransactionTest extends TestSuite {
                 }
             }
         }
+        TableTestUtil.setDefaultTableConfig();
     }
 
     @Test
     public void test01() throws Exception {
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", baseUrl);
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         this.transactionTestCaseList = iterateExecFile("src/test/resources/transaction/transaction/transaction_case.json", TransactionTestCase.class);
         testTx();
     }
 
     @Test
     public void test02() throws Exception {
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", baseUrl);
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
         this.transactionTestCaseList = iterateExecFile("src/test/resources/transaction/transaction/transaction_case.json", TransactionTestCase.class);
         testTx();
     }

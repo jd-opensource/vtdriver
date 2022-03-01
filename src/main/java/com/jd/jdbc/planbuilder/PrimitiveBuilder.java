@@ -846,6 +846,13 @@ public class PrimitiveBuilder {
 
         LogicTable ltb = VitessDataSource.getLogicTable(this.defaultKeyspace, tableName);
         if (ltb != null) {
+            String firstActualTableName = ltb.getActualTableList().get(0).getActualTableName();
+            Vschema.Table vschemaTable = vm.getTable(this.defaultKeyspace, firstActualTableName);
+
+            if (vschemaTable != null && !StringUtil.isNullOrEmpty(vschemaTable.getPinned())) {
+                throw new SQLException("split-table query is not allowed on pinned table.");
+            }
+
             TableRoutePlan tableRouteBuilder = new TableRoutePlan(select, this.vm);
             this.builder = tableRouteBuilder;
             Symtab symtab = new Symtab(tableRouteBuilder);

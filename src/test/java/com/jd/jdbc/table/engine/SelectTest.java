@@ -80,7 +80,7 @@ public class SelectTest extends TestSuite {
     }
 
     @After
-    public void clean() throws SQLException {
+    public void clean() throws Exception {
         if (this.connectionList != null) {
             for (Connection conn : this.connectionList) {
                 if (conn != null) {
@@ -88,6 +88,7 @@ public class SelectTest extends TestSuite {
                 }
             }
         }
+        TableTestUtil.setDefaultTableConfig();
     }
 
     protected void printResultRow(ResultRow[] rows, String message) {
@@ -100,14 +101,14 @@ public class SelectTest extends TestSuite {
     @Test
     public void test01() throws Exception {
         // 分片分表键一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", baseUrl);
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         select();
     }
 
     @Test
     public void test02() throws Exception {
         // 分片分表键不一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", baseUrl);
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
         select();
     }
 
