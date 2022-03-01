@@ -25,6 +25,7 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
+import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import io.vitess.proto.Topodata;
@@ -52,8 +53,6 @@ import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
 import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
 import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
-import static com.jd.jdbc.topo.topoproto.TopoProto.parseTabletAlias;
-import static com.jd.jdbc.topo.topoproto.TopoProto.tabletAliasString;
 
 public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, TopoSrvKeyspace, TopoSrvVschema, TopoTablet, TopoVschema {
 
@@ -393,7 +392,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
     public TopoTabletInfo getTablet(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, tabletAlias.getCell());
 
-        String tabletPath = pathForTabletAlias(tabletAliasString(tabletAlias));
+        String tabletPath = pathForTabletAlias(TopoProto.tabletAliasString(tabletAlias));
         ConnGetResponse connGetResponse = topoConnection.get(ctx, tabletPath);
         Topodata.Tablet tablet;
         try {
@@ -407,7 +406,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
     @Override
     public CompletableFuture<TopoTabletInfo> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, tabletAlias.getCell());
-        String tabletPath = pathForTabletAlias(tabletAliasString(tabletAlias));
+        String tabletPath = pathForTabletAlias(TopoProto.tabletAliasString(tabletAlias));
         return topoConnection.getFuture(ctx, tabletPath).thenApply(connGetResponse -> {
             Topodata.Tablet tablet;
             try {
@@ -432,7 +431,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             List<DirEntry> children = topoConnection.listDir(ctx, TABLETS_PATH, false, true);
             List<Topodata.TabletAlias> result = new ArrayList<>(children.size());
             for (DirEntry child : children) {
-                result.add(parseTabletAlias(child.getName()));
+                result.add(TopoProto.parseTabletAlias(child.getName()));
             }
             return result;
         } catch (TopoException e) {
@@ -450,7 +449,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             List<Topodata.TabletAlias> result = new ArrayList<>(children.size());
             try {
                 for (DirEntry child : children) {
-                    result.add(parseTabletAlias(child.getName()));
+                    result.add(TopoProto.parseTabletAlias(child.getName()));
                 }
                 return result;
             } catch (TopoException e) {

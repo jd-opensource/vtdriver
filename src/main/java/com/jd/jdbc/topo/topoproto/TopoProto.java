@@ -88,16 +88,8 @@ public class TopoProto {
         if (EXPECT_NAME_PARTS_LENGTH != nameParts.length) {
             throw TopoException.wrap("invalid tablet alias: '" + aliasStr + "', expecting format: '<cell>-<uid>'");
         }
-        Integer uid = parseUid(nameParts[1]);
+        long uid = Long.parseLong(nameParts[1]);
         return Topodata.TabletAlias.newBuilder().setCell(nameParts[0]).setUid(uid).build();
-    }
-
-    /**
-     * @param value
-     * @return
-     */
-    public static Integer parseUid(String value) {
-        return Integer.valueOf(value);
     }
 
     /**

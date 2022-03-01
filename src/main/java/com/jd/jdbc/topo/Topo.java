@@ -139,7 +139,7 @@ public class Topo {
      * @return
      */
     static String pathForCellInfo(String cell) {
-        return String.format("%s%s%s%s%s", CELLS_PATH, separator, cell, separator, CELL_INFO_FILE);
+        return CELLS_PATH + separator + cell + separator + CELL_INFO_FILE;
     }
 
     /**
@@ -147,7 +147,7 @@ public class Topo {
      * @return
      */
     static String pathForCellAlias(String alias) {
-        return String.format("%s%s%s%s%s", CELLS_ALIASES_PATH, separator, alias, separator, CELLS_ALIAS_FILE);
+        return CELLS_ALIASES_PATH + separator + alias + separator + CELLS_ALIAS_FILE;
     }
 
     /**
@@ -155,7 +155,7 @@ public class Topo {
      * @return
      */
     static String pathForTabletAlias(String alias) {
-        return String.format("%s%s%s%s%s", TABLETS_PATH, separator, alias, separator, TABLET_FILE);
+        return TABLETS_PATH + separator + alias + separator + TABLET_FILE;
     }
 
     /**
@@ -163,7 +163,7 @@ public class Topo {
      * @return
      */
     static String pathForSrvKeyspaceFile(String keyspace) {
-        return String.format("%s%s%s%s%s", KEYSPACES_PATH, separator, keyspace, separator, SRV_KEYSPACE_FILE);
+        return KEYSPACES_PATH + separator + keyspace + separator + SRV_KEYSPACE_FILE;
     }
 
     /**
@@ -171,7 +171,7 @@ public class Topo {
      * @return
      */
     static String pathForVschemaFile(String keyspace) {
-        return String.format("%s%s%s%s%s", KEYSPACES_PATH, separator, keyspace, separator, VSCHEMA_FILE);
+        return KEYSPACES_PATH + separator + keyspace + separator + VSCHEMA_FILE;
     }
 
     /**
