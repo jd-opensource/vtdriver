@@ -86,7 +86,7 @@ public class ConcurrentSplitTableTest extends TestSuite {
     @Before
     public void init() throws Exception {
         conn = getTaskConnection();
-        TableTestUtil.setSplitTableConfig("table/shardTable.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("table/shardTable.yml");
         statement = conn.createStatement();
         currentCount = 10;
         dataCount = 100;
@@ -96,8 +96,9 @@ public class ConcurrentSplitTableTest extends TestSuite {
     }
 
     @After
-    public void after() throws SQLException {
+    public void after() throws Exception {
         conn.close();
+        TableTestUtil.setDefaultTableConfig();
     }
 
     @Test

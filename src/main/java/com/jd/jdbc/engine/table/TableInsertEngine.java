@@ -138,6 +138,7 @@ public class TableInsertEngine implements PrimitiveEngine {
             throw new SQLException("insert is not allowed for read only connection");
         }
         switch (this.insertOpcode) {
+            case InsertByDestination:
             case InsertUnsharded:
                 return this.execInsertUnsharded(ctx, vcursor, bindVariableMap, wantFields);
             case InsertSharded:

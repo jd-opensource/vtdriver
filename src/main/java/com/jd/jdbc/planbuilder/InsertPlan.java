@@ -386,9 +386,7 @@ public class InsertPlan {
         }});
         stmtClone.accept(visitor);
         InsertEngine innerInsertEigine = (InsertEngine) newBuildInsertPlan(stmtClone, vm, defaultKeyspace);
-        if (!innerInsertEigine.getKeyspace().getSharded()) {
-            insertEngine.setInsertOpcode(Engine.InsertOpcode.InsertUnsharded);
-        }
+        insertEngine.setInsertOpcode(innerInsertEigine.getInsertOpcode());
         insertEngine.setInsertEngine(innerInsertEigine);
         return insertEngine;
     }

@@ -61,8 +61,9 @@ public class UpdateTest extends TestSuite {
     }
 
     @After
-    public void clean() {
+    public void clean() throws Exception {
         closeConnection(conn);
+        TableTestUtil.setDefaultTableConfig();
     }
 
     protected void printResultRow(UpdateTest.ResultRow[] rows, String message) {
@@ -75,14 +76,14 @@ public class UpdateTest extends TestSuite {
     @Test
     public void test01() throws Exception {
         // 分片、分表键一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         update(false);
     }
 
     @Test
     public void test02() throws Exception {
         // 分片、分表键不一致
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml", conn.getMetaData().getURL());
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
         update(false);
     }
 

@@ -229,13 +229,17 @@ public class InsertEngine implements PrimitiveEngine {
                                                          Map<String, String> switchTableMap) throws SQLException {
 //        insertId = this.processGenerate(vcursor, bindValues);
         if (Engine.InsertOpcode.InsertUnsharded.equals(this.insertOpcode) || Engine.InsertOpcode.InsertByDestination.equals(this.insertOpcode)) {
-            List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
+            List<ResolvedShard> rsList;
+            if (Engine.InsertOpcode.InsertUnsharded.equals(this.insertOpcode)) {
+                rsList = getResolvedUnsharded(vcursor);
+            } else {
+                rsList = getResolvedDestinationShard(vcursor, this.targetDestination);
+            }
             Engine.allowOnlyMaster(rsList);
             String charEncoding = vcursor.getCharEncoding();
             List<BoundQuery> queries = getUnshardQueries(bindValues, exMidExprList, exPrefix, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
             return new IExecute.ResolvedShardQuery(rsList, queries);
-        }
-        if (Engine.InsertOpcode.InsertSharded.equals(this.insertOpcode) || Engine.InsertOpcode.InsertShardedIgnore.equals(this.insertOpcode)) {
+        } else if (Engine.InsertOpcode.InsertSharded.equals(this.insertOpcode) || Engine.InsertOpcode.InsertShardedIgnore.equals(this.insertOpcode)) {
             InsertShardedRouteResult insertShardedRouteResult = this.getInsertShardedRoute(vcursor, bindValues, exVindexValueList, exMidExprList, exPrefix, exSuffix, exSuffixExpr, switchTableMap);
             List<ResolvedShard> rss = insertShardedRouteResult.getResolvedShardList();
             List<BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
