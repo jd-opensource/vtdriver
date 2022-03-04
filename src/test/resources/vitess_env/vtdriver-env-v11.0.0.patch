@@ -417,7 +417,7 @@ diff --git a/Makefile b/Makefile
  	${call build_docker_image,docker/local/Dockerfile,vitess/local}
  
 +docker_vtdriver:
-+	${call build_docker_image,docker/local/Dockerfile.vtdriver,vitess/vtdriver-env}
++	${call build_docker_image,docker/local/Dockerfile.vtdriver,vtdriverio/vtdriver-env}
 +
  docker_mini:
  	${call build_docker_image,docker/mini/Dockerfile,vitess/mini}
