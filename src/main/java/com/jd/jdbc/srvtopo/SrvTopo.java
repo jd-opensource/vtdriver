@@ -26,17 +26,16 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
-import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -61,11 +60,6 @@ public class SrvTopo {
     public static ResilientServer newResilientServer(TopoServer base, String counterPrefix) throws SrvTopoException {
         if (SRV_TOPO_CACHE_REFRESH.compareTo(SRV_TOPO_CACHE_TTL) > 0) {
             throw new SrvTopoException("srv_topo_cache_refresh must be less than or equal to srv_topo_cache_ttl");
-        }
-
-        String metric = "";
-        if (StringUtil.isNullOrEmpty(counterPrefix)) {
-            metric = counterPrefix + "Counts";
         }
 
         synchronized (ResilientServer.class) {
@@ -94,7 +88,7 @@ public class SrvTopo {
      */
     public static List<Query.Target> findAllTargets(IContext ctx, SrvTopoServer srvTopoServer, String cell, Set<String> keyspaceNameSet, List<Topodata.TabletType> tabletTypeList)
         throws InterruptedException, SQLException {
-        List<Query.Target> targetList = new CopyOnWriteArrayList<>();
+        List<Query.Target> targetList = new ArrayList<>();
         CountDownLatch countDownLatch = new CountDownLatch(keyspaceNameSet.size());
         ReentrantLock lock = new ReentrantLock(true);
         AllErrorRecorder errRecorder = new AllErrorRecorder();

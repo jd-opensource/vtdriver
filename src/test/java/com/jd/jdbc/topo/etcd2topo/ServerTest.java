@@ -39,6 +39,7 @@ import io.vitess.proto.Topodata;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -170,6 +171,42 @@ public class ServerTest {
 
         srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, TOPO_KEYSPACE);
         Assert.assertNotNull(srvKeyspace);
+    }
+
+    @Test
+    public void case051_testGetSrvKeyspaces() throws Exception {
+        TopoServer topoServer = open();
+        ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
+        VtDaemonExecutorService.initialize(null, null, null);
+
+        for (int i = 0; i < 5; i++) {
+            VtDaemonExecutorService.execute(() -> {
+                ResilientServer.GetSrvKeyspaceResponse srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, TOPO_KEYSPACE);
+                Assert.assertNotNull(srvKeyspace);
+                System.out.println(new Date() + "---" + srvKeyspace.getSrvKeyspace());
+            });
+        }
+        TimeUnit.SECONDS.sleep(20);
+    }
+
+    @Test
+    public void case052_testGetSrvKeyspaces() throws Exception {
+        TopoServer topoServer = open();
+        ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
+        VtDaemonExecutorService.initialize(null, null, null);
+
+        String[] keyspaces = new String[] {TOPO_KEYSPACE, "vtdriver1", "jtm_tr"};
+
+        for (String keyspace : keyspaces) {
+            for (int i = 0; i < 2; i++) {
+                VtDaemonExecutorService.execute(() -> {
+                    ResilientServer.GetSrvKeyspaceResponse srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, keyspace);
+                    Assert.assertNotNull(srvKeyspace);
+                    System.out.println(new Date() + "---" + srvKeyspace.getSrvKeyspace());
+                });
+            }
+        }
+        TimeUnit.SECONDS.sleep(20);
     }
 
     @Test
