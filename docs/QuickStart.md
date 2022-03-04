@@ -118,7 +118,7 @@ web端口: 15000
     ./307_delete_shard_0.sh
     ```
 
-   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/config/ 下的所有文件导入 vtdriver 文件夹
+   在 vitess/example/local/ 创建 vtdriver 文件夹，并将项目目录 vtdriver/src/test/resources/vitess_env/vtdriver 下的所有文件，和vtdriver/src/test/resources/vitess_env的下两个脚本`create_tables.sh`、`init_mysql_user.sh`导入 vtdriver 文件夹
 
    在 vitess/example/local/vtdriver/ 中依次执行init_mysql_user.sh、create_table.sh
 

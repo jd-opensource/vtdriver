@@ -28,16 +28,15 @@ echo "using branch/tag '${release}'"
 
 if [ ! -d "build_vitess" ];then
   mkdir build_vitess
+  cd build_vitess
+  echo "Downloading vitess source from github..."
+  git clone git@github.com:vitessio/vitess.git
 else
-  rm -rf build_vitess
-  mkdir build_vitess
+  cd build_vitess
 fi
 
-cd build_vitess
-echo "Downloading vitess source from github..."
-git clone git@github.com:vitessio/vitess.git
 cd vitess
-git checkout ${release}
+git checkout --force ${release}
 
 cp -r ../../vtdriver ./examples/local/
 git apply ../../vtdriver-env-${release}.patch

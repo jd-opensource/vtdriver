@@ -72,7 +72,7 @@ diff --git a/Makefile b/Makefile
  	${call build_docker_image,docker/local/Dockerfile,vitess/local}
  
 +docker_vtdriver:
-+	${call build_docker_image,docker/local/Dockerfile.vtdriver,vitess/vtdriver-env}
++	${call build_docker_image,docker/local/Dockerfile.vtdriver,vtdriverio/vtdriver-env}
 +
  docker_mini:
  	${call build_docker_image,docker/mini/Dockerfile,vitess/mini}
@@ -180,7 +180,7 @@ new file mode 100644
 --- /dev/null	(date 1646047895808)
 +++ b/docker/local/Dockerfile.vtdriver	(date 1646047895808)
 @@ -0,0 +1,43 @@
-+ARG bootstrap_version=4
++ARG bootstrap_version=3
 +ARG image="vitess/bootstrap:${bootstrap_version}-common"
 +
 +FROM "${image}"

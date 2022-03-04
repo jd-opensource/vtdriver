@@ -1,4 +1,4 @@
-name: build&test
+name: maven_build_test
 
 on: [push, pull_request]
 
@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       vitess1202:
-        image: wanghy1995/vtdriver-env:latest
+        image: vtdriverio/vtdriver-env:latest
         options: >-
           --health-cmd "mysqladmin ping -h127.0.0.1 -P15306 -umysql_user -pmysql_password"
           --health-interval 5s
