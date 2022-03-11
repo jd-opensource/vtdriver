@@ -339,3 +339,9 @@ CREATE TABLE `all_type_test`
     `set` set('Value A','Value B') DEFAULT NULL,
     PRIMARY KEY (`tinyint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `auto` (
+    `id` bigint(20) NOT NULL,
+    `ai` bigint(20) NOT NULL AUTO_INCREMENT,
+    `email` varbinary(128) DEFAULT NULL,
+    PRIMARY KEY (`ai`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1000 DEFAULT CHARSET = utf8;
