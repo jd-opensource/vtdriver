@@ -46,7 +46,7 @@ public class TimeTestUtil {
     }
 
     public static String getRandomDateString() {
-        long min = Date.valueOf("1000-01-01").getTime();
+        long min = Date.valueOf("1000-01-02").getTime();
         long max = Date.valueOf("9999-12-31").getTime();
         long random = RandomUtils.nextLong(0, max - min) + min;
         return (new Date(random)).toString();
@@ -96,7 +96,7 @@ public class TimeTestUtil {
     // mysql Timestamp范围 '1970-01-01 00:00:01' UTC to '2038-01-19 03:14:07' UTC
     // getRandomTimestampString 返回 1970-01-01 00:00:01.f ~ 2038-01-18 23:59:59.f
     public static String getRandomTimestampString(final int p) {
-        long min = Date.valueOf("1970-01-01").getTime();
+        long min = Date.valueOf("1970-01-02").getTime();
         long max = Date.valueOf("2038-01-18").getTime();
         long random = RandomUtils.nextLong(0, max - min) + min;
         Date date = Date.valueOf(new Date(random).toString());

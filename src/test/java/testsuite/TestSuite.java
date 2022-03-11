@@ -63,6 +63,12 @@ public abstract class TestSuite extends TestSuitePrinter {
         }
     }
 
+    public static void closeConnection(List<Connection> conns) {
+        for (Connection conn : conns) {
+            closeConnection(conn);
+        }
+    }
+
     protected static <T extends TestSuiteCase> List<T> iterateExecFile(String filename, Class<T> caseClazz) throws IOException {
         BufferedReader br = Files.newBufferedReader(Paths.get(filename), StandardCharsets.UTF_8);
         StringBuilder content = new StringBuilder();

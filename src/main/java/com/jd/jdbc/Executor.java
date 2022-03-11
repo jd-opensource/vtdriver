@@ -384,22 +384,10 @@ public class Executor implements IExecute {
             // 4: Execute!
             List<ExecuteMultiShardResponse> executeMultiShardResponses;
             List<VtRowList> vtRowLists = new ArrayList<>();
-            try {
-                executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, true);
-                for (ExecuteMultiShardResponse executeResponse : executeMultiShardResponses) {
-                    VtRowList resultSet = executeResponse.getVtRowList().reserve(maxRows);
-                    vtRowLists.add(resultSet);
-                }
-            } catch (SQLException e) {
-                // Check if there was partial DML execution. If so, rollback the transaction.
-                if (safeSession.inTransaction() /*&& vCursor.rollbackOnPartialExec*/) {
-                    try {
-                        ((TxConn) ctx.getContextValue(VitessConnection.ContextKey.CTX_TX_CONN)).rollback(ctx, safeSession);
-                    } catch (SQLException ex) {
-                        LOGGER.error(e.getMessage(), e);
-                    }
-                }
-                throw e;
+            executeMultiShardResponses = primitive.batchExecute(ctx, vCursor, true);
+            for (ExecuteMultiShardResponse executeResponse : executeMultiShardResponses) {
+                VtRowList resultSet = executeResponse.getVtRowList().reserve(maxRows);
+                vtRowLists.add(resultSet);
             }
             return new BatchExecuteResponse(null, vtRowLists);
         };
