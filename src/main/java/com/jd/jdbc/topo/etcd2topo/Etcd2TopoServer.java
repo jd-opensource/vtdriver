@@ -24,6 +24,7 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoConnection;
 import com.jd.jdbc.topo.TopoException;
+import com.jd.jdbc.topo.TopoExceptionCode;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KeyValue;
@@ -43,8 +44,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 public class Etcd2TopoServer implements TopoConnection {
     private static final Log logger = LogFactory.getLog(Etcd2TopoServer.class);
@@ -68,7 +67,7 @@ public class Etcd2TopoServer implements TopoConnection {
      */
     @Override
     public List<DirEntry> listDir(IContext ctx, String dirPath, boolean isFull, boolean withSerializable) throws TopoException {
-        String nodePath = String.format("%s%s%s%s", this.root, SEPARATOR, dirPath, SEPARATOR);
+        String nodePath = this.root + SEPARATOR + dirPath + SEPARATOR;
         if (SEPARATOR_DUAL.equals(nodePath)) {
             nodePath = "/";
         }
@@ -89,7 +88,7 @@ public class Etcd2TopoServer implements TopoConnection {
             throw TopoException.wrap(e.getMessage());
         }
         if (response.getKvs().isEmpty()) {
-            throw TopoException.wrap(NO_NODE, nodePath);
+            throw TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath);
         }
 
         int prefixLen = nodePath.length();
@@ -124,7 +123,7 @@ public class Etcd2TopoServer implements TopoConnection {
 
     @Override
     public CompletableFuture<List<DirEntry>> listDirFuture(IContext ctx, String dirPath, Boolean isFull) {
-        String nodePath = String.format("%s%s%s%s", this.root, SEPARATOR, dirPath, SEPARATOR);
+        String nodePath = this.root + SEPARATOR + dirPath + SEPARATOR;
         if (SEPARATOR_DUAL.equals(nodePath)) {
             nodePath = "/";
         }
@@ -140,7 +139,7 @@ public class Etcd2TopoServer implements TopoConnection {
         String finalNodePath = nodePath;
         return this.client.getKVClient().get(sequence, option).thenApply(response -> {
             if (response.getKvs().isEmpty()) {
-                throw new CompletionException(TopoException.wrap(NO_NODE, finalNodePath));
+                throw new CompletionException(TopoException.wrap(TopoExceptionCode.NO_NODE, finalNodePath));
             }
 
             int prefixLen = finalNodePath.length();
@@ -207,7 +206,7 @@ public class Etcd2TopoServer implements TopoConnection {
      */
     @Override
     public ConnGetResponse get(IContext ctx, String filePath, boolean ignoreNoNode) throws TopoException {
-        String nodePath = String.format("%s%s%s", this.root, SEPARATOR, filePath);
+        String nodePath = this.root + SEPARATOR + filePath;
         ByteSequence sequence = ByteSequence.from(nodePath, StandardCharsets.UTF_8);
         GetOption option = GetOption.newBuilder().withSerializable(true).build();
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
@@ -224,7 +223,7 @@ public class Etcd2TopoServer implements TopoConnection {
                 connGetResponse.setContents(new byte[] {});
                 return connGetResponse;
             }
-            throw TopoException.wrap(NO_NODE, nodePath);
+            throw TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath);
         }
         ConnGetResponse connGetResponse = new ConnGetResponse();
         connGetResponse.setContents(response.getKvs().get(0).getValue().getBytes());
@@ -234,7 +233,7 @@ public class Etcd2TopoServer implements TopoConnection {
 
     @Override
     public List<ConnGetResponse> getTabletsByCell(IContext ctx, String filePath) throws TopoException {
-        String beginTabletsPath = String.format("%s%s%s", this.root, SEPARATOR, filePath);
+        String beginTabletsPath = this.root + SEPARATOR + filePath;
         String endTabletsPath = beginTabletsPath + END_TAG_OF_RANGE_SEARCH;
         ByteSequence beginSequence = ByteSequence.from(beginTabletsPath, StandardCharsets.UTF_8);
         ByteSequence endSequence = ByteSequence.from(endTabletsPath, StandardCharsets.UTF_8);
@@ -248,7 +247,7 @@ public class Etcd2TopoServer implements TopoConnection {
             throw TopoException.wrap(e.getMessage());
         }
         if (response.getKvs().size() < 1) {
-            throw TopoException.wrap(NO_NODE, beginTabletsPath);
+            throw TopoException.wrap(TopoExceptionCode.NO_NODE, beginTabletsPath);
         }
         List<ConnGetResponse> connGetResponseList = new ArrayList<>(response.getKvs().size());
         ConnGetResponse connGetResponse;
@@ -263,12 +262,12 @@ public class Etcd2TopoServer implements TopoConnection {
 
     @Override
     public CompletableFuture<ConnGetResponse> getFuture(IContext ctx, String filePath) {
-        String nodePath = String.format("%s%s%s", this.root, SEPARATOR, filePath);
+        String nodePath = this.root + SEPARATOR + filePath;
         ByteSequence sequence = ByteSequence.from(nodePath, StandardCharsets.UTF_8);
         GetOption option = GetOption.newBuilder().withSerializable(true).build();
         return this.client.getKVClient().get(sequence, option).thenApply(response -> {
             if (response.getKvs().size() != 1) {
-                throw new CompletionException(TopoException.wrap(NO_NODE, nodePath));
+                throw new CompletionException(TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath));
             }
             ConnGetResponse connGetResponse = new ConnGetResponse();
             connGetResponse.setContents(response.getKvs().get(0).getValue().getBytes());
@@ -307,7 +306,7 @@ public class Etcd2TopoServer implements TopoConnection {
      */
     @Override
     public Topo.WatchDataResponse watch(IContext ctx, String filePath) throws TopoException {
-        String nodePath = String.format("%s%s%s", this.root, SEPARATOR, filePath);
+        String nodePath = this.root + SEPARATOR + filePath;
         ByteSequence key = ByteSequence.from(nodePath, StandardCharsets.UTF_8);
         GetOption option = GetOption.newBuilder().withSerializable(true).build();
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(key, option);
@@ -318,7 +317,7 @@ public class Etcd2TopoServer implements TopoConnection {
             throw TopoException.wrap(e.getMessage());
         }
         if (initial.getKvs().size() != 1) {
-            throw TopoException.wrap(NO_NODE, nodePath);
+            throw TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath);
         }
         Topo.WatchData watchData = new Topo.WatchData();
         watchData.setContents(initial.getKvs().get(0).getValue().getBytes());
@@ -345,7 +344,7 @@ public class Etcd2TopoServer implements TopoConnection {
                             break;
                         case DELETE:
                             try {
-                                notification.put(new Topo.WatchData(TopoException.wrap(NO_NODE, nodePath)));
+                                notification.put(new Topo.WatchData(TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath)));
                             } catch (InterruptedException e) {
                                 logger.error(e.getMessage(), e);
                             }

@@ -250,18 +250,19 @@ public class ResilientServer implements SrvTopoServer {
             entry.rwLock.readLock().unlock();
         }
 
-        entry.fullyLock();
-        try {
-            if (entry.watchState == WatchState.WATCH_STATE_RUNNING) {
-                return new GetSrvKeyspaceResponse(entry.value, entry.lastError);
-            }
+        synchronized (this) {
+            entry.fullyLock();
+            try {
+                if (entry.watchState == WatchState.WATCH_STATE_RUNNING) {
+                    return new GetSrvKeyspaceResponse(entry.value, entry.lastError);
+                }
 
-            int shouldRefresh = Duration.between(entry.lastErrorTime, LocalDateTime.now()).compareTo(this.cacheRefresh);
-            if (shouldRefresh > 0 && entry.watchState == WatchState.WATCH_STATE_IDLE) {
-                entry.watchState = WatchState.WATCH_STATE_STARTING;
-                entry.watchStartingChan = new LinkedBlockingQueue<>(16);
-                VtDaemonExecutorService.execute(() -> watchSrvKeyspace(ctx, entry, cell, keyspace));
-            }
+                int shouldRefresh = Duration.between(entry.lastErrorTime, LocalDateTime.now()).compareTo(this.cacheRefresh);
+                if (shouldRefresh > 0 && entry.watchState == WatchState.WATCH_STATE_IDLE) {
+                    entry.watchState = WatchState.WATCH_STATE_STARTING;
+                    entry.watchStartingChan = new LinkedBlockingQueue<>(16);
+                    VtDaemonExecutorService.execute(() -> watchSrvKeyspace(ctx, entry, cell, keyspace));
+                }
 
             boolean cacheValid = entry.value != null
                 && (Duration.between(entry.lastValueTime, LocalDateTime.now()).compareTo(this.cacheTtl) < 0);
@@ -269,23 +270,24 @@ public class ResilientServer implements SrvTopoServer {
                 return new GetSrvKeyspaceResponse(entry.value, null);
             }
 
-            if (entry.watchState == WatchState.WATCH_STATE_STARTING) {
-                LinkedBlockingQueue<Object> watchStartingChan = (LinkedBlockingQueue<Object>) entry.watchStartingChan;
-                entry.fullyUnlock();
-                try {
-                    watchStartingChan.take();
-                } catch (InterruptedException e) {
-                    log.error(e.getMessage(), e);
+                if (entry.watchState == WatchState.WATCH_STATE_STARTING) {
+                    LinkedBlockingQueue<Object> watchStartingChan = (LinkedBlockingQueue<Object>) entry.watchStartingChan;
+                    entry.fullyUnlock();
+                    try {
+                        watchStartingChan.take();
+                    } catch (InterruptedException e) {
+                        log.error(e.getMessage(), e);
+                    }
+                    entry.fullyLock();
                 }
-                entry.fullyLock();
-            }
 
-            if (entry.value != null) {
-                return new GetSrvKeyspaceResponse(entry.value, null);
+                if (entry.value != null) {
+                    return new GetSrvKeyspaceResponse(entry.value, null);
+                }
+                return new GetSrvKeyspaceResponse(null, entry.lastError);
+            } finally {
+                entry.fullyUnlock();
             }
-            return new GetSrvKeyspaceResponse(null, entry.lastError);
-        } finally {
-            entry.fullyUnlock();
         }
     }
 
