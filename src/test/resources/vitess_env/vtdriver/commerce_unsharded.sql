@@ -345,3 +345,14 @@ CREATE TABLE IF NOT EXISTS `auto` (
     `email` varbinary(128) DEFAULT NULL,
     PRIMARY KEY (`ai`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1000 DEFAULT CHARSET = utf8;
+CREATE TABLE IF NOT EXISTS `user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) DEFAULT NULL,
+  `costly` int(11) DEFAULT NULL,
+  `predef1` int(11) DEFAULT NULL,
+  `predef2` int(11) DEFAULT NULL,
+  `textcol1` varchar(255) DEFAULT NULL,
+  `textcol2` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_costly_uindex` (`costly`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
