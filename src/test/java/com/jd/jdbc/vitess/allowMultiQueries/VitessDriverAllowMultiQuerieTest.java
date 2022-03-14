@@ -65,9 +65,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
 
     @After
     public void after() throws SQLException {
-        if (this.conn != null) {
-            this.conn.close();
-        }
+        closeConnection(conn);
     }
 
     protected void cleanData() throws SQLException {
@@ -212,7 +210,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
     public void groupBy3() throws SQLException {
         String sql = "select id,email,count(*) from auto group by id,email order by id;" +
             "delete from auto;" +
-            "insert into auto auto (id,ai,email) values(100,100,'abc'),(100,101,'abc');insert into auto auto (id,ai,email) values(100,102,'abc');" +
+            "insert into auto (id,ai,email) values(100,100,'abc'),(100,101,'abc');insert into auto (id,ai,email) values(100,102,'abc');" +
             "select id,email,count(*) from auto group by id,email order by id;";
         try (Statement stmt = conn.createStatement()) {
             boolean hasResult = stmt.execute(sql);
@@ -256,7 +254,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
         String sql = "delete from plan_test;" +
             "insert into plan_test(f_tinyint, f_int, f_smallint) VALUES (1, 1, 2),(2, 1, 2),(3, 1, 2),(4, 1, 2),(5, 1, 2),(6, 1, 2),(7, 1, 2),(8, 1, 2),(9, 1, 2),(10, 1, 2);" +
             "select f_int, f_smallint, count(*) from plan_test group by f_int order by f_smallint;" +
-            "delete plan_test where f_tinyint >=1 and f_tinyint <=10;";
+            "delete from plan_test where f_tinyint >=1 and f_tinyint <=10;";
         try (Statement stmt = conn.createStatement()) {
             boolean hasResult = stmt.execute(sql);
             int sqlIdx = 0;
@@ -910,7 +908,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
         conn.setAutoCommit(false);
         try (Statement stmt = conn.createStatement()) {
             String insertSQL = "select 1;INSERT INTO user (name,textcol1,textcol2) VALUES ('%s', '%s', '%s') ";
-            String insertErrorSQL = "select 1;INSERT INTO user (name,textcol1,textcol2) VALUES  ";
+            String insertErrorSQL = "select 1;INSERT INTO user (name,textcol1,textcol2_) VALUES('1','1','1')";
             for (int i = 1; i <= 3; i++) {
                 try {
                     if (i == 2) {
@@ -959,7 +957,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
                 stmt.executeUpdate(sql);
             }
 
-            String errorSql = String.format("select 1;INSERT INTO user (id, name,textcol1,textcol2) VALUES ('1', '2', '3') ");
+            String errorSql = String.format("select 1;INSERT INTO user (id, name, textcol1_) VALUES ('1', '2', '3')");
             try {
                 stmt.executeUpdate(errorSql);
             } catch (Exception e) {

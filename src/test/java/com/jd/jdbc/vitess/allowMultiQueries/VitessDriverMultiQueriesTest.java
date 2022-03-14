@@ -39,21 +39,21 @@ import static org.junit.Assert.fail;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class VitessDriverMultiQueriesTest extends TestSuite {
     private final String mixSql =
-        "select id from auto order by id; insert into auto auto (id,ai,email) values(100,100,'abc'),(101,101,'abc'); select id from auto order by id;delete from auto where id=100 or id=101;select id from auto order by id;";
+        "select id from auto order by id; insert into auto (id,ai,email) values(100,100,'abc'),(101,101,'abc'); select id from auto order by id;delete from auto where id=100 or id=101;select id from auto order by id;";
 
     private final String selectSql =
         "select id from auto where id < 50 and id < 30 order by id; select id from auto where id < 20 and id < 30 order by id;select id from auto where id < 10 and id < 30 order by id;";
 
     private final String dmlSql =
-        "insert into auto auto (id,ai,email) values(100,100,'abc'),(101,101,'abc');insert into auto auto (id,ai,email) values(102,102,'abc');delete from auto where id in (100,101,102);";
+        "insert into auto (id,ai,email) values(100,100,'abc'),(101,101,'abc');insert into auto (id,ai,email) values(102,102,'abc');delete from auto where id in (100,101,102);";
 
     private final String preparedMixSql =
-        "select id from auto where 1=? order by id; insert into auto auto (id,ai,email) values(?,?,?),(?,?,?); select id from auto where 1=? order by id;delete from auto where id=? or id=?;select id from auto where 1=? order by id;";
+        "select id from auto where 1=? order by id; insert into auto (id,ai,email) values(?,?,?),(?,?,?); select id from auto where 1=? order by id;delete from auto where id=? or id=?;select id from auto where 1=? order by id;";
 
     private final String preparedSelectSql =
         "select id from auto where id < ? and id < ? order by id; select id from auto where id < ? and id < ? order by id;select id from auto where id < ? and id < ? order by id;";
 
-    private final String preparedDmlSql = "insert into auto auto (id,ai,email) values(?,?,?),(?,?,?);insert into auto auto (id,ai,email) values(?,?,?);delete from auto where id in (?,?,?);";
+    private final String preparedDmlSql = "insert into auto (id,ai,email) values(?,?,?),(?,?,?);insert into auto (id,ai,email) values(?,?,?);delete from auto where id in (?,?,?);";
 
     Connection conn;
 
@@ -105,7 +105,7 @@ public class VitessDriverMultiQueriesTest extends TestSuite {
 
     static private void verifyExecuteQueryCloseCurrent(Statement stmt, ResultSet resultSet) throws SQLException {
         int sqlIdx = 0;
-        boolean hasResult = true;
+        boolean hasResult;
 
         do {
             if (sqlIdx == 0) {
@@ -131,7 +131,7 @@ public class VitessDriverMultiQueriesTest extends TestSuite {
     static private void verifyExecuteUpdate(Statement stmt, int affectedCount) throws SQLException {
         int sqlIdx = 0;
 
-        boolean hasResult = true;
+        boolean hasResult;
         do {
             if (sqlIdx == 0) {
                 assertEquals(2, affectedCount);
@@ -201,7 +201,7 @@ public class VitessDriverMultiQueriesTest extends TestSuite {
         int sqlIdx = 0;
         List<ResultSet> resultSetList = new ArrayList<>();
 
-        boolean hasResult = true;
+        boolean hasResult;
         do {
             resultSetList.add(resultSet);
 
@@ -232,7 +232,7 @@ public class VitessDriverMultiQueriesTest extends TestSuite {
 
     static private void verifyExecuteCloseAll(Statement stmt, boolean hasResult) throws SQLException {
         int sqlIdx = 0;
-        ResultSet resultSet = null;
+        ResultSet resultSet;
         List<ResultSet> resultSetList = new ArrayList<>();
         do {
             if (hasResult) {
@@ -282,7 +282,7 @@ public class VitessDriverMultiQueriesTest extends TestSuite {
     static private void verifyExecuteQueryCloseAll(Statement stmt, ResultSet resultSet) throws SQLException {
         int sqlIdx = 0;
         List<ResultSet> resultSetList = new ArrayList<>();
-        boolean hasResult = true;
+        boolean hasResult;
         do {
             resultSetList.add(resultSet);
 

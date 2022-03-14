@@ -74,7 +74,7 @@ public class InsertEngineTest extends TestSuite {
         shardedDriverConnection.setAutoCommit(false);
         try (Statement stmt = shardedDriverConnection.createStatement()) {
             String insertSQL = "INSERT INTO user_metadata (user_id,email,address) VALUES ('%d', '%s', '%s') ";
-            String insertErrorSQL = "INSERT INTO user_metadata (user_id,email,address) VALUES  ";
+            String insertErrorSQL = "INSERT INTO user_metadata (user_id,email,address_) VALUES(10, 'xxx@xxx', '3')";
             for (int i = 1; i <= 3; i++) {
                 try {
                     if (i == 2) {
@@ -135,7 +135,7 @@ public class InsertEngineTest extends TestSuite {
                 stmt.execute(sql);
             }
 
-            String errorSql = "INSERT INTO user_metadata (user_id,address) VALUES (1, '2', '3') ";
+            String errorSql = "INSERT INTO user_metadata (user_id, email, address_) VALUES (1, 'xxx@xxx', '3') ";
             try {
                 stmt.execute(errorSql);
             } catch (Exception e) {

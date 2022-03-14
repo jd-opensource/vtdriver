@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.junit.After;
 import org.junit.Assert;
@@ -96,7 +97,6 @@ public class TransactionTest extends TestSuite {
     public void testCommitWhenAutocommitTrue() throws SQLException {
         for (Connection conn : this.connectionList) {
             conn.setAutoCommit(true);
-
             expectedEx.expectMessage("Can't call commit when autocommit=true");
             conn.commit();
         }
@@ -106,9 +106,91 @@ public class TransactionTest extends TestSuite {
     public void testRollbackWhenAutocommitTrue() throws SQLException {
         for (Connection conn : this.connectionList) {
             conn.setAutoCommit(true);
-
             expectedEx.expectMessage("Can't call rollback when autocommit=true");
             conn.rollback();
+        }
+    }
+
+    @Test
+    public void testErrorInTransaction() throws Exception {
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
+        List<List<String>> testCase = new ArrayList<List<String>>() {{
+            add(new ArrayList<String>() {{
+                add("DELETE FROM table_engine_test;");
+                add("INSERT INTO table_engine_test(f_key, f_tinyint, f_int) VALUES ('%s', 1, 1)");
+                add("INSERT INTO table_engine_test(f_key, f_tinyint, f_int_) VALUES ('%s', 1, 1)");
+                add("SELECT COUNT(*) FROM table_engine_test;");
+            }});
+        }};
+        for (List<String> sqls : testCase) {
+            testErrorInTransactionNormal(sqls.get(0), sqls.get(1), sqls.get(2), sqls.get(3));
+            testErrorInTransactionExecuteBatch(sqls.get(0), sqls.get(1), sqls.get(2), sqls.get(3));
+        }
+    }
+
+    public void testErrorInTransactionNormal(String initSql, String sql, String errorSql, String checkSql) throws SQLException {
+        for (Connection conn : connectionList) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate(initSql);
+                conn.setAutoCommit(false);
+                for (int i = 0; i < 10; i++) {
+                    stmt.executeUpdate(String.format(sql, i));
+                }
+
+                try {
+                    stmt.executeUpdate(String.format(errorSql, 11));
+                } catch (SQLException ignored) {
+                }
+
+                ResultSet resultSet = stmt.executeQuery(checkSql);
+                resultSet.next();
+                Assert.assertEquals(10, resultSet.getInt(1));
+                conn.rollback();
+
+                stmt.executeUpdate(String.format(sql, 11));
+                conn.commit();
+                conn.setAutoCommit(true);
+
+                resultSet = stmt.executeQuery(checkSql);
+                resultSet.next();
+                Assert.assertEquals(1, resultSet.getInt(1));
+            }
+        }
+    }
+
+    public void testErrorInTransactionExecuteBatch(String initSql, String sql, String errorSql, String checkSql) throws SQLException {
+        for (Connection conn : connectionList) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate(initSql);
+
+                conn.setAutoCommit(false);
+                for (int i = 0; i < 10; i++) {
+                    stmt.addBatch(String.format(sql, i));
+                }
+                stmt.executeBatch();
+
+                try {
+                    stmt.addBatch(String.format(sql, 11));
+                    stmt.addBatch(String.format(errorSql, 1));
+                    stmt.executeBatch();
+                } catch (SQLException ignored) {
+                }
+
+                ResultSet resultSet = stmt.executeQuery(checkSql);
+                resultSet.next();
+                Assert.assertEquals(11, resultSet.getInt(1));
+                conn.rollback();
+
+                stmt.addBatch(String.format(sql, 1));
+                stmt.addBatch(String.format(sql, 2));
+                stmt.executeBatch();
+                conn.commit();
+                conn.setAutoCommit(true);
+
+                resultSet = stmt.executeQuery(checkSql);
+                resultSet.next();
+                Assert.assertEquals(2, resultSet.getInt(1));
+            }
         }
     }
 
@@ -163,6 +245,7 @@ public class TransactionTest extends TestSuite {
         }
     }
 
+    @EqualsAndHashCode(callSuper = true)
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
