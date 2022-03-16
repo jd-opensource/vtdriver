@@ -21,7 +21,7 @@ public class VtDriverSplitTableTest {
             Field field = SplitTableUtil.class.getDeclaredField("tableIndexesMap");
             field.setAccessible(true);
             Map<String, Map<String, LogicTable>> actualMap = (Map<String, Map<String, LogicTable>>) field.get(SplitTableUtil.class);
-            Assert.assertEquals(2, actualMap.size());
+            Assert.assertEquals(1, actualMap.size());
 
             Assert.assertNotNull(actualMap.get("customer"));
             Map<String, LogicTable> customer = actualMap.get("customer");
@@ -33,17 +33,6 @@ public class VtDriverSplitTableTest {
             Assert.assertEquals("f_key", customer.get("table_engine_test").getTindexCol().getColumnName());
             Assert.assertEquals(263, customer.get("table_engine_test").getTindexCol().getType().getNumber());
             Assert.assertEquals("com.jd.jdbc.tindexes.TableRuleMod", customer.get("table_engine_test").getTableIndex().getClass().getName());
-
-            Assert.assertNotNull(actualMap.get("commerce"));
-            Map<String, LogicTable> commerce = actualMap.get("commerce");
-            Assert.assertEquals(1, commerce.size());
-
-            Assert.assertNotNull(commerce.get("table_engine_test"));
-            Assert.assertEquals("table_engine_test", commerce.get("table_engine_test").getLogicTable());
-            Assert.assertEquals(4, commerce.get("table_engine_test").getActualTableList().size());
-            Assert.assertEquals("f_key", commerce.get("table_engine_test").getTindexCol().getColumnName());
-            Assert.assertEquals(263, commerce.get("table_engine_test").getTindexCol().getType().getNumber());
-            Assert.assertEquals("com.jd.jdbc.tindexes.TableRuleMod", commerce.get("table_engine_test").getTableIndex().getClass().getName());
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
