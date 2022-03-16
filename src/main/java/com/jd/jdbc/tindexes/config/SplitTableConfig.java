@@ -23,5 +23,5 @@ import lombok.Setter;
 @Setter
 @Getter
 public class SplitTableConfig {
-    private List<SchemeConfig> schemas;
+    private List<SchemaConfig> schemas;
 }

@@ -16,14 +16,19 @@ limitations under the License.
 
 package com.jd.jdbc.tindexes.config;
 
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
 @Setter
 @Getter
-public class SchemeConfig {
-    private String schema;
+public class LogicTableConfig {
+    private String logicTable;
 
-    private List<LoginTableConfig> logicTables;
+    private String actualTableExprs;
+
+    private String shardingColumnName;
+
+    private String shardingColumnType;
+
+    private String shardingAlgorithms;
 }

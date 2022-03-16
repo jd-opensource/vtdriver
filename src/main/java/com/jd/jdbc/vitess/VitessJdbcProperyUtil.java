@@ -17,30 +17,14 @@ limitations under the License.
 package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.common.Constant;
-import com.jd.jdbc.sqlparser.utils.StringUtils;
-import com.jd.jdbc.tindexes.ActualTable;
-import com.jd.jdbc.tindexes.Column;
-import com.jd.jdbc.tindexes.LogicTable;
-import com.jd.jdbc.tindexes.TableIndex;
-import com.jd.jdbc.tindexes.config.LoginTableConfig;
-import com.jd.jdbc.tindexes.config.SchemeConfig;
-import com.jd.jdbc.tindexes.config.SplitTableConfig;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
-import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
-import java.util.ServiceLoader;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class VitessJdbcProperyUtil {
-    private static final String ACTUAL_TABLE_EXPR_REGEX = "\\$\\{\\d+\\.\\.\\d+}";
 
     private VitessJdbcProperyUtil() {
     }
@@ -124,103 +108,5 @@ public class VitessJdbcProperyUtil {
 
     public static String getRole(Properties props) {
         return props.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
-    }
-
-    public static Map<String, Map<String, LogicTable>> buildTableIndexesMap(final SplitTableConfig splitTableConfig) throws InstantiationException, IllegalAccessException {
-        Map<String, Map<String, LogicTable>> map = new ConcurrentHashMap<>(16);
-        List<SchemeConfig> schemas = splitTableConfig.getSchemas();
-        if (schemas == null || schemas.isEmpty()) {
-            return null;
-        }
-        for (SchemeConfig schema : schemas) {
-            if (StringUtils.isEmpty(schema.getSchema()) || schema.getLogicTables() == null || schema.getLogicTables().isEmpty()) {
-                return null;
-            }
-            Map<String, LogicTable> logicTableMap = new ConcurrentHashMap<>(16);
-            for (LoginTableConfig loginTableConfig : schema.getLogicTables()) {
-                LogicTable logicTable = buildLogicTable(loginTableConfig);
-                if (logicTable != null) {
-                    logicTableMap.put(logicTable.getLogicTable().toLowerCase(), logicTable);
-                }
-            }
-            map.put(schema.getSchema().toLowerCase(), logicTableMap);
-        }
-        return map;
-    }
-
-    private static LogicTable buildLogicTable(final LoginTableConfig loginTableConfig) throws InstantiationException, IllegalAccessException {
-        if (StringUtils.isEmpty(loginTableConfig.getLogicTable()) || StringUtils.isEmpty(loginTableConfig.getActualTableExprs())
-            || StringUtils.isEmpty(loginTableConfig.getShardingColumnType()) || StringUtils.isEmpty(loginTableConfig.getShardingAlgorithms())
-            || StringUtils.isEmpty(loginTableConfig.getShardingColumnName())) {
-            return null;
-        }
-
-        int index = loginTableConfig.getActualTableExprs().indexOf("$");
-        if (index == -1) {
-            return null;
-        }
-        String actualTableExpr = loginTableConfig.getActualTableExprs();
-        String logicNamePrefix = actualTableExpr.substring(0, index);
-        String postfix = actualTableExpr.substring(index);
-        if (!postfix.matches(ACTUAL_TABLE_EXPR_REGEX)) {
-            return null;
-        }
-        int begin = -1;
-        int end = -1;
-        boolean flag = false;
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < postfix.length(); i++) {
-            char each = postfix.charAt(i);
-            switch (each) {
-                case '.':
-                    if (!flag) {
-                        begin = Integer.parseInt(builder.toString());
-                        builder = new StringBuilder();
-                        flag = true;
-                    }
-                    continue;
-                case '$':
-                case '{':
-                case '}':
-                    continue;
-                default:
-                    builder.append(each);
-                    break;
-            }
-        }
-        end = Integer.parseInt(builder.toString());
-        if (begin == -1 || end == -1) {
-            return null;
-        }
-        List<ActualTable> actualTableList = new ArrayList<>(end - begin);
-
-        LogicTable logicTable = new LogicTable();
-        logicTable.setLogicTable(loginTableConfig.getLogicTable().toLowerCase());
-        for (int i = begin; i <= end; i++) {
-            ActualTable actualTable = new ActualTable();
-            actualTable.setActualTableName((logicNamePrefix + i).toLowerCase());
-            actualTable.setLogicTable(logicTable);
-            actualTableList.add(actualTable);
-        }
-        logicTable.setActualTableList(actualTableList);
-        Query.Type type = Query.Type.valueOf(loginTableConfig.getShardingColumnType());
-        Column column = new Column(loginTableConfig.getShardingColumnName().toLowerCase(), type, logicTable);
-        logicTable.setTindexCol(column);
-        ServiceLoader<TableIndex> serviceLoader = ServiceLoader.load(TableIndex.class);
-        Iterator<TableIndex> iterator = serviceLoader.iterator();
-        TableIndex tableIndex = null;
-        while (iterator.hasNext()) {
-            TableIndex next = iterator.next();
-            if (Objects.equals(next.getClass().getSimpleName(), loginTableConfig.getShardingAlgorithms())) {
-                tableIndex = next.getClass().newInstance();
-                break;
-            }
-        }
-        if (tableIndex == null) {
-            return null;
-        } else {
-            logicTable.setTableIndex(tableIndex);
-        }
-        return logicTable;
     }
 }
