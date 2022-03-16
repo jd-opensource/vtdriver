@@ -36,8 +36,6 @@ import com.jd.jdbc.srvtopo.ScatterConn;
 import com.jd.jdbc.srvtopo.SrvTopo;
 import com.jd.jdbc.srvtopo.TabletGateway;
 import com.jd.jdbc.srvtopo.TxConn;
-import com.jd.jdbc.tindexes.LogicTable;
-import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
@@ -54,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
@@ -76,11 +73,6 @@ public class VitessDriver implements java.sql.Driver {
         } catch (SQLException e) {
             throw new RuntimeException("Can't register driver!");
         }
-    }
-
-    static {
-        Map<String, Map<String, LogicTable>> tableIndexesMap = SplitTableUtil.getTableIndexesMap(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH);
-        VitessDataSource.setTableIndexesMap(tableIndexesMap);
     }
 
     private final ReentrantLock lock = new ReentrantLock();

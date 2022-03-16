@@ -18,9 +18,9 @@ package com.jd.jdbc.table;
 
 import com.jd.jdbc.Executor;
 import com.jd.jdbc.tindexes.LogicTable;
+import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.tindexes.config.SplitTableConfig;
 import com.jd.jdbc.vitess.VitessDataSource;
-import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -35,7 +35,7 @@ public class TableTestUtil {
 
         SplitTableConfig splitTableConfig = yaml.load(inputStream);
 
-        Map<String, Map<String, LogicTable>> tableIndexesMap = VitessJdbcProperyUtil.buildTableIndexesMap(splitTableConfig);
+        Map<String, Map<String, LogicTable>> tableIndexesMap = SplitTableUtil.buildTableIndexesMap(splitTableConfig);
 
         Field field = VitessDataSource.class.getDeclaredField("tableIndexesMap");
         field.setAccessible(true);

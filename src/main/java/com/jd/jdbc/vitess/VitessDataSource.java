@@ -21,6 +21,7 @@ package com.jd.jdbc.vitess;
 import com.jd.jdbc.monitor.ConnectionCollector;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.tindexes.LogicTable;
+import com.jd.jdbc.tindexes.SplitTableUtil;
 import io.prometheus.client.Histogram;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -34,7 +35,9 @@ public class VitessDataSource extends VitessWrapper implements javax.sql.DataSou
 
     private static final Histogram HISTOGRAM = ConnectionCollector.getConnectionHistogram();
 
-    private static Map<String, Map<String, LogicTable>> tableIndexesMap;
+    private static volatile Map<String, Map<String, LogicTable>> tableIndexesMap;
+
+    private static volatile boolean tableIndexesMapLoaded = false;
 
     protected final VitessDriver driver = new VitessDriver();
 
@@ -64,10 +67,15 @@ public class VitessDataSource extends VitessWrapper implements javax.sql.DataSou
     }
 
     public static LogicTable getLogicTable(final String keyspace, final String logicTable) {
-        if (tableIndexesMap == null || tableIndexesMap.isEmpty()) {
-            return null;
+        if (tableIndexesMap == null && !tableIndexesMapLoaded) {
+            synchronized (VitessDataSource.class) {
+                if (tableIndexesMap == null) {
+                    VitessDataSource.tableIndexesMap = SplitTableUtil.getTableIndexesMap();
+                    tableIndexesMapLoaded = true;
+                }
+            }
         }
-        if (StringUtils.isEmpty(keyspace) || StringUtils.isEmpty(logicTable)) {
+        if (tableIndexesMap == null || tableIndexesMap.isEmpty() || StringUtils.isEmpty(keyspace) || StringUtils.isEmpty(logicTable)) {
             return null;
         }
         String lowerCaseKeyspace = keyspace.toLowerCase();
@@ -76,10 +84,6 @@ public class VitessDataSource extends VitessWrapper implements javax.sql.DataSou
             return tableIndexesMap.get(lowerCaseKeyspace).get(lowerCaseLogicTable);
         }
         return null;
-    }
-
-    protected static void setTableIndexesMap(final Map<String, Map<String, LogicTable>> tableIndexesMap) {
-        VitessDataSource.tableIndexesMap = tableIndexesMap;
     }
 
     @Override
