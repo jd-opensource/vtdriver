@@ -1,6 +1,6 @@
 name: maven_build_test
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   maven-test-job:
@@ -136,3 +136,7 @@ jobs:
       - name: Test charEncoding
         run: mvn clean test -Dtest=\
           com.jd.jdbc.engine.CharEncodingTest
+      - name: install vtdriver
+        run: mvn clean install -Dmaven.test.skip=true
+      - name: Test starter
+        run: mvn -f ./vtdriver-spring-boot-starter/pom.xml clean test
