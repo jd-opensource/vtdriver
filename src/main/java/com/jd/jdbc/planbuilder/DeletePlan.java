@@ -58,13 +58,13 @@ public class DeletePlan implements Builder {
         }
 
         PrimitiveBuilder pb = new PrimitiveBuilder(vm, defaultKeyspace, Jointab.newJointab(SqlParser.getBindVars(stmt)));
-        RoutePlan rb = pb.processDmlTable(from);
+        AbstractRoutePlan rb = pb.processDmlTable(from);
 
         if (rb instanceof TableRoutePlan) {
             return buildTableDeletePlan(stmt, vm, defaultKeyspace, pb, (TableRoutePlan) rb);
         }
 
-        return buildUpdatePlan(stmt, vm, defaultKeyspace, pb, rb);
+        return buildDeletePlan(stmt, vm, defaultKeyspace, pb, (RoutePlan) rb);
     }
 
     private static TableDeleteEngine buildTableDeletePlan(SQLDeleteStatement stmt, VSchemaManager vm, String defaultKeyspace, PrimitiveBuilder pb, TableRoutePlan rb) throws SQLException {
@@ -86,7 +86,7 @@ public class DeletePlan implements Builder {
         return tableDeleteEngine;
     }
 
-    private static DeleteEngine buildUpdatePlan(SQLDeleteStatement stmt, VSchemaManager vm, String defaultKeyspace, PrimitiveBuilder pb, RoutePlan rb) throws SQLException {
+    private static DeleteEngine buildDeletePlan(SQLDeleteStatement stmt, VSchemaManager vm, String defaultKeyspace, PrimitiveBuilder pb, RoutePlan rb) throws SQLException {
         DMLPlan.DMLPlanResult dmlPlanResult = DMLPlan.buildDMLPlan(pb, rb, vm.getKeyspace(defaultKeyspace), DMLPlan.DMLType.DELETE, stmt,
             stmt.getWhere(), stmt.getChildren(), defaultKeyspace);
         DeleteEngine edel;

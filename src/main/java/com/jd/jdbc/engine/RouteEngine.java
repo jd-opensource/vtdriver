@@ -29,9 +29,7 @@ import com.jd.jdbc.queryservice.StreamIterator;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectQuery;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqltypes.SqlTypes;
-import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
-import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.BoundQuery;
@@ -46,7 +44,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,24 +51,18 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 
 /**
  * Route represents the instructions to route a read query to
  * one or many vttablets.
  */
 @Data
-public class RouteEngine implements PrimitiveEngine {
+public class RouteEngine extends AbstractRouteEngine {
     /**
      * RouteOpcode is a number representing the opcode
      * for the Route primitve
      */
     private Engine.RouteOpcode routeOpcode;
-
-    /**
-     * Keyspace specifies the keyspace to send the query to.
-     */
-    private VKeyspace keyspace;
 
     /**
      * TargetDestination specifies an explicit target destination to send the query to.
@@ -90,16 +81,6 @@ public class RouteEngine implements PrimitiveEngine {
      */
     private String query = "";
 
-    private SQLSelectQuery selectQuery;
-
-    /**
-     * TableName specifies the table to send the query to.
-     */
-    private String tableName = "";
-
-    /**
-     * FieldQuery specifies the query to be executed for a GetFieldInfo request.
-     */
     private String fieldQuery = "";
 
     private SQLSelectQuery selectFieldQuery;
@@ -108,25 +89,6 @@ public class RouteEngine implements PrimitiveEngine {
      * Vindex specifies the vindex to be used.
      */
     private SingleColumn vindex;
-
-    /**
-     * Values specifies the vindex values to use for routing.
-     */
-    private List<VtPlanValue> vtPlanValueList = new ArrayList<>();
-
-    /**
-     * OrderBy specifies the key order for merge sorting. This will be
-     * set only for scatter queries that need the results to be
-     * merge-sorted.
-     */
-    private List<OrderByParams> orderBy = new ArrayList<>();
-
-    /**
-     * TruncateColumnCount specifies the number of columns to return
-     * in the final result. Rest of the columns are truncated
-     * from the result received. If 0, no truncation happens.
-     */
-    private Integer truncateColumnCount = 0;
 
     /**
      * ueryTimeout contains the optional timeout (in milliseconds) to apply to this query
@@ -158,16 +120,6 @@ public class RouteEngine implements PrimitiveEngine {
         this.keyspace = keyspace;
         this.isQueryPinnedTable = isQueryPinnedTable;
         this.pinned = pinned;
-    }
-
-    @Override
-    public String getKeyspaceName() {
-        return this.keyspace.getName();
-    }
-
-    @Override
-    public String getTableName() {
-        return this.tableName;
     }
 
     @Override
@@ -483,51 +435,10 @@ public class RouteEngine implements PrimitiveEngine {
 
         VtResultComparator comparator = new VtResultComparator(this.orderBy);
         out.getRows().sort(comparator);
-        if (comparator.exception != null) {
-            throw comparator.exception;
+        if (comparator.getException() != null) {
+            throw comparator.getException();
         }
         return out;
-    }
-
-    static class VtResultComparator implements Comparator<List<VtResultValue>> {
-        private final List<OrderByParams> orderBy;
-
-        @Getter
-        private SQLException exception;
-
-        public VtResultComparator(List<OrderByParams> orderBy) {
-            this.orderBy = orderBy;
-            this.exception = null;
-        }
-
-        @Override
-        public int compare(List<VtResultValue> o1, List<VtResultValue> o2) {
-            // If there are any errors below, the function sets
-            // the external err and returns true. Once err is set,
-            // all subsequent calls return true. This will make
-            // Slice think that all elements are in the correct
-            // order and return more quickly.
-            for (OrderByParams order : this.orderBy) {
-                if (exception != null) {
-                    return -1;
-                }
-                Integer cmp;
-                try {
-                    cmp = EvalEngine.nullSafeCompare(o1.get(order.col), o2.get(order.col));
-                } catch (SQLException e) {
-                    this.exception = e;
-                    return -1;
-                }
-                if (cmp == 0) {
-                    continue;
-                }
-                if (order.desc) {
-                    cmp = -cmp;
-                }
-                return cmp;
-            }
-            return 0;
-        }
     }
 
     @Data
