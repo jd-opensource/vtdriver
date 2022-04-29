@@ -69,13 +69,7 @@ public class TransactionTest extends TestSuite {
 
     @After
     public void after() throws Exception {
-        if (this.connectionList != null) {
-            for (Connection conn : this.connectionList) {
-                if (conn != null) {
-                    conn.close();
-                }
-            }
-        }
+        closeConnection(connectionList);
         TableTestUtil.setDefaultTableConfig();
     }
 
@@ -112,7 +106,7 @@ public class TransactionTest extends TestSuite {
     }
 
     @Test
-    public void testErrorInTransaction() throws Exception {
+    public void testErrorInTransaction() throws SQLException {
         TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         List<List<String>> testCase = new ArrayList<List<String>>() {{
             add(new ArrayList<String>() {{

@@ -63,9 +63,9 @@ public abstract class TestSuite extends TestSuitePrinter {
         }
     }
 
-    public static void closeConnection(List<Connection> conns) {
-        for (Connection conn : conns) {
-            closeConnection(conn);
+    public static void closeConnection(List<Connection> connectionList) {
+        for (Connection connection : connectionList) {
+            closeConnection(connection);
         }
     }
 
