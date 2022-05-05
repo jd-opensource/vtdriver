@@ -280,6 +280,7 @@ public class TabletHealthCheck {
     }
 
     public void handleStreamHealthError(Throwable t) {
+        this.serving.set(false);
         log.error("tablet " + TopoProto.tabletToHumanString(tablet) + " handleStreamHealthError error msg : " + t.getMessage());
         if (t.getMessage().toLowerCase().contains("health stats mismatch")) {
             //removeTablet 方法会调用 cancelHealthCheckCtx
@@ -315,6 +316,7 @@ public class TabletHealthCheck {
 
     //release the underlying connection resources.
     public void shutdown() {
+        this.serving.set(false);
         this.lock.lock();
         try {
             if (this.queryService != null) {
