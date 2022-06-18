@@ -533,7 +533,6 @@ public class VitessStatement extends AbstractVitessStatement {
         } catch (SQLException e) {
             cleanResultSets();
             this.lastInsertId = 0;
-            logger.error(e.getMessage(), e);
             throw e;
         } finally {
             clearBatchInternal();

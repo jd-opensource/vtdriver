@@ -98,7 +98,7 @@ public class NativeQueryService implements IQueryService {
             return Query.CommitResponse.newBuilder().build();
         } catch (SQLException e) {
             this.errorCount();
-            throw SQLExceptionTranslator.translate(getReason(e), e);
+            throw SQLExceptionTranslator.translate(buildCommitExceptionReason(e), e);
         } finally {
             this.endSummary();
         }
@@ -112,7 +112,7 @@ public class NativeQueryService implements IQueryService {
             return Query.RollbackResponse.newBuilder().build();
         } catch (SQLException e) {
             this.errorCount();
-            throw SQLExceptionTranslator.translate(getReason(e), e);
+            throw SQLExceptionTranslator.translate(buildRollbackExceptionReason(e), e);
         } finally {
             this.endSummary();
         }
@@ -139,7 +139,7 @@ public class NativeQueryService implements IQueryService {
             } catch (SQLException e) {
                 this.errorCount();
                 context.cancel(e.getMessage());
-                throw SQLExceptionTranslator.translate(getReason(e), e);
+                throw SQLExceptionTranslator.translate(buildExceptionReason(e), e);
             } finally {
                 this.endSummary();
             }
@@ -153,7 +153,7 @@ public class NativeQueryService implements IQueryService {
             } catch (SQLException e) {
                 this.errorCount();
                 context.cancel(e.getMessage());
-                throw SQLExceptionTranslator.translate(getReason(e), e);
+                throw SQLExceptionTranslator.translate(buildTransactionExceptionReason(e), e);
             } finally {
                 if (conn != null) {
                     conn.unlock(false);
@@ -177,13 +177,13 @@ public class NativeQueryService implements IQueryService {
         }
 
         InnerConnection connection = statefulConnectionPool.getNoStatefulConn();
-        ResultSet resultSet = null;
+        ResultSet resultSet;
         try {
             resultSet = connection.streamExecute(sql);
         } catch (SQLException e) {
             connection.close();
             context.cancel(e.getMessage());
-            throw SQLExceptionTranslator.translate(getReason(e), e);
+            throw SQLExceptionTranslator.translate(buildExceptionReason(e), e);
         }
         return new StreamIterator(connection, resultSet);
     }
@@ -229,7 +229,7 @@ public class NativeQueryService implements IQueryService {
             } catch (SQLException e) {
                 this.errorCount();
                 context.cancel(e.getMessage());
-                throw SQLExceptionTranslator.translate(getReason(e), e);
+                throw SQLExceptionTranslator.translate(buildExceptionReason(e), e);
             } finally {
                 this.endSummary();
             }
@@ -250,7 +250,7 @@ public class NativeQueryService implements IQueryService {
             } catch (SQLException e) {
                 this.errorCount();
                 context.cancel(e.getMessage());
-                throw SQLExceptionTranslator.translate(getReason(e), e);
+                throw SQLExceptionTranslator.translate(buildTransactionExceptionReason(e), e);
             } finally {
                 if (conn != null) {
                     conn.unlock(false);
@@ -282,13 +282,12 @@ public class NativeQueryService implements IQueryService {
         StatefulConnection conn = null;
         try {
             conn = statefulConnectionPool.newConn(options.getWorkloadValue() != Query.ExecuteOptions.Workload.DBA_VALUE);
-            List<VtResultSet> allVtResultSets = new ArrayList<>();
             List<String> sqlList = getMultiSql(ctx, queries);
             conn.setAutoCommitFalse();
             ExecuteResult result = conn.execute(BEGIN + sqlList.get(0));
             boolean isQuery = result.getStatement().getMoreResults();
             List<VtResultSet> vtResultSets = toVtResultSets(isQuery, result.getStatement());
-            allVtResultSets.addAll(vtResultSets);
+            List<VtResultSet> allVtResultSets = new ArrayList<>(vtResultSets);
 
             for (int i = 1; i < sqlList.size(); i++) {
                 ExecuteResult curResult = conn.execute(sqlList.get(i));
@@ -297,12 +296,11 @@ public class NativeQueryService implements IQueryService {
                 allVtResultSets.addAll(curVtResultSets);
             }
             return new BeginBatchVtResultSet(this.tablet.getAlias(), conn.getConnID(), allVtResultSets);
-
         } catch (SQLException e) {
             this.errorCount();
             rollbackAndRelease(conn);
             ctx.cancel(e.getMessage());
-            throw SQLExceptionTranslator.translate(getReason(e), e);
+            throw SQLExceptionTranslator.translate(buildTransactionExceptionReason(e), e);
         } finally {
             if (conn != null) {
                 conn.unlock(false);
@@ -347,7 +345,7 @@ public class NativeQueryService implements IQueryService {
         } catch (SQLException e) {
             context.cancel(e.getMessage());
             rollbackAndRelease(conn);
-            throw SQLExceptionTranslator.translate(getReason(e), e);
+            throw SQLExceptionTranslator.translate(buildTransactionExceptionReason(e), e);
         } finally {
             if (conn != null) {
                 conn.unlock(false);
@@ -364,7 +362,6 @@ public class NativeQueryService implements IQueryService {
         } catch (SQLException e) {
             logger.warn(e.getMessage(), e);
         }
-
         return Query.ReleaseResponse.newBuilder().build();
     }
 
@@ -410,8 +407,20 @@ public class NativeQueryService implements IQueryService {
         }
     }
 
-    private String getReason(final Exception e) {
-        return e.getMessage() + ";  tablet :" + TopoProto.tabletToHumanString(tablet);
+    private String buildExceptionReason(final Exception e) {
+        return e.getMessage() + " tablet :" + TopoProto.tabletToHumanString(tablet);
+    }
+
+    private String buildTransactionExceptionReason(final Exception e) {
+        return e.getMessage() + " current SQL in transaction; tablet :" + TopoProto.tabletToHumanString(tablet);
+    }
+
+    private String buildCommitExceptionReason(final Exception e) {
+        return e.getMessage() + " current SQL is commit; tablet :" + TopoProto.tabletToHumanString(tablet);
+    }
+
+    private String buildRollbackExceptionReason(final Exception e) {
+        return e.getMessage() + " current SQL is rollback; tablet :" + TopoProto.tabletToHumanString(tablet);
     }
 
     private void startSummary() {
