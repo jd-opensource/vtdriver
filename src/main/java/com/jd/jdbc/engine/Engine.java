@@ -338,6 +338,54 @@ public class Engine {
     }
 
     /**
+     * This is the list of TableRouteOpcode values.
+     */
+    public enum TableRouteOpcode {
+        /**
+         * SelectEqualUnique is for routing a query to
+         * a single table. Requires: A Unique Tindex, and
+         * a single Value.
+         */
+        SelectEqualUnique(0),
+        /**
+         * SelectEqual is for routing a query using a
+         * non-unique Tindex. Requires: A Tindex, and
+         * a single Value.
+         */
+        SelectEqual(1),
+        /**
+         * SelectIN is for routing a query that has an IN
+         * clause using a Tindex. Requires: A Tindex,
+         * and a Values list.
+         */
+        SelectIN(2),
+        /**
+         * SelectScatter is for routing a scatter query
+         * to all tables of a keyspace.
+         */
+        SelectScatter(3),
+        /**
+         * SelectNext is for fetching from a sequence.
+         */
+        SelectNext(4),
+        /**
+         * SelectNone is used for queries that always return empty values
+         */
+        SelectNone(5),
+        /**
+         * NumRouteOpcodes is the number of opcodes
+         */
+        NumRouteOpcodes(6);
+
+        @Getter
+        private final Integer value;
+
+        TableRouteOpcode(Integer value) {
+            this.value = value;
+        }
+    }
+
+    /**
      * These constants list the possible aggregate opcodes.
      */
     public enum AggregateOpcode {

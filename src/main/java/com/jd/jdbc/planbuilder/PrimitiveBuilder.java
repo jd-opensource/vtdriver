@@ -201,7 +201,7 @@ public class PrimitiveBuilder {
             List<PulloutSubqueryPlan> pullouts = findOriginResponse.getPulloutSubqueryPlanList();
             Builder origin = findOriginResponse.getBuilder();
             SQLExpr expr = findOriginResponse.getPushExpr();
-            if ((origin instanceof RoutePlan) && !(origin instanceof TableRoutePlan)) {
+            if (origin instanceof RoutePlan) {
                 RouteEngine routeEngine = ((RoutePlan) origin).getRouteEngine();
                 if (SelectDBA.equals(routeEngine.getRouteOpcode())) {
                     VtRewriteTableSchemaVisitor visitor = new VtRewriteTableSchemaVisitor();
@@ -274,7 +274,7 @@ public class PrimitiveBuilder {
                     continue;
                 }
                 // We'll allow select * for simple routes.
-                if (!(this.builder instanceof RoutePlan)) {
+                if (!(this.builder instanceof AbstractRoutePlan)) {
                     throw new SQLException("unsupported: '*' expression in cross-shard query");
                 }
                 // Validate keyspace reference if any.
@@ -289,7 +289,7 @@ public class PrimitiveBuilder {
                         this.symtab.findTable(tableName.toLowerCase());
                     }
                 }
-                resultColumnList.add(((RoutePlan) this.builder).pushAnonymous(selectItem));
+                resultColumnList.add(((AbstractRoutePlan) this.builder).pushAnonymous(selectItem));
             } else if (Nextval.equals(selectExpr)) {
 
             } else {
@@ -537,12 +537,12 @@ public class PrimitiveBuilder {
      * @return
      * @throws SQLException
      */
-    public RoutePlan processDmlTable(SQLTableSource tableSource) throws SQLException {
+    public AbstractRoutePlan processDmlTable(SQLTableSource tableSource) throws SQLException {
         this.processTableSource(tableSource);
-        if (!(this.builder instanceof RoutePlan)) {
+        if (!(this.builder instanceof AbstractRoutePlan)) {
             throw new SQLFeatureNotSupportedException("unsupported: multi-shard or vindex write statement");
         }
-        return (RoutePlan) this.builder;
+        return (AbstractRoutePlan) this.builder;
     }
 
     /**
@@ -610,7 +610,7 @@ public class PrimitiveBuilder {
             throw new SQLException("BUG: unexpected SELECT type: " + SQLUtils.toMySqlString(tableSource.getParent(), SQLUtils.NOT_FORMAT_OPTION).trim());
         }
 
-        if (!(spb.builder instanceof RoutePlan) || (spb.builder instanceof TableRoutePlan)) {
+        if (!(spb.builder instanceof RoutePlan)) {
             NewSubqueryPlanResponse newSubqueryPlanResponse = PlanBuilder.newSubqueryPlan(tableSource.getAlias(), spb.builder);
             this.builder = newSubqueryPlanResponse.getSubqueryPlan();
             this.symtab = newSubqueryPlanResponse.getSymtab();
@@ -858,7 +858,7 @@ public class PrimitiveBuilder {
             Symtab symtab = new Symtab(tableRouteBuilder);
             this.symtab = symtab;
             symtab.addTSchemaTable(tableExpr, ltb, tableRouteBuilder);
-            TableRouteEngine tableRouteEngine = new TableRouteEngine(Engine.RouteOpcode.SelectScatter, keyspace);
+            TableRouteEngine tableRouteEngine = new TableRouteEngine(Engine.TableRouteOpcode.SelectScatter, keyspace);
             tableRouteEngine.setTableName(tableName);
             tableRouteBuilder.setTableRouteEngine(tableRouteEngine);
             return;
@@ -987,7 +987,7 @@ public class PrimitiveBuilder {
         // if the underlying primitive is a route because
         // we need the ability to push down group by and
         // order by clauses.
-        if (!(route instanceof RoutePlan)) {
+        if (!(route instanceof AbstractRoutePlan)) {
             throw new SQLException("unsupported: cross-shard query with aggregates");
         }
 
@@ -1028,7 +1028,7 @@ public class PrimitiveBuilder {
         // the grouping can be done at the shard level, which allows the entire query
         // to be pushed down. In order to perform this analysis, we're going to look
         // ahead at the group by clause to see if it references a unique vindex.
-        if (this.groupByHasUniqueVindex(sel, (RoutePlan) route)) {
+        if (this.groupByHasUniqueVindex(sel, (AbstractRoutePlan) route)) {
             return;
         }
 
@@ -1064,7 +1064,7 @@ public class PrimitiveBuilder {
      * @param routeBuilder
      * @return
      */
-    private Boolean groupByHasUniqueVindex(MySqlSelectQueryBlock sel, RoutePlan routeBuilder) throws SQLException {
+    private Boolean groupByHasUniqueVindex(MySqlSelectQueryBlock sel, AbstractRoutePlan routeBuilder) throws SQLException {
 
         SQLSelectGroupByClause groupByClause = sel.getGroupBy();
         if (groupByClause == null) {
@@ -1102,7 +1102,7 @@ public class PrimitiveBuilder {
                     return true;
                 }
             } else {
-                BinaryHash vindex = this.symtab.getColumnVindex(matchedExpr, routeBuilder);
+                BinaryHash vindex = this.symtab.getColumnVindex(matchedExpr, (RoutePlan) routeBuilder);
                 if (vindex != null && vindex.isUnique()) {
                     return true;
                 }

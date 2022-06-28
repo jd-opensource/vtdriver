@@ -62,7 +62,7 @@ public class Symtab {
 
     private Map<String, Column> uniqueColumns;
 
-    private RoutePlan singleRoute;
+    private AbstractRoutePlan singleRoute;
 
     private List<ResultColumn> resultColumns;
 
@@ -85,7 +85,7 @@ public class Symtab {
         this.externs = new ArrayList<>();
     }
 
-    public Symtab(RoutePlan routeBuilder) {
+    public Symtab(AbstractRoutePlan routeBuilder) {
         this.tables = new HashMap<>();
         this.tableNames = new ArrayList<>();
         this.uniqueColumns = new HashMap<>();

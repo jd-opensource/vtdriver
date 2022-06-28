@@ -67,12 +67,12 @@ public class UpdatePlan implements Builder {
 
     public static PrimitiveEngine newBuildUpdatePlan(SQLUpdateStatement stmt, VSchemaManager vm, String defaultKeyspace) throws SQLException {
         PrimitiveBuilder pb = new PrimitiveBuilder(vm, defaultKeyspace, Jointab.newJointab(SqlParser.getBindVars(stmt)));
-        RoutePlan rb = pb.processDmlTable(stmt.getTableSource());
+        AbstractRoutePlan rb = pb.processDmlTable(stmt.getTableSource());
 
         if (rb instanceof TableRoutePlan) {
             return buildTableUpdatePlan(stmt, vm, defaultKeyspace, pb, (TableRoutePlan) rb);
         }
-        return buildUpdatePlan(stmt, vm, defaultKeyspace, pb, rb);
+        return buildUpdatePlan(stmt, vm, defaultKeyspace, pb, (RoutePlan) rb);
     }
 
     private static TableUpdateEngine buildTableUpdatePlan(SQLUpdateStatement stmt, VSchemaManager vm, String defaultKeyspace, PrimitiveBuilder pb, TableRoutePlan rb) throws SQLException {
