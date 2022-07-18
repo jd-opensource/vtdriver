@@ -24,6 +24,7 @@ import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.OrderByParams;
 import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.engine.table.TableRouteEngine;
+import com.jd.jdbc.planbuilder.AbstractRoutePlan;
 import com.jd.jdbc.planbuilder.Builder;
 import com.jd.jdbc.planbuilder.Column;
 import com.jd.jdbc.planbuilder.Jointab;
@@ -33,7 +34,6 @@ import com.jd.jdbc.planbuilder.PrimitiveBuilder;
 import com.jd.jdbc.planbuilder.RoutePlan;
 import com.jd.jdbc.planbuilder.Symtab;
 import com.jd.jdbc.sqlparser.SQLUtils;
-import com.jd.jdbc.sqlparser.SqlParser;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLName;
 import com.jd.jdbc.sqlparser.ast.SQLOrderBy;
@@ -46,7 +46,6 @@ import com.jd.jdbc.sqlparser.ast.expr.SQLMethodInvokeExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLNullExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefListExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelect;
-import com.jd.jdbc.sqlparser.ast.statement.SQLSelectGroupByClause;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectOrderByItem;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectQuery;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectStatement;
@@ -71,12 +70,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TableRoutePlan extends RoutePlan implements Builder {
-
-    // Redirect may point to another route if this route
-    // was merged with it. The Resolve function chases
-    // this pointer till the last un-redirected route.
-    private TableRoutePlan redirect;
+public class TableRoutePlan extends AbstractRoutePlan {
 
     private TableRouteEngine tableRouteEngine;
 
@@ -84,38 +78,7 @@ public class TableRoutePlan extends RoutePlan implements Builder {
 
     public TableRoutePlan(final SQLSelectQuery stmt, final VSchemaManager vm) {
         super(stmt);
-        this.setSelect(stmt);
         this.vm = vm;
-        this.setOrder(1);
-    }
-
-    /**
-     * satisfies the builder interface.
-     * The primitive will be updated if the new filter improves the plan.
-     *
-     * @param pb
-     * @param filter
-     * @param whereType
-     * @param origin
-     */
-    @Override
-    public void pushFilter(final PrimitiveBuilder pb, final SQLExpr filter, final String whereType, final Builder origin) throws SQLException {
-        switch (whereType) {
-            case SqlParser.WHERE_STR:
-                ((MySqlSelectQueryBlock) this.getSelect()).addWhere(filter);
-                break;
-            case SqlParser.HAVING_STR:
-                SQLSelectGroupByClause groupBy = ((MySqlSelectQueryBlock) this.getSelect()).getGroupBy();
-                if (groupBy == null) {
-                    groupBy = new SQLSelectGroupByClause();
-                }
-                groupBy.addHaving(filter);
-                ((MySqlSelectQueryBlock) this.getSelect()).setGroupBy(groupBy);
-                break;
-            default:
-                break;
-        }
-        this.updatePlan(pb, filter);
     }
 
     @Override
@@ -168,7 +131,6 @@ public class TableRoutePlan extends RoutePlan implements Builder {
         }
 
         this.tableRouteEngine.setSelectQuery(this.getSelect());
-
     }
 
     @Override
@@ -192,7 +154,6 @@ public class TableRoutePlan extends RoutePlan implements Builder {
         return this.tableRouteEngine;
     }
 
-    @Override
     public Boolean isSingleShard() {
         switch (this.tableRouteEngine.getRouteOpcode()) {
             case SelectEqual:
@@ -292,7 +253,7 @@ public class TableRoutePlan extends RoutePlan implements Builder {
                 return this.computeINPlan(pb, inListExpr);
             }
         }
-        return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+        return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
     }
 
     /**
@@ -308,7 +269,7 @@ public class TableRoutePlan extends RoutePlan implements Builder {
         SQLExpr right = binaryOpExpr.getRight();
 
         if (right instanceof SQLNullExpr) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectNone, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectNone, null, null);
         }
 
         TableIndex vindex = this.findTIndex(pb, left);
@@ -318,13 +279,13 @@ public class TableRoutePlan extends RoutePlan implements Builder {
             right = temp;
             vindex = this.findTIndex(pb, left);
             if (vindex == null) {
-                return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+                return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
             }
         }
         if (!this.exprIsValue(right)) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
         }
-        return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectEqual, vindex, right);
+        return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectEqual, vindex, right);
     }
 
     /**
@@ -338,16 +299,16 @@ public class TableRoutePlan extends RoutePlan implements Builder {
     private ComputeTablePlanResponse computeIsPlan(final PrimitiveBuilder pb, final SQLBinaryOpExpr binaryOpExpr) throws SQLException {
         // we only handle IS NULL correct. IsExpr can contain other expressions as well
         if (binaryOpExpr.getOperator() == SQLBinaryOperator.IsNot && (binaryOpExpr.getRight() instanceof SQLNullExpr)) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
         }
 
         SQLExpr expr = binaryOpExpr.getLeft();
         TableIndex vindex = this.findTIndex(pb, expr);
         // fallback to scatter gather if there is no vindex
         if (vindex == null) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
         }
-        return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectEqual, vindex, new SQLNullExpr());
+        return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectEqual, vindex, new SQLNullExpr());
     }
 
     /**
@@ -364,20 +325,20 @@ public class TableRoutePlan extends RoutePlan implements Builder {
 
         TableIndex vindex = this.findTIndex(pb, leftExpr);
         if (vindex == null) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
         }
 
         if ((right.size() == 1) && (right.get(0) instanceof SQLNullExpr)) {
-            return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectNone, null, null);
+            return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectNone, null, null);
         }
 
         for (SQLExpr sqlExpr : right) {
             if (!exprIsValue(sqlExpr)) {
-                return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+                return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
             }
         }
 
-        return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectIN, vindex, sqlInListExpr);
+        return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectIN, vindex, sqlInListExpr);
     }
 
     /**
@@ -393,11 +354,11 @@ public class TableRoutePlan extends RoutePlan implements Builder {
 
         for (SQLExpr sqlExpr : right) {
             if (sqlExpr instanceof SQLNullExpr) {
-                return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectNone, null, null);
+                return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectNone, null, null);
             }
         }
 
-        return new ComputeTablePlanResponse(Engine.RouteOpcode.SelectScatter, null, null);
+        return new ComputeTablePlanResponse(Engine.TableRouteOpcode.SelectScatter, null, null);
     }
 
     private TableIndex findTIndex(final PrimitiveBuilder pb, final SQLExpr col) throws SQLException {
@@ -437,30 +398,27 @@ public class TableRoutePlan extends RoutePlan implements Builder {
     public void updatePlan(final PrimitiveBuilder pb, final SQLExpr filter) throws SQLException {
         switch (this.tableRouteEngine.getRouteOpcode()) {
             // For these opcodes, a new filter will not make any difference, so we can just exit early
-            case SelectUnsharded:
             case SelectNext:
-            case SelectDBA:
-            case SelectReference:
             case SelectNone:
                 return;
             default:
                 break;
         }
         ComputeTablePlanResponse computePlanResponse = this.computePlan(pb, filter);
-        Engine.RouteOpcode opcode = computePlanResponse.getOpcode();
-        TableIndex vindex = computePlanResponse.getVindex();
+        Engine.TableRouteOpcode opcode = computePlanResponse.getOpcode();
+        TableIndex vindex = computePlanResponse.getTindex();
         SQLExpr condition = computePlanResponse.getCondition();
-        if (Engine.RouteOpcode.SelectScatter.equals(opcode)) {
+        if (Engine.TableRouteOpcode.SelectScatter.equals(opcode)) {
             return;
         }
         // If we get SelectNone in next filters, override the previous route plan.
-        if (Engine.RouteOpcode.SelectNone.equals(opcode)) {
+        if (Engine.TableRouteOpcode.SelectNone.equals(opcode)) {
             this.updateRoute(opcode, vindex, condition);
             return;
         }
         switch (this.tableRouteEngine.getRouteOpcode()) {
             case SelectEqual:
-                if (opcode == Engine.RouteOpcode.SelectEqualUnique) {
+                if (opcode == Engine.TableRouteOpcode.SelectEqualUnique) {
                     this.updateRoute(opcode, vindex, condition);
                 }
                 break;
@@ -496,7 +454,7 @@ public class TableRoutePlan extends RoutePlan implements Builder {
      * @param vindex
      * @param condition
      */
-    private void updateRoute(final Engine.RouteOpcode opcode, final TableIndex vindex, final SQLExpr condition) {
+    private void updateRoute(final Engine.TableRouteOpcode opcode, final TableIndex vindex, final SQLExpr condition) {
         this.tableRouteEngine.setRouteOpcode(opcode);
         this.tableRouteEngine.setTableIndex(vindex);
         this.setCondition(condition);
@@ -510,9 +468,9 @@ public class TableRoutePlan extends RoutePlan implements Builder {
     @Getter
     @AllArgsConstructor
     private static class ComputeTablePlanResponse {
-        private final Engine.RouteOpcode opcode;
+        private final Engine.TableRouteOpcode opcode;
 
-        private final TableIndex vindex;
+        private final TableIndex tindex;
 
         private final SQLExpr condition;
     }

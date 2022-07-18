@@ -63,13 +63,15 @@ public class InsertPlan {
     public static PrimitiveEngine newBuildInsertPlan(MySqlInsertReplaceStatement stmt, VSchemaManager vm, String defaultKeyspace) throws SQLException {
         PrimitiveBuilder pb = new PrimitiveBuilder(vm, defaultKeyspace, Jointab.newJointab(SqlParser.getBindVars(stmt)));
         SQLExprTableSource tableSource = stmt.getTableSource().clone();
-        RoutePlan rb = pb.processDmlTable(tableSource);
+        AbstractRoutePlan arb = pb.processDmlTable(tableSource);
         if (pb.getSymtab().getTables().size() != 1) {
             throw new SQLException("unsupported: multi-table insert statement in sharded table");
         }
-        if (rb instanceof TableRoutePlan) {
+        if (arb instanceof TableRoutePlan) {
             return buildPartitionTableInsetPlan(stmt, vm, defaultKeyspace);
         }
+
+        RoutePlan rb = (RoutePlan) arb;
 
         // The table might have been routed to a different one.
         stmt.setTableSource(tableSource);
