@@ -33,7 +33,7 @@ public class MergeSortPlan extends ResultsBuilder implements Builder, Truncater 
 
     private Integer truncateColumnCount = 0;
 
-    public MergeSortPlan(RoutePlan builder) {
+    public MergeSortPlan(AbstractRoutePlan builder) {
         super(builder, null);
         this.setTruncater(this);
     }
@@ -74,14 +74,15 @@ public class MergeSortPlan extends ResultsBuilder implements Builder, Truncater 
         // we have to request the corresponding weight_string from mysql
         // and use that value instead. This is because we cannot mimic
         // mysql's collation behavior yet.
-        RoutePlan rb = (RoutePlan) this.getBldr();
+        AbstractRoutePlan rb = (AbstractRoutePlan) this.getBldr();
         List<OrderByParams> innerOrderBy;
         if (rb instanceof TableRoutePlan) {
             innerOrderBy = ((TableRoutePlan) rb).getTableRouteEngine().getOrderBy();
             ((TableRoutePlan) rb).getTableRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
         } else {
-            innerOrderBy = rb.getRouteEngine().getOrderBy();
-            rb.getRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
+            RoutePlan routePlan = (RoutePlan) rb;
+            innerOrderBy = routePlan.getRouteEngine().getOrderBy();
+            routePlan.getRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
         }
 
         for (int i = 0; i < innerOrderBy.size(); i++) {
@@ -102,7 +103,7 @@ public class MergeSortPlan extends ResultsBuilder implements Builder, Truncater 
         if (rb instanceof TableRoutePlan) {
             ((TableRoutePlan) rb).getTableRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
         } else {
-            rb.getRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
+            ((RoutePlan) rb).getRouteEngine().setTruncateColumnCount(this.truncateColumnCount);
         }
 
         this.getBldr().wireup(bldr, jt);

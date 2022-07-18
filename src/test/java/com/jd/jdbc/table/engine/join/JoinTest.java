@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
@@ -30,6 +31,7 @@ import lombok.NoArgsConstructor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
@@ -78,6 +80,42 @@ public class JoinTest extends TestSuite {
                 printOk();
             }
         }
+    }
+
+    @Test
+    @Ignore
+    public void test() throws SQLException {
+        String select0 = "select id, f_key from table_engine_test where id > 1";
+        String select1 = "select id, f_key from table_engine_test where f_key = '1'";
+        String join0 = "select a.id, b.id, a.name from user a join t_users b on a.name = b.id where a.id > 1";
+        String join01 = "select a.id, b.id, a.name from user a join t_users b on a.name = b.id where a.name='a'";
+        String join1 = "select a.id, b.id, a.name from user a join t_users b on a.name = b.name where a.id > 1";
+        String join2 = "select a.id, b.id, a.name from user a join table_engine_test b on a.name = b.f_key where a.name='a'";
+        String join3 = "select a.id, b.id, b.name from table_engine_test a join user b on a.id = b.id where a.f_key='key1'";
+        String sql4 = "select f_key from table_engine_test where f_key='1'";
+
+        Connection conn = getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        Statement stmt = conn.createStatement();
+
+        stmt.executeUpdate("delete from user");
+        stmt.executeUpdate("delete from t_users");
+        stmt.executeUpdate("delete from table_engine_test");
+
+        stmt.executeUpdate("insert into user (id, name) values (1, 'name1')");
+        stmt.executeUpdate("insert into user (id, name) values (1, 'a')");
+        stmt.executeUpdate("insert into t_users (id, name, age) values (99, 'name2', 10)");
+        stmt.executeUpdate("insert into table_engine_test (id, f_key) values (100, 'name1')");
+        stmt.executeUpdate("insert into table_engine_test (id, f_key) values (101, 'a')");
+        stmt.executeUpdate("insert into table_engine_test (id, f_key) values (102, 'b')");
+
+        ResultSet rs = stmt.executeQuery(join2);
+
+        while (rs.next()) {
+            rs.getObject(1);
+        }
+        rs.close();
+        stmt.close();
+        conn.close();
     }
 
     protected void printResultRow(final ResultRow[] rows, final String message) {

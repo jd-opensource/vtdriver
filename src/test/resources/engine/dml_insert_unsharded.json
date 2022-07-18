@@ -79,7 +79,7 @@
   },
   {
     "comment": "# insert unsharded, multi-val",
-    "insertSql": "insert into unsharded_auto(id, val) values(6, 'aa'), (null, 'bb')",
+    "insertSql": "insert into unsharded_auto(id, val) values(7, 'aa'), (null, 'bb')",
     "insertVar": [],
     "updateCount": 2,
     "affectedRows": 2,
