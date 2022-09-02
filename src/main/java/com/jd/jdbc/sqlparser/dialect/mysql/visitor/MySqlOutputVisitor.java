@@ -1118,8 +1118,12 @@ public class MySqlOutputVisitor extends SQLASTOutputVisitor implements MySqlASTV
                     print0(", ");
                 }
 
-                SQLExpr columnn = columns.get(i);
-                printExpr(columnn);
+                SQLExpr column = columns.get(i);
+                if (column instanceof SQLIdentifierExpr) {
+                    print0(((SQLIdentifierExpr) column).getName());
+                } else {
+                    printExpr(column);
+                }
             }
             print(')');
         }
