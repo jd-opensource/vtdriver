@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.common.util.MapUtil;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.monitor.HealthCheckCollector;
@@ -348,7 +349,6 @@ public enum HealthCheck {
         this.addTablet(newTablet);
     }
 
-    //
     public void updateHealth(final TabletHealthCheck th, final Query.Target preTarget,
                              final boolean trivialUpdate, boolean up) {
         String tabletAlias = TopoProto.tabletAliasString(th.getTablet().getAlias());
@@ -388,8 +388,15 @@ public enum HealthCheck {
                         }
                     }
                 } else {
-                    List<TabletHealthCheck> healthCheckList = new ArrayList<>();
-                    this.healthy.put(targetKey, healthCheckList);
+                    List<TabletHealthCheck> tabletHealthChecks = healthy.get(targetKey);
+                    if (CollectionUtils.isNotEmpty(tabletHealthChecks)) {
+                        // isPrimary is true here therefore we should only have 1 tablet in healthy
+                        String aliasString = TopoProto.tabletAliasString(tabletHealthChecks.get(0).getTablet().getAlias());
+                        // Clear healthy list for primary if the existing tablet is down
+                        if (Objects.equals(tabletAlias, aliasString)) {
+                            this.healthy.put(targetKey, new ArrayList<>());
+                        }
+                    }
                 }
             }
             if (!trivialUpdate) {
