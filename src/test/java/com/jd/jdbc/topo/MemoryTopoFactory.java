@@ -27,20 +27,20 @@ import lombok.Synchronized;
 import org.apache.commons.lang3.RandomUtils;
 
 @Getter
-public class MemoryTopoFactory implements TopoFactory{
+public class MemoryTopoFactory implements TopoFactory {
+
+    private static final String GLOBAL_CELL = "global";
 
     private final Map<String, MemoryTopoServer.Node> cells;
 
     private long generation;
-
-    private final static String GLOBAL_CELL = "global";
 
     private MemoryTopoFactory() {
         cells = new ConcurrentHashMap<>();
         generation = RandomUtils.nextLong();
     }
 
-    public static ServerWithFactory newServerAndFactory(String...cells) throws TopoException {
+    public static ServerWithFactory newServerAndFactory(String... cells) throws TopoException {
         MemoryTopoFactory factory = new MemoryTopoFactory();
         factory.getCells().put(GLOBAL_CELL, factory.newDirectory(GLOBAL_CELL, null));
         TopoServer topoServer = Topo.newWithFactory(factory, "", "");
@@ -112,8 +112,6 @@ public class MemoryTopoFactory implements TopoFactory{
         }
         return node;
     }
-
-
 
     @Override
     public Boolean hasGlobalReadOnlyCell(String name, String id) {
