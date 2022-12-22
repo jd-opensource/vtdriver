@@ -24,7 +24,8 @@ import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.MapUtil;
+import com.jd.jdbc.common.util.MapUtil;
+import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
@@ -216,7 +217,7 @@ public enum HealthCheck {
                 targetsMap.put(tabletAlias, res);
             }
             this.tabletCounterIncAndGet();
-            thc.initStreamHealth();
+            VtHealthCheckExecutorService.execute(thc::initStreamHealth);
         } finally {
             this.lock.unlock();
         }
@@ -328,7 +329,7 @@ public enum HealthCheck {
             if (targetChanged) {
                 String oldTargetKey = keyFromTarget(preTarget);
                 this.healthData.get(oldTargetKey).remove(tabletAlias);
-                MapUtil.computeIfAbsent(healthData,targetKey, key -> new HashMap<>());
+                MapUtil.computeIfAbsent(healthData, targetKey, key -> new HashMap<>());
             }
             this.healthData.get(targetKey).put(tabletAlias, th);
             boolean isPrimary = th.getTarget().getTabletType() == Topodata.TabletType.MASTER;

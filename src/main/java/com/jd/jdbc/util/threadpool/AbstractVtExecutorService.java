@@ -21,7 +21,7 @@ public abstract class AbstractVtExecutorService {
 
     public static final Integer DEFAULT_DAEMON_CORE_POOL_SIZE = 10;
 
-    public static final Integer DEFAULT_HEALTH_CHECK_CORE_POOL_SIZE = 10;
+    public static final Integer DEFAULT_HEALTH_CHECK_CORE_POOL_SIZE = JdkUtil.getQueryExecutorCorePoolSize();
 
     public static final Integer DEFAULT_QUERY_MAXIMUM_POOL_SIZE = 100;
 

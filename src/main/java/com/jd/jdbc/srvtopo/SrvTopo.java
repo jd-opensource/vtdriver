@@ -104,7 +104,7 @@ public class SrvTopo {
                         if (TopoException.isErrType(err, NO_NODE)) {
                             // Possibly a race condition, or leftover
                             // crud in the topology service. Just log it.
-                            log.error("GetSrvKeyspace(" + cell + ", " + keyspace + ") returned ErrNoNode, skipping that SrvKeyspace%n");
+                            log.error("GetSrvKeyspace(" + cell + ", " + keyspace + ") returned ErrNoNode, skipping that SrvKeyspace");
                         } else {
                             // More serious error, abort.
                             errRecorder.recordError(err);

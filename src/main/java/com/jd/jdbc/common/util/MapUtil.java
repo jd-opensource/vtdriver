@@ -1,7 +1,5 @@
 /*
-Copyright 2021 JD Project Authors. Licensed under Apache-2.0.
-
-Copyright 2019 The Vitess Authors.
+Copyright 2021 JD Project Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,12 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.util;
+package com.jd.jdbc.common.util;
 
 import java.util.Map;
 import java.util.function.Function;
 
 public class MapUtil {
+    private MapUtil() {
+    }
+
     public static <K, V> V computeIfAbsent(Map<K, V> concurrentHashMap, K key, Function<? super K, ? extends V> mappingFunction) {
         V value = concurrentHashMap.get(key);
         if (value != null) {

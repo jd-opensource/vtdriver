@@ -72,7 +72,7 @@ public class HikariUtil {
 
         String realSchema = SchemaUtil.getRealSchema(tablet.getKeyspace());
         hikariConfig.setDriverClassName(Constant.MYSQL_PROTOCOL_DRIVER_CLASS);
-        String nativeUrl = String.format("jdbc:mysql://%s:%d/%s", tablet.getMysqlHostname(), tablet.getMysqlPort(), realSchema);
+        String nativeUrl = "jdbc:mysql://" + tablet.getMysqlHostname() + ":" + tablet.getMysqlPort() + "/" + realSchema;
         hikariConfig.setJdbcUrl(nativeUrl);
         hikariConfig.setPoolName(TopoProto.getPoolName(tablet));
         hikariConfig.setUsername(user);
