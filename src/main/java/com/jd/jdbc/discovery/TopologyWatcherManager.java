@@ -20,14 +20,16 @@ package com.jd.jdbc.discovery;
 
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.topo.TopoServer;
-import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public enum TopologyWatcherManager {
+    /**
+     * INSTANCE
+     */
     INSTANCE;
 
     private final Lock lock = new ReentrantLock();
@@ -35,7 +37,7 @@ public enum TopologyWatcherManager {
     private Map<String, TopologyWatcher> cellTopologyWatcherMap = null;
 
     TopologyWatcherManager() {
-        cellTopologyWatcherMap = new HashMap<>();
+        cellTopologyWatcherMap = new ConcurrentHashMap<>(16);
     }
 
     public void startWatch(IContext ctx, TopoServer topoServer, String cell, Set<String> keySpaces) {
@@ -51,15 +53,10 @@ public enum TopologyWatcherManager {
         }
     }
 
-    public void watch(IContext ctx, String cell, Set<String> keySpaces) throws SQLException {
-        lock.lock();
-        try {
-            if (!cellTopologyWatcherMap.containsKey(cell)) {
-                throw new SQLException("topo watcher for cell " + cell + " is not started");
-            }
-            cellTopologyWatcherMap.get(cell).watchKeyspace(ctx, keySpaces);
-        } finally {
-            lock.unlock();
+    public void watch(IContext ctx, String cell, Set<String> keySpaces) {
+        if (!cellTopologyWatcherMap.containsKey(cell)) {
+            throw new RuntimeException("topo watcher for cell " + cell + " is not started");
         }
+        cellTopologyWatcherMap.get(cell).watchKeyspace(ctx, keySpaces);
     }
 }

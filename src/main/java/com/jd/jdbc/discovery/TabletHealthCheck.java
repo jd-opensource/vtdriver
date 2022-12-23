@@ -285,6 +285,8 @@ public class TabletHealthCheck {
             //removeTablet 方法会调用 cancelHealthCheckCtx
             this.healthCheck.removeTablet(this.tablet);
             return;
+        } else if (t.getMessage().contains("stopHealthCheckStream")) {
+            return;
         } else {
             boolean logFlag = false;
             if (t instanceof StatusRuntimeException) {
@@ -295,7 +297,6 @@ public class TabletHealthCheck {
                     "Keepalive failed. The connection is likely gone".equals(status.getDescription()) ||
                     "Network closed for unknown reason".equals(status.getDescription());
             }
-            logFlag = logFlag || t.getMessage().contains("stopHealthCheckStream");
             if (!logFlag) {
                 log.error("tablet " + TopoProto.tabletToHumanString(tablet) + " handleStreamHealthError error msg : ", t);
             }

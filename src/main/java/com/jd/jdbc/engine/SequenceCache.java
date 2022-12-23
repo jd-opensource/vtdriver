@@ -76,7 +76,9 @@ public final class SequenceCache {
 
     private Cache getCache(Vcursor vCursor, ResolvedShard resolvedShard, String sequenceTableName) throws SQLException, InterruptedException {
         long[] sequenceInfo = querySequenceValue(vCursor, resolvedShard, sequenceTableName);
-        log.info("sequence cache info, next:" + sequenceInfo[0] + ", cache:" + sequenceInfo[1]);
+        if (log.isDebugEnabled()) {
+            log.debug("sequence cache info, next:" + sequenceInfo[0] + ", cache:" + sequenceInfo[1]);
+        }
         return new Cache(sequenceInfo[0], sequenceInfo[1]);
     }
 
