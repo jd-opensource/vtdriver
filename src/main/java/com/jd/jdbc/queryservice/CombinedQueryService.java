@@ -52,13 +52,6 @@ public class CombinedQueryService implements IQueryService, IHealthCheckQuerySer
     public CombinedQueryService(ManagedChannel channel, Topodata.Tablet tablet) {
         this.tablet = tablet;
         this.tabletQueryService = new TabletQueryService(channel);
-        SecurityCenter.Credential credential = SecurityCenter.INSTANCE.getCredential(this.tablet.getKeyspace());
-        Topodata.TabletType tabletType = tablet.getType();
-        Properties dsProperties = Config.getDataSourceConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
-        if (dsProperties != null && Objects.equals(Topodata.TabletType.MASTER, tabletType) && Objects.equals(tabletType, VitessJdbcProperyUtil.getTabletType(dsProperties))) {
-            Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), credential.getUser(), tabletType);
-            nativeQueryService = new NativeQueryService(tablet, credential.getUser(), credential.getPassword(), dsProperties, properties);
-        }
     }
 
     @Override
