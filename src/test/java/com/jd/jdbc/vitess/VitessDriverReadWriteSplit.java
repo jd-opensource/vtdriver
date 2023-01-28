@@ -21,6 +21,13 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -182,5 +189,50 @@ public class VitessDriverReadWriteSplit extends TestSuite {
         thrown.expect(SQLException.class);
         thrown.expectMessage("error in jdbc url");
         rtConnection = DriverManager.getConnection(baseUrl + "&role=rt");
+    }
+
+    @Test
+    public void concurrencyTest() throws InterruptedException {
+        // 交替使用不同账户执行sql
+        final Connection[] conns = new Connection[] {rwConnection, rrConnection, roConnection};
+        final String[] sqls = new String[] {
+            "insert into user (id, name) values (null, '%s')",
+            "select id, name from user limit 1",
+            "select id, name from user limit 2",
+        };
+        final int numThreads = 4;
+        final int count = 200;
+
+        ExecutorService service = new ThreadPoolExecutor(numThreads, numThreads,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>());
+
+        CountDownLatch latch = new CountDownLatch(numThreads);
+        for (int i = 0; i < numThreads; i++) {
+            final int fi = i;
+            service.execute(() -> {
+                for (int k = 0; k < count; k++) {
+                    int randInteger = RandomUtils.nextInt(0, 3);
+                    String randString = RandomStringUtils.random(10, true, true);
+                    Connection conn = conns[randInteger];
+                    String sql = sqls[randInteger];
+                    if (randInteger == 0) {
+                        sql = String.format(sql, randString);
+                    }
+
+                    try (Statement stmt = conn.createStatement()) {
+                        printInfo("thread" + fi + ", sql" + k + ": " + sql);
+                        stmt.execute(sql);
+                    } catch (SQLException e) {
+                        System.out.println(printFail("concurrencyTest: error"));
+                        e.printStackTrace();
+                    }
+                }
+                latch.countDown();
+            });
+        }
+
+        latch.await(180, TimeUnit.SECONDS);
+        printOk("[OK]");
     }
 }
