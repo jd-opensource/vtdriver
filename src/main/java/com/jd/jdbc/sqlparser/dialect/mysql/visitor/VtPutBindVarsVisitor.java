@@ -16,8 +16,7 @@
 
 package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
-import com.jd.jdbc.engine.LimitEngine;
-import com.jd.jdbc.engine.sequence.Generate;
+import com.jd.jdbc.common.Hex;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLLimit;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
@@ -52,13 +51,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.codec.binary.Hex;
 
 
 public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
     private static final Log LOGGER = LogFactory.getLog(VtPutBindVarsVisitor.class);
-
-    private static final Integer DEFAULT_VAR_REFINDEX = -1;
 
     private final Map<String, BindVariable> bindVariableMap;
 
@@ -279,87 +275,6 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
                 break;
             default:
                 break;
-        }
-        return valuableExpr;
-    }
-
-    private SQLValuableExpr getValueableExpr(final SQLVariantRefExpr x) {
-        BindVariable bindVariable;
-        if (LimitEngine.LIMIT_VAR_REFINDEX == x.getIndex() || LimitEngine.LIMIT_VAR_NAME.equals(x.getName())) {
-            bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
-        } else if (Generate.SEQ_VAR_REFINDEX == x.getIndex()) {
-            bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
-        } else if (DEFAULT_VAR_REFINDEX == x.getIndex()) {
-            bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
-        } else {
-            bindVariable = this.bindVariableMap.get(String.valueOf(x.getIndex()));
-        }
-        boolean isSeq = x.getName().startsWith(Generate.SEQ_VAR_NAME);
-
-        SQLValuableExpr valuableExpr = null;
-        try {
-            VtValue bv = VtValue.newVtValue(bindVariable);
-            Query.Type vtType = bv.getVtType();
-            switch (vtType) {
-                case VARBINARY:
-                case VARCHAR:
-                case TEXT:
-                case TIME:
-                    valuableExpr = new SQLCharExpr(bv.toString());
-                    break;
-                case BIT:
-                    valuableExpr = new SQLBooleanExpr(bv.toBoolean());
-                    break;
-                case INT8:
-                case INT16:
-                case INT32:
-                    try {
-                        valuableExpr = new SQLIntegerExpr(bv.toInt());
-                    } catch (SQLException e) {
-                        LOGGER.error(e.getMessage(), e);
-                    }
-                    break;
-                case INT64:
-                    try {
-                        valuableExpr = new SQLIntegerExpr(bv.toLong());
-                    } catch (SQLException e) {
-                        LOGGER.error(e.getMessage(), e);
-                    }
-                    break;
-                case UINT64:
-                    valuableExpr = new SQLIntegerExpr(new BigInteger(bv.toString()));
-                    break;
-                case DECIMAL:
-                case FLOAT64:
-                case FLOAT32:
-                    valuableExpr = new SQLNumberExpr(bv.toDecimal());
-                    break;
-                case DATE:
-                    valuableExpr = new SQLDateExpr(bv.toString());
-                    break;
-                case DATETIME:
-                case TIMESTAMP:
-                    valuableExpr = new SQLTimestampExpr(bv.toString());
-                    break;
-                case BLOB:
-                case BINARY:
-                    valuableExpr = new SQLHexExpr(Hex.encodeHexString(bv.getVtValue()));
-                    break;
-                case NULL_TYPE:
-                    if (isSeq) {
-                        BindVariable variable = this.bindVariableMap.get(x.getName());
-                        VtValue value = VtValue.newVtValue(variable);
-                        valuableExpr = new SQLIntegerExpr(value.toLong());
-
-                    } else {
-                        valuableExpr = new SQLNullExpr();
-                    }
-                    break;
-                default:
-                    break;
-            }
-        } catch (SQLException e) {
-            LOGGER.error(e.getMessage(), e);
         }
         return valuableExpr;
     }

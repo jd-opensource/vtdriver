@@ -43,7 +43,6 @@ import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.codec.binary.Hex;
 
 @Getter
 @Setter
@@ -224,25 +223,6 @@ public class VtValue {
         }
     }
 
-    public static String toSqlReadable(Query.Type typ, byte[] val) {
-        if (typ == Query.Type.BINARY ||
-            typ == Query.Type.VARBINARY ||
-            typ == Query.Type.BLOB) {
-
-            /* e.g.:
-                byte[] buffer = new byte[]{0x4D, 0x79, 0x53, 0x51,0x4C, ...};
-                to X'4D7953514C...'
-            */
-            return "X'" + Hex.encodeHexString(val) + "'";
-        } else {
-            if (VtType.isQuoted(typ)) {
-                return "'" + new String(val) + "'";
-            } else {
-                return new String(val);
-            }
-        }
-    }
-
     public static boolean isQuoted(Query.Type vtType) {
         return vtType != null && VtType.isQuoted(vtType);
     }
@@ -341,10 +321,6 @@ public class VtValue {
             return null;
         }
         return StringUtils.toString(vtValue, charEncoding);
-    }
-
-    public String toSqlReadable() {
-        return toSqlReadable(vtType, vtValue);
     }
 
     public boolean toBoolean() {

@@ -41,8 +41,6 @@ public final class TripleDES {
 
     private static final Log log = LogFactory.getLog(TripleDES.class);
 
-    private static final String UNICODE_FORMAT = "UTF8";
-
     private static final TripleDES INSTANCE = new TripleDES();
 
     private static final Cipher DEC_CIPHER;
