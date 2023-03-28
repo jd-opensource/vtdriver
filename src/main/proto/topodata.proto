@@ -399,8 +399,6 @@ message CellInfo {
 
   // OBSOLETE: region 3
   reserved 3;
-
-  string proxy_server_address = 4;
 }
 
 // CellsAlias 
