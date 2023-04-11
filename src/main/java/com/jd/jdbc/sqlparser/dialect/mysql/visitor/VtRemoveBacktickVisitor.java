@@ -41,7 +41,7 @@ public class VtRemoveBacktickVisitor extends MySqlASTVisitorAdapter {
             return false;
         }
 
-        if (SqlParser.MYSQL_KEYWORDS.getKeyword(normalizedName.toUpperCase()) == null) {
+        if (!SqlParser.MYSQL_KEYWORDS.contains(normalizedName.toUpperCase())) {
             x.setName(normalizedName);
         }
         return false;
@@ -56,7 +56,7 @@ public class VtRemoveBacktickVisitor extends MySqlASTVisitorAdapter {
             return false;
         }
 
-        if (SqlParser.MYSQL_KEYWORDS.getKeyword(normalizedName.toUpperCase()) == null) {
+        if (!SqlParser.MYSQL_KEYWORDS.contains(normalizedName.toUpperCase())) {
             x.setName(normalizedName);
         }
         return false;

@@ -54,13 +54,10 @@ import com.jd.jdbc.sqlparser.ast.statement.SQLUpdateStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.BindVarNeeds;
 import com.jd.jdbc.sqlparser.dialect.mysql.SmartNormalizer;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceStatement;
-import com.jd.jdbc.sqlparser.dialect.mysql.parser.MySqlLexer;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.CheckNodeTypesVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtGetBindVarsVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtReplaceExprVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtReplaceVariantRefExprVisitor;
-import com.jd.jdbc.sqlparser.parser.Keywords;
-import com.jd.jdbc.sqlparser.parser.Token;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
@@ -108,57 +105,317 @@ public class SqlParser {
 
     private static final Log log = LogFactory.getLog(SqlParser.class);
 
-    public static final Keywords MYSQL_KEYWORDS;
+    public static final Set<String> MYSQL_KEYWORDS = Sets.newHashSet(
+        // mysql5.7 reserved words
+        "WORD",
+        "ACCESSIBLE",
+        "ADD",
+        "ALL",
+        "ALTER",
+        "ANALYZE",
+        "AND",
+        "AS",
+        "ASC",
+        "ASENSITIVE",
+        "BEFORE",
+        "BETWEEN",
+        "BIGINT",
+        "BINARY",
+        "BLOB",
+        "BOTH",
+        "BY",
+        "CALL",
+        "CASCADE",
+        "CASE",
+        "CHANGE",
+        "CHAR",
+        "CHARACTER",
+        "CHECK",
+        "COLLATE",
+        "COLUMN",
+        "CONDITION",
+        "CONSTRAINT",
+        "CONTINUE",
+        "CONVERT",
+        "CREATE",
+        "CROSS",
+        "CUBE",
+        "CURRENT_DATE",
+        "CURRENT_TIME",
+        "CURRENT_TIMESTAMP",
+        "CURRENT_USER",
+        "CURSOR",
+        "DATABASE",
+        "DATABASES",
+        "DAY_HOUR",
+        "DAY_MICROSECOND",
+        "DAY_MINUTE",
+        "DAY_SECOND",
+        "DEC",
+        "DECIMAL",
+        "DECLARE",
+        "DEFAULT",
+        "DELAYED",
+        "DELETE",
+        "DESC",
+        "DESCRIBE",
+        "DETERMINISTIC",
+        "DISTINCT",
+        "DISTINCTROW",
+        "DIV",
+        "DOUBLE",
+        "DROP",
+        "DUAL",
+        "EACH",
+        "ELSE",
+        "ELSEIF",
+        "ENCLOSED",
+        "ESCAPED",
+        "EXISTS",
+        "EXIT",
+        "EXPLAIN",
+        "FALSE",
+        "FETCH",
+        "FLOAT",
+        "FLOAT4",
+        "FLOAT8",
+        "FOR",
+        "FORCE",
+        "FOREIGN",
+        "FROM",
+        "FULLTEXT",
+        "FUNCTION",
+        "GENERATED",
+        "GET",
+        "GRANT",
+        "GROUP",
+        "HAVING",
+        "HIGH_PRIORITY",
+        "HOUR_MICROSECOND",
+        "HOUR_MINUTE",
+        "HOUR_SECOND",
+        "IF",
+        "IGNORE",
+        "IN",
+        "INDEX",
+        "INFILE",
+        "INNER",
+        "INOUT",
+        "INSENSITIVE",
+        "INSERT",
+        "INT",
+        "INT1",
+        "INT2",
+        "INT3",
+        "INT4",
+        "INT8",
+        "INTEGER",
+        "INTERVAL",
+        "INTO",
+        "IO_AFTER_GTIDS",
+        "IO_BEFORE_GTIDS",
+        "IS",
+        "ITERATE",
+        "JOIN",
+        "KEY",
+        "KEYS",
+        "KILL",
+        "LEADING",
+        "LEAVE",
+        "LEFT",
+        "LIKE",
+        "LIMIT",
+        "LINEAR",
+        "LINES",
+        "LOAD",
+        "LOCALTIME",
+        "LOCALTIMESTAMP",
+        "LOCK",
+        "LONG",
+        "LONGBLOB",
+        "LONGTEXT",
+        "LOOP",
+        "LOW_PRIORITY",
+        "MASTER_BIND",
+        "MASTER_SSL_VERIFY_SERVER_CERT",
+        "MATCH",
+        "MAXVALUE",
+        "MEDIUMBLOB",
+        "MEDIUMINT",
+        "MEDIUMTEXT",
+        "MIDDLEINT",
+        "MINUTE_MICROSECOND",
+        "MINUTE_SECOND",
+        "MOD",
+        "MODIFIES",
+        "NATURAL",
+        "NOT",
+        "NO_WRITE_TO_BINLOG",
+        "NULL",
+        "NUMERIC",
+        "ON",
+        "OPTIMIZE",
+        "OPTIMIZER_COSTS",
+        "OPTION",
+        "OPTIONALLY",
+        "OR",
+        "ORDER",
+        "OUT",
+        "OUTER",
+        "OUTFILE",
+        "PARTITION",
+        "PRECISION",
+        "PRIMARY",
+        "PROCEDURE",
+        "PURGE",
+        "RANGE",
+        "READ",
+        "READS",
+        "READ_WRITE",
+        "REAL",
+        "REFERENCES",
+        "REGEXP",
+        "RELEASE",
+        "RENAME",
+        "REPEAT",
+        "REPLACE",
+        "REQUIRE",
+        "RESIGNAL",
+        "RESTRICT",
+        "RETURN",
+        "REVOKE",
+        "RIGHT",
+        "RLIKE",
+        "ROW",
+        "ROWS",
+        "SCHEMA",
+        "SCHEMAS",
+        "SECOND_MICROSECOND",
+        "SELECT",
+        "SENSITIVE",
+        "SEPARATOR",
+        "SET",
+        "SHOW",
+        "SIGNAL",
+        "SMALLINT",
+        "SPATIAL",
+        "SPECIFIC",
+        "SQL",
+        "SQLEXCEPTION",
+        "SQLSTATE",
+        "SQLWARNING",
+        "SQL_BIG_RESULT",
+        "SQL_CALC_FOUND_ROWS",
+        "SQL_SMALL_RESULT",
+        "SSL",
+        "STARTING",
+        "STORED",
+        "STRAIGHT_JOIN",
+        "TABLE",
+        "TERMINATED",
+        "THEN",
+        "TINYBLOB",
+        "TINYINT",
+        "TINYTEXT",
+        "TO",
+        "TRAILING",
+        "TRIGGER",
+        "TRUE",
+        "UNDO",
+        "UNION",
+        "UNIQUE",
+        "UNLOCK",
+        "UNSIGNED",
+        "UPDATE",
+        "USAGE",
+        "USE",
+        "USING",
+        "UTC_DATE",
+        "UTC_TIME",
+        "UTC_TIMESTAMP",
+        "VALUES",
+        "VARBINARY",
+        "VARCHAR",
+        "VARCHARACTER",
+        "VARYING",
+        "VIRTUAL",
+        "WHEN",
+        "WHERE",
+        "WHILE",
+        "WITH",
+        "WRITE",
+        "XOR",
+        "YEAR_MONTH",
+        "ZEROFILL",
 
-    static {
-        Map<String, Token> map = new HashMap<>();
+        // mysql8.0 new reserved words
+        "CUME_DIST",
+        "DENSE_RANK",
+        "EMPTY",
+        "EXCEPT",
+        "FIRST_VALUE",
+        "GROUPING",
+        "GROUPS",
+        "JSON_TABLE",
+        "LAG",
+        "LAST_VALUE",
+        "LATERAL",
+        "LEAD",
+        "NTH_VALUE",
+        "NTILE",
+        "OF",
+        "OVER",
+        "PERCENT_RANK",
+        "RANK",
+        "RECURSIVE",
+        "ROW_NUMBER",
+        "SYSTEM",
+        "WINDOW",
 
-        map.putAll(MySqlLexer.DEFAULT_MYSQL_KEYWORDS.getKeywords());
-
-        map.put("BIT", Token.DATATYPE);
-        map.put("BOOL", Token.DATATYPE);
-        map.put("TINYINT", Token.DATATYPE);
-        map.put("SMALLINT", Token.DATATYPE);
-        map.put("MEDIUMINT", Token.DATATYPE);
-        map.put("INT", Token.DATATYPE);
-        map.put("INTEGER", Token.DATATYPE);
-        map.put("NUMERIC", Token.DATATYPE);
-        map.put("BIGINT", Token.DATATYPE);
-        map.put("FLOAT", Token.DATATYPE);
-        map.put("DOUBLE", Token.DATATYPE);
-        map.put("DECIMAL", Token.DATATYPE);
-
-
-        map.put("DATE", Token.DATATYPE);
-        map.put("TIME", Token.DATATYPE);
-        map.put("YEAR", Token.DATATYPE);
-        map.put("DATETIME", Token.DATATYPE);
-        map.put("TIMESTAMP", Token.DATATYPE);
-
-        map.put("CHAR", Token.DATATYPE);
-        map.put("VARCHAR", Token.DATATYPE);
-        map.put("TINYBLOB", Token.DATATYPE);
-        map.put("TINYTEXT", Token.DATATYPE);
-        map.put("BLOB", Token.DATATYPE);
-        map.put("TEXT", Token.DATATYPE);
-        map.put("MEDIUMBLOB", Token.DATATYPE);
-        map.put("MEDIUMTEXT", Token.DATATYPE);
-        map.put("LONGBLOB", Token.DATATYPE);
-        map.put("LONGTEXT", Token.DATATYPE);
-
-        map.put("BINARY", Token.DATATYPE);
-        map.put("VARBINARY", Token.DATATYPE);
-        map.put("ENUM", Token.DATATYPE);
-        map.put("GEOMETRY", Token.DATATYPE);
-        map.put("POINT", Token.DATATYPE);
-        map.put("MULTIPOINT", Token.DATATYPE);
-        map.put("LINESTRING", Token.DATATYPE);
-        map.put("MULTILINESTRING", Token.DATATYPE);
-        map.put("POLYGON", Token.DATATYPE);
-        map.put("GEOMETRYCOLLECTION", Token.DATATYPE);
-
-        MYSQL_KEYWORDS = new Keywords(map);
-    }
+        // non-reserved keywords
+        "ANY",
+        "BEGIN",
+        "BIT",
+        "BOOL",
+        "CACHE",
+        "CAST",
+        "CLOSE",
+        "COMMENT",
+        "COMPUTE",
+        "CONTAINS",
+        "DATE",
+        "DATETIME",
+        "DISABLE",
+        "DO",
+        "ENABLE",
+        "END",
+        "ENUM",
+        "ESCAPE",
+        "FULL",
+        "GEOMETRY",
+        "GEOMETRYCOLLECTION",
+        "IDENTIFIED",
+        "INTERSECT",
+        "LINESTRING",
+        "MERGE",
+        "MINUS",
+        "MULTILINESTRING",
+        "MULTIPOINT",
+        "OPEN",
+        "POINT",
+        "POLYGON",
+        "SEQUENCE",
+        "SOME",
+        "TABLESPACE",
+        "TEXT",
+        "TIME",
+        "TIMESTAMP",
+        "TRUNCATE",
+        "UNTIL",
+        "USER",
+        "VIEW",
+        "YEAR"
+    );
 
     /**
      * @param stmt
