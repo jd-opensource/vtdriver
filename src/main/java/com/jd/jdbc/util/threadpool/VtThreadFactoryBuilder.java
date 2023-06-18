@@ -46,4 +46,22 @@ public final class VtThreadFactoryBuilder {
     public static ThreadFactory build(final String nameFormat) {
         return new ThreadFactoryBuilder().setDaemon(true).setNameFormat(NAME_FORMAT_PREFIX + nameFormat + "%d").build();
     }
+
+    public static final class DefaultThreadFactory implements ThreadFactory {
+        private final String threadName;
+
+        private final boolean daemon;
+
+        public DefaultThreadFactory(String threadName, boolean daemon) {
+            this.threadName = NAME_FORMAT_PREFIX + threadName;
+            this.daemon = daemon;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r, this.threadName);
+            thread.setDaemon(this.daemon);
+            return thread;
+        }
+    }
 }

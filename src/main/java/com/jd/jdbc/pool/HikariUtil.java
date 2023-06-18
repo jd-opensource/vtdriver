@@ -23,13 +23,13 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.KeyspaceUtil;
+import com.jd.jdbc.util.threadpool.VtThreadFactoryBuilder;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
 import com.zaxxer.hikari.metrics.prometheus.PrometheusHistogramMetricsTrackerFactory;
 import com.zaxxer.hikari.pool.HikariProxyConnection;
 import com.zaxxer.hikari.pool.ProxyConnection;
-import com.zaxxer.hikari.util.UtilityElf;
 import io.vitess.proto.Topodata;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -46,7 +46,7 @@ public class HikariUtil {
     private static final MetricsTrackerFactory METRICS_TRACKER_FACTORY;
 
     static {
-        ThreadFactory threadFactory = new UtilityElf.DefaultThreadFactory("housekeeper", true);
+        ThreadFactory threadFactory = new VtThreadFactoryBuilder.DefaultThreadFactory("housekeeper", true);
         HOUSEKEEPER_EXECUTOR = new ScheduledThreadPoolExecutor(1, threadFactory, new ThreadPoolExecutor.DiscardPolicy());
         HOUSEKEEPER_EXECUTOR.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         HOUSEKEEPER_EXECUTOR.setRemoveOnCancelPolicy(true);

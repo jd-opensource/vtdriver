@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqlparser.support.logging.Log;
@@ -32,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -57,7 +55,7 @@ public enum TopologyWatcherManager {
         cellTopologyWatcherMap = new ConcurrentHashMap<>(16);
         globalKeyspacesMap = new ConcurrentHashMap<>(16);
 
-        scheduledExecutor = new ScheduledThreadPoolExecutor(1, VtThreadFactoryBuilder.build("reload-cell-schedule"));
+        scheduledExecutor = new ScheduledThreadPoolExecutor(1, new VtThreadFactoryBuilder.DefaultThreadFactory("reload-cell-schedule", true));
         scheduledExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         scheduledExecutor.setRemoveOnCancelPolicy(true);
     }
@@ -104,8 +102,9 @@ public enum TopologyWatcherManager {
     public void resetScheduledExecutor() {
         closeScheduledExecutor();
 
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("reload-cell-schedule").setDaemon(true).build();
-        scheduledExecutor = new ScheduledThreadPoolExecutor(1, threadFactory);
+        scheduledExecutor = new ScheduledThreadPoolExecutor(1, new VtThreadFactoryBuilder.DefaultThreadFactory("reload-cell-schedule", true));
+        scheduledExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        scheduledExecutor.setRemoveOnCancelPolicy(true);
     }
 
     public void closeScheduledExecutor() {
