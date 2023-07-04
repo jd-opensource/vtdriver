@@ -142,7 +142,7 @@ public class UpdatePlan implements Builder {
      * <p>
      * planbuilder/update.go --> buildChangedVindexesValues
      */
-    private static void buildChangedVindexesValues(SQLUpdateStatement update, Vschema.Table table, String ksidCol) throws SQLException {
+    public static void buildChangedVindexesValues(SQLUpdateStatement update, Vschema.Table table, String ksidCol) throws SQLException {
         /*changedVindexes := make(map[string]*engine.VindexValues)
         buf, offset := initialQuery(ksidCol, table)*/
         for (Vschema.ColumnVindex vindex : table.getColumnVindexesList()) {

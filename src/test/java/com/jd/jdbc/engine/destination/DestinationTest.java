@@ -86,6 +86,24 @@ public class DestinationTest extends TestSuite {
     }
 
     @Test
+    public void updateWithVindex() throws SQLException {
+        thrown.expect(SQLFeatureNotSupportedException.class);
+        thrown.expectMessage("unsupported: You can't update primary vindex columns.");
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("/*shard=80-, set for specific shard*/update engine_test set f_key = '1' where f_key = '11'");
+        }
+    }
+
+    @Test
+    public void updateWithjoin() throws SQLException {
+        thrown.expect(SQLFeatureNotSupportedException.class);
+        thrown.expectMessage("unsupported: multi-table update");
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("/*shard=80-*/update t_users t1, t_users2 t2 set t2.age=t1.age+1 where t1.id=t2.id");
+        }
+    }
+
+    @Test
     public void select() throws IOException, SQLException {
         this.execute(conn, "src/test/resources/engine/destination/select_cases.json");
     }
