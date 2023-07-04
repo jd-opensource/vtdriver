@@ -21,7 +21,7 @@
 | password | String |  |  连接时使用的密码。 |
 | characterEncoding | String | utf8 | 是指定所处理字符的解码和编码的格式，或者说是标准。若项目的字符集和MySQL数据库字符集设置为同一字符集则url可以不加此参数。 |
 | serverTimezone | String |  | 设置时区 |
-| socketTimeout | int | 10000 | 查询超时时间，最小值不得小于1000，小于1000时默认设置为1000 |
+| socketTimeout | int | 10000 | 查询超时时间 |
 | allowMultiQueries| boolean| true| 在一条语句中，允许使用“;”来分隔多条查询。不可更改，VtDriver强制设置为true|
 | maxAllowedPacket | byte | 65535（64k） | 设置server接受的数据包的大小 |
 | zeroDateTimeBehavior | String | exception | JAVA连接MySQL数据库，在操作值为0的timestamp类型时不能正确的处理，而是默认抛出一个异常。参数，exception：默认值；convertToNull：将日期转换成NULL值；round：替换成最近的日期 |

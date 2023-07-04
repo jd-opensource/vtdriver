@@ -18,36 +18,38 @@ package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
+import static com.jd.jdbc.vitess.VitessJdbcUrlParser.JDBC_VITESS_PREFIX;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import testsuite.TestSuite;
+import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
 import testsuite.internal.environment.TestSuiteEnv;
 
-import static com.jd.jdbc.vitess.VitessJdbcUrlParser.JDBC_VITESS_PREFIX;
-import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
-
 public class VitessJdbcUrlParserTest extends TestSuite {
-    TestSuiteEnv env = Driver.of(TWO_SHARDS);
+    private TestSuiteEnv env = Driver.of(TWO_SHARDS);
 
-    String schema = getKeyspace(env);
+    private String schema = getKeyspace(env);
 
-    String role = "rw";
+    private String role = "rw";
 
-    String user = getUser(env);
+    private String user = getUser(env);
 
-    String password = getPassword(env);
+    private String password = getPassword(env);
+
+
+    private Integer socketTimeout;
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private Connection conn;
+    private VitessConnection conn;
 
     private void init() throws SQLException {
         TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
@@ -87,7 +89,11 @@ public class VitessJdbcUrlParserTest extends TestSuite {
             connecturlionUrl += "&role=" + role;
         }
 
-        this.conn = DriverManager.getConnection(connecturlionUrl);
+        if (socketTimeout != null) {
+            connecturlionUrl += "&socketTimeout=" + socketTimeout;
+        }
+        this.conn = (VitessConnection) DriverManager.getConnection(connecturlionUrl);
+
         try (Statement stmt = this.conn.createStatement()) {
             stmt.executeUpdate("delete from plan_test");
         }
@@ -123,5 +129,27 @@ public class VitessJdbcUrlParserTest extends TestSuite {
         thrown.expect(SQLException.class);
         thrown.expectMessage("'role=" + role + "' " + "error in jdbc url");
         init();
+    }
+
+    @Test
+    public void testSocketTimeout() throws SQLException {
+        socketTimeout = -1;
+        init();
+        Integer getSocketTimeout = Integer.valueOf(conn.getProperties().getProperty("socketTimeout"));
+        if (!getSocketTimeout.equals(1000)) {
+            Assert.fail("testSocketTimeout is fail");
+        }
+        socketTimeout = 0;
+        init();
+        getSocketTimeout = Integer.valueOf(conn.getProperties().getProperty("socketTimeout"));
+        if (!getSocketTimeout.equals(socketTimeout)) {
+            Assert.fail("testSocketTimeout is fail");
+        }
+        socketTimeout = 500;
+        init();
+        getSocketTimeout = Integer.valueOf(conn.getProperties().getProperty("socketTimeout"));
+        if (!getSocketTimeout.equals(socketTimeout)) {
+            Assert.fail("testSocketTimeout is fail");
+        }
     }
 }

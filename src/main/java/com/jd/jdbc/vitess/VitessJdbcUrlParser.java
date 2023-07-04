@@ -77,7 +77,7 @@ public class VitessJdbcUrlParser {
         Integer socketTimeout = null;
         if (parsedProperties.containsKey(VitessPropertyKey.SOCKET_TIMEOUT.getKeyName())) {
             socketTimeout = Utils.getInteger(parsedProperties, VitessPropertyKey.SOCKET_TIMEOUT.getKeyName());
-            if (socketTimeout != null && socketTimeout < 1000) {
+            if (socketTimeout != null && socketTimeout < 0) {
                 socketTimeout = 1000;
             }
         }
