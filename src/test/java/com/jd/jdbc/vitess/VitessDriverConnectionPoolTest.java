@@ -103,7 +103,7 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         Assert.assertEquals(vtMinimumIdle, hikariConfig.getMinimumIdle() + "");
         Assert.assertEquals(vtMaximumPoolSize, hikariConfig.getMaximumPoolSize() + "");
         Assert.assertEquals("select 1", hikariConfig.getConnectionInitSql() + "");
-        Assert.assertEquals("select 1", hikariConfig.getConnectionTestQuery() + "");
+        Assert.assertNull(hikariConfig.getConnectionTestQuery());
         Assert.assertEquals(vtConnectionTimeout, hikariConfig.getConnectionTimeout() + "");
         Assert.assertEquals(vtIdleTimeout, hikariConfig.getIdleTimeout() + "");
     }

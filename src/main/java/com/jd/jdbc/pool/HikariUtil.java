@@ -61,8 +61,7 @@ public class HikariUtil {
             hikariConfig = new HikariConfig(properties);
         } else {
             hikariConfig = new HikariConfig();
-            hikariConfig.setConnectionTestQuery("select 1");
-            hikariConfig.setConnectionTimeout(10_000);
+            hikariConfig.setConnectionTimeout(1_000);
             hikariConfig.setMinimumIdle(5);
             hikariConfig.setMaximumPoolSize(10);
             hikariConfig.setConnectionInitSql("select 1");

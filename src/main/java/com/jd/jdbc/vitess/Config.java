@@ -54,7 +54,6 @@ public final class Config {
         FILED_TYPES.put("MaxLifetime", long.class);
         FILED_TYPES.put("ValidationTimeout", long.class);
         FILED_TYPES.put("ConnectionInitSql", String.class);
-        FILED_TYPES.put("ConnectionTestQuery", String.class);
 
         FILED_NAMES.add("MinimumIdle");
         FILED_NAMES.add("MaximumPoolSize");
@@ -63,7 +62,6 @@ public final class Config {
         FILED_NAMES.add("MaxLifetime");
         FILED_NAMES.add("ValidationTimeout");
         FILED_NAMES.add("ConnectionInitSql");
-        FILED_NAMES.add("ConnectionTestQuery");
         PROPERTIES_MAP = new ConcurrentHashMap<>(16);
         INNER_CP_CONFIG_MAP = new ConcurrentHashMap<>(16);
     }
@@ -144,17 +142,15 @@ public final class Config {
 
         private int maximumPoolSize = 10;
 
-        private long connectionTimeout = 30_000;
+        private long connectionTimeout = 1_000;
 
         private long idleTimeout = 600_000;
 
         private long maxLifetime = 1_800_000;
 
-        private long validationTimeout = 5_000;
+        private long validationTimeout = 1_000;
 
         private String connectionInitSql = "select 1";
-
-        private String connectionTestQuery = "select 1";
 
         public InnerCPConfig(Properties properties) {
             FILED_NAMES.forEach(s -> {
@@ -255,12 +251,5 @@ public final class Config {
             this.connectionInitSql = connectionInitSql;
         }
 
-        public String getConnectionTestQuery() {
-            return connectionTestQuery;
-        }
-
-        public void setConnectionTestQuery(String connectionTestQuery) {
-            this.connectionTestQuery = connectionTestQuery;
-        }
     }
 }

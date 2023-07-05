@@ -118,7 +118,7 @@ public class StatefulConnectionPool {
                 continue;
             }
             try {
-                return pool.getNoStatefulConn(2000L);
+                return pool.getNoStatefulConn();
             } catch (SQLException e) {
                 logger.error("getNoStatefulConn error.causeby:" + e.getMessage());
             }
@@ -149,10 +149,6 @@ public class StatefulConnectionPool {
         return new InnerConnection(connection);
     }
 
-    protected InnerConnection getNoStatefulConn(long hardTimeout) throws SQLException {
-        Connection connection = hikariPool.getConnection(hardTimeout);
-        return new InnerConnection(connection);
-    }
 
     // GetAndLock locks the connection for use. It accepts a purpose as a string.
     public StatefulConnection getAndLock(long id, String reason) throws SQLException {
