@@ -23,8 +23,20 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.monitor.SrvKeyspaceCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
-import com.jd.jdbc.sqlparser.utils.StringUtils;
+import static com.jd.jdbc.topo.Topo.GetSrvKeyspaceNamesResponse;
+import static com.jd.jdbc.topo.Topo.WatchData;
+import static com.jd.jdbc.topo.Topo.WatchDataResponse;
+import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceData;
+import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceResponse;
+import static com.jd.jdbc.topo.Topo.dirEntriesToStringArray;
+import static com.jd.jdbc.topo.Topo.pathForCellAlias;
+import static com.jd.jdbc.topo.Topo.pathForCellInfo;
+import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
+import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
+import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
+import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
@@ -39,20 +51,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
 import vschema.Vschema;
-
-import static com.jd.jdbc.topo.Topo.GetSrvKeyspaceNamesResponse;
-import static com.jd.jdbc.topo.Topo.WatchData;
-import static com.jd.jdbc.topo.Topo.WatchDataResponse;
-import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceData;
-import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceResponse;
-import static com.jd.jdbc.topo.Topo.dirEntriesToStringArray;
-import static com.jd.jdbc.topo.Topo.pathForCellAlias;
-import static com.jd.jdbc.topo.Topo.pathForCellInfo;
-import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
-import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
-import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
-import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, TopoSrvKeyspace, TopoSrvVschema, TopoTablet, TopoVschema {
 
@@ -142,7 +140,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             if (topoConnection != null) {
                 return topoConnection;
             }
-            String serverAddr = StringUtils.isEmpty(cellInfo.getProxyServerAddress()) ? cellInfo.getServerAddress() : cellInfo.getProxyServerAddress();
+            String serverAddr = cellInfo.getServerAddress();
             topoConnection = this.topoFactory.create(cell, serverAddr, cellInfo.getRoot());
             topoConnection = new TopoStatsConnection(cell, topoConnection);
             this.cells.put(cell, topoConnection);

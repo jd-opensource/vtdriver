@@ -102,13 +102,13 @@ public class VitessStatement extends AbstractVitessStatement {
     @Getter
     protected final Executor executor;
 
-    protected List<String> batchSqls;
-
-    protected List<Map<String, BindVariable>> bindVariableMapList;
-
     protected final int CURRENT_RESULT_INDEX = 0;
 
     protected final int NEXT_RESULT_INDEX = 1;
+
+    protected List<String> batchSqls;
+
+    protected List<Map<String, BindVariable>> bindVariableMapList;
 
     protected volatile VitessConnection connection;
 
@@ -174,17 +174,10 @@ public class VitessStatement extends AbstractVitessStatement {
             stmt.putAttribute(entry.getKey(), entry.getValue());
         }
 
-        String shadowdb = prop.getOrDefault("shadowdb", "");
-        if (!StringUtil.isNullOrEmpty(shadowdb)) {
-            if (!connection.getKsSet().contains(shadowdb)) {
-                throw new SQLException(String.format("unexpected keyspace (%s) in sql: %s", shadowdb, sql));
-            }
-            return changeSchema(stmt, shadowdb);
-        }
-        return changeSchema(stmt, null);
+        return changeSchema(stmt);
     }
 
-    private ParseResult changeSchema(SQLStatement stmt, String shadowKeyspace) throws SQLException {
+    private ParseResult changeSchema(SQLStatement stmt) throws SQLException {
         String defaultKeyspace = this.connection.getDefaultKeyspace();
 
         if (stmt instanceof SQLSelectStatement) {
@@ -212,7 +205,7 @@ public class VitessStatement extends AbstractVitessStatement {
             }
         }
 
-        VtChangeSchemaVisitor visitor = new VtChangeSchemaVisitor(shadowKeyspace, defaultKeyspace);
+        VtChangeSchemaVisitor visitor = new VtChangeSchemaVisitor(defaultKeyspace);
         stmt.accept(visitor);
         return new ParseResult(visitor.getNewDefaultKeyspace(), stmt);
     }

@@ -28,12 +28,11 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import testsuite.TestSuite;
-
 import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ChangeSchemaTest extends TestSuite {
-    private final VtChangeSchemaVisitor visitor = new VtChangeSchemaVisitor(StringUtil.EMPTY_STRING, StringUtil.EMPTY_STRING);
+    private final VtChangeSchemaVisitor visitor = new VtChangeSchemaVisitor(StringUtil.EMPTY_STRING);
 
     protected VitessConnection vitessConnection;
 
@@ -204,14 +203,14 @@ public class ChangeSchemaTest extends TestSuite {
             Assert.assertEquals("not supported sql: create table tb ( id int )", e.getMessage());
         }
 
-        // no database expr in SQL, no shadowdb in comment - no replace, defaultKeyspace is 'vt_' + defualt
+        // no database expr in SQL - no replace, defaultKeyspace is 'vt_' + defualt
         try (VitessStatement vitessStatement = (VitessStatement) vitessConnection.createStatement()) {
             VitessStatement.ParseResult parseResult = vitessStatement.parseStatements("select * from t");
             Assert.assertEquals(defaultKeyspace, parseResult.getSchema());
             Assert.assertEquals("select * from t", SQLUtils.toMySqlString(parseResult.getStatement(), SQLUtils.NOT_FORMAT_OPTION));
         }
 
-        // database expr in SQL, no shadowdb in comment - replace database expr, defaultKeyspace is 'vt_' + defualt
+        // database expr in SQL - replace database expr, defaultKeyspace is 'vt_' + defualt
         try (VitessStatement vitessStatement = (VitessStatement) vitessConnection.createStatement()) {
             VitessStatement.ParseResult parseResult = vitessStatement.parseStatements("select * from " + defaultKeyspace + ".t");
             Assert.assertEquals(defaultKeyspace, parseResult.getSchema());
@@ -225,7 +224,7 @@ public class ChangeSchemaTest extends TestSuite {
             Assert.assertEquals("unexpected keyspace (ks) in sql: select * from ks.tb", e.getMessage());
         }
 
-        // different database expr in SQL, no shadowdb in comment - replace different database expr, defaultKeyspace is 'vt_' + different database expr
+        // different database expr in SQL - replace different database expr, defaultKeyspace is 'vt_' + different database expr
         try (VitessStatement vitessStatement = (VitessStatement) vitessConnection.createStatement()) {
             vitessConnection.getKsSet().add("ks");
             VitessStatement.ParseResult parseResult = vitessStatement.parseStatements("select * from ks.tb");
