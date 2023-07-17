@@ -26,14 +26,14 @@ public class SplitTableUtilTest {
     public void getActualTableName() {
         List<Integer> ids = Lists.newArrayList(713, 714, 715, 716, 717, 718);
         for (Integer id : ids) {
-            String actualTableName = SplitTableUtil.getActualTableName("issue/jd/rank_plat_prod.yml", "vtdriver2", "rk_sort_rule_result", id);
+            String actualTableName = SplitTableUtil.getActualTableName("vtdriver-split-table.yml", "vtdriver2", "table_engine_test", id);
             System.out.println(String.format("id=%s，actualTableName=%s", id, actualTableName));
         }
     }
 
     @Test
     public void testGetActualTableName() {
-        String actualTableName = SplitTableUtil.getActualTableName("vtdriver2", "pop_ware_ware", 111);
+        String actualTableName = SplitTableUtil.getActualTableName("vtdriver2", "table_engine_test", 111);
         System.out.println(actualTableName);
     }
 }

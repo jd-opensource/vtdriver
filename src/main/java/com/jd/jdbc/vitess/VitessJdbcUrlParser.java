@@ -19,17 +19,16 @@ package com.jd.jdbc.vitess;
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
-import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Properties;
-
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.addDefaultProperties;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCell;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCredentials;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkSchema;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkServerTimezone;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.replaceLegacyPropertyValues;
+import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Properties;
 
 public class VitessJdbcUrlParser {
 
@@ -91,5 +90,12 @@ public class VitessJdbcUrlParser {
         parsedProperties.put(VitessPropertyKey.ALLOW_MULTI_QUERIES.getKeyName(), "true");
 
         return parsedProperties;
+    }
+
+    public static boolean acceptsUrl(String url) {
+        if (StringUtils.isEmpty(url)) {
+            return false;
+        }
+        return url.startsWith(JDBC_VITESS_PREFIX);
     }
 }

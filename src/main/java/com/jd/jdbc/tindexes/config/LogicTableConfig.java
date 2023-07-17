@@ -31,4 +31,6 @@ public class LogicTableConfig {
     private String shardingColumnType;
 
     private String shardingAlgorithms;
+
+    private String sequenceColumnName;
 }
