@@ -514,3 +514,17 @@ CREATE TABLE `all_type_test`
     `set` set('Value A','Value B') DEFAULT NULL,
     PRIMARY KEY (`tinyint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `keyword_test` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `sql` varchar(50) DEFAULT NULL,
+  `select` int(11) DEFAULT NULL,
+  `any` int(11) DEFAULT NULL,
+  `all` int(11) DEFAULT NULL,
+  `int1` int(11) DEFAULT NULL,
+  `int2` int(11) DEFAULT NULL,
+  `int3` int(11) DEFAULT NULL,
+  `int4` int(11) DEFAULT NULL,
+  `int5` int(11) DEFAULT NULL,
+  `bit` bit(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

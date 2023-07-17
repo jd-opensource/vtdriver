@@ -91,6 +91,7 @@ jobs:
           com.jd.jdbc.planbuilder.PlanCacheTest,\
           com.jd.jdbc.show.ShowVitessShardsTest,\
           com.jd.jdbc.sqlparser.ChangeSchemaTest,\
+          com.jd.jdbc.sqlparser.KeywordTest,\
           com.jd.jdbc.vitess.TimeTest,\
           com.jd.jdbc.vitess.TransactionTest,\
           com.jd.jdbc.vitess.TransactionUnShardTest,\

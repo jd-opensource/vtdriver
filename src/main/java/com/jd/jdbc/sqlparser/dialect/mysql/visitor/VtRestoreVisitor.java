@@ -31,8 +31,7 @@ import com.jd.jdbc.sqlparser.ast.expr.SQLTimestampExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLValuableExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLExprTableSource;
-import com.jd.jdbc.sqlparser.support.logging.Log;
-import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.ast.statement.SQLSelectItem;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.BindVariable;
@@ -99,7 +98,7 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
         print('.');
         String originalName = x.getName();
 
-        if (SqlParser.MYSQL_KEYWORDS.getKeyword(originalName.toUpperCase()) != null) {
+        if (SqlParser.MYSQL_KEYWORDS.contains(originalName.toUpperCase())) {
             print0("`" + originalName + "`");
         } else {
             print0(originalName);
@@ -169,10 +168,41 @@ public class VtRestoreVisitor extends MySqlOutputVisitor {
     public boolean visit(final SQLIdentifierExpr x) {
         String originalName = x.getName();
 
-        if (SqlParser.MYSQL_KEYWORDS.getKeyword(originalName.toUpperCase()) != null) {
+        if (SqlParser.MYSQL_KEYWORDS.contains(originalName.toUpperCase())) {
             print0("`" + originalName + "`");
         } else {
             print0(originalName);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean visit(SQLSelectItem x) {
+        if (x.isConnectByRoot()) {
+            print0(ucase ? "CONNECT_BY_ROOT " : "connect_by_root ");
+        }
+
+        SQLExpr expr = x.getExpr();
+
+        if (expr instanceof SQLIdentifierExpr) {
+            visit((SQLIdentifierExpr) expr);
+        } else if (expr instanceof SQLPropertyExpr) {
+            visit((SQLPropertyExpr) expr);
+        } else {
+            printExpr(expr);
+        }
+
+        String alias = x.getAlias();
+        if (alias != null && alias.length() > 0) {
+            print0(ucase ? " AS " : " as ");
+            char c0 = alias.charAt(0);
+            if (alias.indexOf(' ') == -1 || c0 == '"' || c0 == '\'') {
+                print0(alias);
+            } else {
+                print('"');
+                print0(alias);
+                print('"');
+            }
         }
         return false;
     }
