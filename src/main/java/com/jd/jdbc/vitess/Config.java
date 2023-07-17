@@ -16,8 +16,10 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
+import com.jd.jdbc.pool.InnerConnectionConstant;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.Utils;
 import io.vitess.proto.Topodata;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -66,12 +68,13 @@ public final class Config {
         INNER_CP_CONFIG_MAP = new ConcurrentHashMap<>(16);
     }
 
-    public static void setConfig(final Properties prop, final String keySpace, final String user, final Topodata.TabletType tabletType) {
+    public static void setConfig(final Properties prop, final String keySpace, final String user, final Topodata.TabletType tabletType, int shardNumber) {
         ConfigKey key = buildConfigKey(keySpace, user, tabletType);
         if (!PROPERTIES_MAP.containsKey(key)) {
             PROPERTIES_MAP.put(key, prop);
         }
         if (!INNER_CP_CONFIG_MAP.containsKey(key)) {
+            adjustInnerConnectionPoolConfig(shardNumber, prop);
             INNER_CP_CONFIG_MAP.put(key, new InnerCPConfig(prop));
         }
     }
@@ -92,6 +95,30 @@ public final class Config {
 
     private static ConfigKey buildConfigKey(String keySpace, String user, Topodata.TabletType tabletType) {
         return new ConfigKey(keySpace, user, tabletType);
+    }
+
+    private static void adjustInnerConnectionPoolConfig(int shardNumber, Properties prop) {
+        Integer vtMinimumIdle = Utils.getInteger(prop, InnerConnectionConstant.MINIMUM_IDLE);
+        Integer vtMaximumPoolSize = Utils.getInteger(prop, InnerConnectionConstant.MAXIMUM_POOL_SIZE);
+        if (vtMinimumIdle != null || vtMaximumPoolSize != null) {
+            return;
+        }
+
+        if (shardNumber < 8) {
+            // using default value 5 / 10, defined in com.jd.jdbc.vitess.Config.InnerCPConfig
+        } else if (shardNumber < 16) {
+            prop.setProperty(InnerConnectionConstant.MINIMUM_IDLE, "4");
+            prop.setProperty(InnerConnectionConstant.MAXIMUM_POOL_SIZE, "8");
+        } else if (shardNumber < 32) {
+            prop.setProperty(InnerConnectionConstant.MINIMUM_IDLE, "3");
+            prop.setProperty(InnerConnectionConstant.MAXIMUM_POOL_SIZE, "6");
+        } else if (shardNumber < 64) {
+            prop.setProperty(InnerConnectionConstant.MINIMUM_IDLE, "2");
+            prop.setProperty(InnerConnectionConstant.MAXIMUM_POOL_SIZE, "5");
+        } else {
+            prop.setProperty(InnerConnectionConstant.MINIMUM_IDLE, "2");
+            prop.setProperty(InnerConnectionConstant.MAXIMUM_POOL_SIZE, "4");
+        }
     }
 
     @EqualsAndHashCode

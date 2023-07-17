@@ -84,6 +84,9 @@ public class StatefulConnectionPool {
             if (statefulConnectionPool != null) {
                 statefulConnectionPool.close();
             }
+            if (map.isEmpty()) {
+                STATEFUL_CONNECTION_POOL_MAP.remove(tablet.getKeyspace());
+            }
         }
     }
 
@@ -133,7 +136,7 @@ public class StatefulConnectionPool {
         return null;
     }
 
-    private static StatefulConnectionPool getStatefulConnectionPool(final String keyspace, final Topodata.Tablet tablet) {
+    public static StatefulConnectionPool getStatefulConnectionPool(final String keyspace, final Topodata.Tablet tablet) {
         String user = SecurityCenter.INSTANCE.getCredential(keyspace).getUser();
         String password = SecurityCenter.INSTANCE.getCredential(keyspace).getPassword();
         Properties properties = Config.getConnectionPoolConfig(tablet.getKeyspace(), user, tablet.getType());

@@ -18,13 +18,15 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
+import com.jd.jdbc.common.util.MapUtil;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.monitor.HealthCheckCollector;
+import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.common.util.MapUtil;
+import com.jd.jdbc.util.SchemaUtil;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
@@ -196,6 +198,23 @@ public enum HealthCheck {
                 }
             }
             return null;
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
+    public List<Topodata.Tablet> getHealthyTablets(String keyspace) {
+        List<Topodata.Tablet> tablets = new ArrayList<>();
+        this.lock.lock();
+        try {
+            for (Map.Entry<String, TabletHealthCheck> entry : healthByAlias.entrySet()) {
+                Topodata.Tablet tablet = entry.getValue().getTablet();
+                if (tablet == null || !tablet.getKeyspace().equalsIgnoreCase(keyspace) || !entry.getValue().getServing().get()) {
+                    continue;
+                }
+                tablets.add(tablet);
+            }
+            return tablets;
         } finally {
             this.lock.unlock();
         }
@@ -391,7 +410,21 @@ public enum HealthCheck {
         }
     }
 
-    public void watchTabletHealthCheckStream() {
+    public void initConnectionPool(final String keyspace) {
+        String tabletKeyspace = SchemaUtil.getLogicSchema(keyspace);
+        for (TabletHealthCheck tabletHealthCheck : healthByAlias.values()) {
+            Topodata.Tablet tablet = tabletHealthCheck.getTablet();
+            if (tablet == null || !tablet.getKeyspace().equalsIgnoreCase(tabletKeyspace) || !tabletHealthCheck.getServing().get()) {
+                continue;
+            }
+            if (!Objects.equals(Topodata.TabletType.MASTER, tablet.getType())) {
+                continue;
+            }
+            VtHealthCheckExecutorService.execute(() -> StatefulConnectionPool.getStatefulConnectionPool(keyspace, tablet));
+        }
+    }
+
+    private void watchTabletHealthCheckStream() {
         this.streamWatcherTimer.schedule(new TimerTask() {
             @Override
             public void run() {

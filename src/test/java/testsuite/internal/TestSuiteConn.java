@@ -28,4 +28,20 @@ public interface TestSuiteConn {
     default String getDevConnectionUrl() {
         return null;
     }
+
+    default String getConnectionUrl() {
+        return null;
+    }
+
+    default String getKeyspace() {
+        return null;
+    }
+
+    default String getUser() {
+        return null;
+    }
+
+    default String getPassword() {
+        return null;
+    }
 }

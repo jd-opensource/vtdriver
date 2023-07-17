@@ -17,7 +17,9 @@ limitations under the License.
 package testsuite.internal.config;
 
 import java.util.StringJoiner;
+import lombok.Getter;
 
+@Getter
 public abstract class TestSuiteJdbcCfg {
     public static final String ABSTRACT_GET_PREFIX_METHOD_NAME = "getPrefix";
 

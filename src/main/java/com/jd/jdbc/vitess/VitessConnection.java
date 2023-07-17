@@ -22,8 +22,11 @@ import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
+import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
+import com.jd.jdbc.queryservice.IParentQueryService;
+import com.jd.jdbc.queryservice.TabletDialer;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.ast.statement.SQLCommitStatement;
@@ -33,12 +36,14 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.topo.TopoServer;
+import com.jd.jdbc.util.SchemaUtil;
 import com.jd.jdbc.util.TimeUtil;
 import com.jd.jdbc.vitess.metadata.CachedDatabaseMetaData;
 import com.jd.jdbc.vitess.metadata.VitessDatabaseMetaData;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import com.mysql.cj.jdbc.JdbcConnection;
 import io.vitess.proto.Query;
+import io.vitess.proto.Topodata;
 import io.vitess.proto.Vtgate;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -48,6 +53,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -436,6 +442,14 @@ public class VitessConnection extends AbstractVitessConnection {
                 vitessMetaDataInfoMap.putIfAbsent(defaultKeyspace, cachedDatabaseMetaData);
                 return cachedDatabaseMetaData;
             }
+        }
+    }
+
+    public void closeInnerConnection() {
+        List<Topodata.Tablet> tabletList = HealthCheck.INSTANCE.getHealthyTablets(SchemaUtil.getLogicSchema(defaultKeyspace));
+        for (Topodata.Tablet tablet : tabletList) {
+            IParentQueryService queryService = TabletDialer.dial(tablet);
+            queryService.closeNativeQueryService();
         }
     }
 
