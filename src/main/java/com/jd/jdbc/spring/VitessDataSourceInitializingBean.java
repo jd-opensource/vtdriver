@@ -1,8 +1,25 @@
-package com.jd.vtdriver.spring.boot.autoconfigure;
+/*
+Copyright 2021 JD Project Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package com.jd.jdbc.spring;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.vitess.VitessJdbcUrlParser;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
@@ -17,31 +34,30 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
 @Component
-public class VtDriverDataSourceInit implements ApplicationContextAware, InitializingBean {
+public class VitessDataSourceInitializingBean implements ApplicationContextAware, InitializingBean {
 
-    private final static Log LOG = LogFactory.getLog(VtDriverDataSourceInit.class);
+    private static final Log LOG = LogFactory.getLog(VitessDataSourceInitializingBean.class);
 
-    private static ApplicationContext applicationContext;
+    private ApplicationContext applicationContext;
 
     @Override
     public void afterPropertiesSet() {
-        Map<String, DataSource> dataSources = VtDriverDataSourceInit.getBeans(DataSource.class);
-        initVtDriverDataSource(dataSources);
+        Map<String, DataSource> dataSources = applicationContext.getBeansOfType(DataSource.class);
+        initVitessDataSource(dataSources);
     }
 
     @Override
-    public synchronized void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        VtDriverDataSourceInit.applicationContext = applicationContext;
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
     }
 
-    public static void initVtDriverDataSource(Map<String, DataSource> dataSources) {
+    private void initVitessDataSource(Map<String, DataSource> dataSources) {
         for (Map.Entry<String, DataSource> entry : dataSources.entrySet()) {
             DataSource dataSource = entry.getValue();
-            if (isVtDriverDataSource(dataSource)) {
-                try {
-                    LOG.info("VtDriver datasource init: " + entry.getKey());
-                    Connection conn = dataSource.getConnection();
-                    conn.close();
+            if (isVitessDataSource(dataSource)) {
+                LOG.info("VtDriver datasource start init: " + entry.getKey());
+                try (Connection connection = dataSource.getConnection()) {
+
                 } catch (SQLException e) {
                     LOG.info("VtDriver datasource init error: " + e.getMessage());
                 }
@@ -49,32 +65,27 @@ public class VtDriverDataSourceInit implements ApplicationContextAware, Initiali
         }
     }
 
-    public static <T> Map<String, T> getBeans(Class<T> clazz) {
-        return applicationContext.getBeansOfType(clazz);
-    }
-
-    public static boolean isVtDriverDataSource(DataSource dataSource) {
-        String prefix = "jdbc:vitess";
+    private boolean isVitessDataSource(DataSource dataSource) {
         String className = dataSource.getClass().getName();
         switch (className) {
             case "com.alibaba.druid.pool.DruidDataSource":
                 DruidDataSource druidDataSource = (DruidDataSource) dataSource;
-                return druidDataSource.getUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(druidDataSource.getUrl());
             case "com.zaxxer.hikari.HikariDataSource":
                 HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
-                return hikariDataSource.getJdbcUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(hikariDataSource.getJdbcUrl());
             case "org.apache.commons.dbcp2.BasicDataSource":
                 BasicDataSource basicDataSource = (BasicDataSource) dataSource;
-                return basicDataSource.getUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(basicDataSource.getUrl());
             case "com.mchange.v2.c3p0.ComboPooledDataSource":
                 ComboPooledDataSource comboPooledDataSource = (ComboPooledDataSource) dataSource;
-                return comboPooledDataSource.getJdbcUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(comboPooledDataSource.getJdbcUrl());
             case "org.apache.tomcat.dbcp.dbcp2.BasicDataSource":
                 org.apache.tomcat.dbcp.dbcp2.BasicDataSource dbcp2BasicDataSource = (org.apache.tomcat.dbcp.dbcp2.BasicDataSource) dataSource;
-                return dbcp2BasicDataSource.getUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(dbcp2BasicDataSource.getUrl());
             case "org.apache.tomcat.jdbc.pool.DataSource":
                 org.apache.tomcat.jdbc.pool.DataSource tomcatDataSource = (org.apache.tomcat.jdbc.pool.DataSource) dataSource;
-                return tomcatDataSource.getUrl().startsWith(prefix);
+                return VitessJdbcUrlParser.acceptsUrl(tomcatDataSource.getUrl());
             default:
                 return false;
         }

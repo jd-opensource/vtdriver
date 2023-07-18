@@ -139,5 +139,5 @@ jobs:
           com.jd.jdbc.engine.CharEncodingTest
       - name: install vtdriver
         run: mvn clean install -Dmaven.test.skip=true
-      - name: Test starter
-        run: mvn -f ./vtdriver-spring-boot-starter/pom.xml clean test
+#      - name: Test starter
+#        run: mvn -f ./vtdriver-spring-boot-starter/pom.xml clean test
