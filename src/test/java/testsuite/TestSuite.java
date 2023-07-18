@@ -30,7 +30,12 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import testsuite.internal.TestSuiteShardSpec;
 import testsuite.internal.environment.DriverEnv;
 import testsuite.internal.environment.TestSuiteEnv;
@@ -50,6 +55,21 @@ public abstract class TestSuite extends TestSuitePrinter {
      */
     protected static Connection getConnection(TestSuiteEnv env) throws SQLException {
         return env.getDevConnection();
+    }
+
+    protected static ExecutorService getThreadPool(int num, int max) {
+        ExecutorService pool = new ThreadPoolExecutor(num, max,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new ThreadFactory() {
+                private final AtomicInteger threadNumber = new AtomicInteger(1);
+
+                @Override
+                public Thread newThread(final Runnable r) {
+                    return new Thread(r, threadNumber.getAndIncrement() + "");
+                }
+            });
+        return pool;
     }
 
     public static void closeConnection(Connection conn) {

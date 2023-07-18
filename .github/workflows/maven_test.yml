@@ -71,6 +71,7 @@ jobs:
           com.jd.jdbc.context.ContextTest,\
           com.jd.jdbc.sqltypes.VtValueTest,\
           com.jd.jdbc.topo.discovery.TestHealthCheck,\
+          com.jd.jdbc.discovery.HealthCheckTest,\
           com.jd.jdbc.util.SplitMultiQueryUtilsTest
       - name: Test driver
         run: mvn clean test -Dtest=\

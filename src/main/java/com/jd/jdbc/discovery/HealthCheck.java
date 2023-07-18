@@ -105,6 +105,13 @@ public enum HealthCheck {
         this.watchTabletHealthCheckStream();
     }
 
+    static void resetHealthCheck() {
+        INSTANCE.healthByAlias.clear();
+        INSTANCE.healthData.clear();
+        INSTANCE.healthy.clear();
+        INSTANCE.tabletCounter.set(0);
+    }
+
     public static String keyFromTarget(final Query.Target target) {
         return target.getKeyspace() + "." + target.getShard() + "." + TopoProto.tabletTypeLstring(target.getTabletType());
     }
@@ -115,6 +122,10 @@ public enum HealthCheck {
 
     public Map<String, TabletHealthCheck> getHealthByAliasCopy() {
         return new HashMap<>(healthByAlias);
+    }
+
+    public Map<String, List<TabletHealthCheck>> getHealthyCopy() {
+        return new HashMap<>(healthy);
     }
 
     public IQueryService tabletConnection(Topodata.TabletAlias alias) {
@@ -178,7 +189,7 @@ public enum HealthCheck {
                     if (tablet == null || !tablet.getKeyspace().equalsIgnoreCase(keyspace) || !tabletHealthCheck.getServing().get()) {
                         continue;
                     }
-                    if (!Objects.equals(tabletType, tablet.getType())) {
+                    if (!Objects.equals(tabletType, tabletHealthCheck.getTarget().getTabletType())) {
                         continue;
                     }
                     return tablet;
@@ -373,6 +384,7 @@ public enum HealthCheck {
             this.lock.unlock();
             if (targetChanged) {
                 Topodata.Tablet tablet = th.getTablet().toBuilder().setType(th.getTarget().getTabletType()).setKeyspace(th.getTarget().getKeyspace()).setShard(th.getTarget().getShard()).build();
+
                 th.getQueryService().setTablet(tablet);
                 th.closeNativeQueryService();
             }

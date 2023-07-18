@@ -115,7 +115,7 @@ public class Topo {
      * @return
      * @throws TopoException
      */
-    private static TopoServer newWithFactory(TopoFactory topoFactory, String serverAddress, String root) throws TopoException {
+    protected static TopoServer newWithFactory(TopoFactory topoFactory, String serverAddress, String root) throws TopoException {
         TopoConnection conn = topoFactory.create(GLOBAL_CELL, serverAddress, root);
         conn = new TopoStatsConnection(GLOBAL_CELL, conn);
 

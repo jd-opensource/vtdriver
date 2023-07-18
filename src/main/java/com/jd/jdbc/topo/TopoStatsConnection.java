@@ -44,7 +44,7 @@ public class TopoStatsConnection implements TopoConnection {
 
     @Override
     public Version create(IContext ctx, String filePath, byte[] contents) throws TopoException {
-        return null;
+        return this.topoConnection.create(ctx, filePath, contents);
     }
 
     @Override

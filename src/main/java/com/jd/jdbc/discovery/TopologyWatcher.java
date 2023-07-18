@@ -246,8 +246,12 @@ public class TopologyWatcher {
         }
     }
 
-    public void stop() {
+    public void close() {
         timer.cancel();
+        for (Map.Entry<String, Topodata.Tablet> entry : currentTablets.entrySet()) {
+            hc.removeTablet(entry.getValue());
+        }
+        currentTablets.clear();
     }
 
     private String tabletToMapKey(Topodata.Tablet tablet) {

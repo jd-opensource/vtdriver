@@ -59,4 +59,12 @@ public enum TopologyWatcherManager {
         }
         cellTopologyWatcherMap.get(cell).watchKeyspace(ctx, keySpaces);
     }
+
+    public void close() {
+        for (Map.Entry<String, TopologyWatcher> entry : cellTopologyWatcherMap.entrySet()) {
+            TopologyWatcher topologyWatcher = entry.getValue();
+            topologyWatcher.close();
+        }
+        cellTopologyWatcherMap.clear();
+    }
 }
