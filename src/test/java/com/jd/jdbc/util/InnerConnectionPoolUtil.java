@@ -51,7 +51,7 @@ public class InnerConnectionPoolUtil {
     }
 
     private static void clearByKeyspace(String keyspace) {
-        List<Topodata.Tablet> tabletList = HealthCheck.INSTANCE.getHealthyTablets(SchemaUtil.getLogicSchema(keyspace));
+        List<Topodata.Tablet> tabletList = HealthCheck.INSTANCE.getHealthyTablets(KeyspaceUtil.getLogicSchema(keyspace));
         for (Topodata.Tablet tablet : tabletList) {
             IParentQueryService queryService = TabletDialer.dial(tablet);
             queryService.closeNativeQueryService();

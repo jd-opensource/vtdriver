@@ -31,11 +31,11 @@ public interface TopoTablet {
      * @return
      * @throws TopoException
      */
-    TopoTabletInfo getTablet(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException;
+    Topodata.Tablet getTablet(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException;
 
-    CompletableFuture<TopoTabletInfo> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException;
+    List<Topodata.Tablet> getTabletsByRange(IContext ctx, String cell) throws TopoException;
 
-    List<TopoTabletInfo> getTabletsByRange(IContext ctx, String cell) throws TopoException;
+    CompletableFuture<Topodata.Tablet> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException;
 
     /**
      * @param ctx

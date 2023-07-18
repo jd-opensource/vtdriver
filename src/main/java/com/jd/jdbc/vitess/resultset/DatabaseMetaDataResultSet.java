@@ -17,7 +17,7 @@
 
 package com.jd.jdbc.vitess.resultset;
 
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Date;
@@ -89,7 +89,7 @@ public final class DatabaseMetaDataResultSet extends AbstractDatabaseMetaDataRes
         for (int i = 1; i <= indexMap.size(); i++) {
             if (tableCatIndex == i) {
                 String tableCat = resultSet.getString(i);
-                tableCat = SchemaUtil.getLogicSchema(tableCat);
+                tableCat = KeyspaceUtil.getLogicSchema(tableCat);
                 if (tableCat.equals("_vt")) {
                     return null;
                 }

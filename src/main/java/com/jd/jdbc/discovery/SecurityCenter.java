@@ -27,6 +27,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 public enum SecurityCenter {
+    /**
+     * Enum singleton
+     */
     INSTANCE;
 
     private Map<String, Credential> keySpaceCredentialMap = null;

@@ -16,15 +16,25 @@ limitations under the License.
 
 package com.jd.jdbc.key;
 
-import org.junit.Rule;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import testsuite.TestSuite;
+import testsuite.internal.TestSuiteShardSpec;
 
-public class BinaryHashUtilTest {
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+public class BinaryHashUtilTest extends TestSuite {
 
     @Test
-    public void getShardByVindex() {
+    public void getShardByVindex() throws SQLException {
+        String hashvalue = BinaryHashUtil.getShardByVindex(ShardEnum.TWO_SHARDS, "hashvalue");
+        System.out.println(hashvalue);// -80
+    }
+
+    @Test
+    public void getShardByVindexByKeyspace() throws SQLException {
+        Connection connection = DriverManager.getConnection(getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS)));
+        String hashvalue = BinaryHashUtil.getShardByVindex(connection.getCatalog(), "hashvalue");
+        System.out.println(hashvalue);// -80
     }
 }

@@ -26,7 +26,6 @@ import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.topo.TopoTabletInfo;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
@@ -40,7 +39,6 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -226,9 +224,7 @@ public class ServerTest {
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
         VtDaemonExecutorService.initialize(null, null, null);
 
-        List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, new HashSet<String>() {{
-            add(TOPO_KEYSPACE);
-        }}, new ArrayList<Topodata.TabletType>() {{
+        List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, TOPO_KEYSPACE, new ArrayList<Topodata.TabletType>() {{
             add(Topodata.TabletType.MASTER);
             add(Topodata.TabletType.REPLICA);
             add(Topodata.TabletType.RDONLY);
@@ -246,8 +242,8 @@ public class ServerTest {
     private void commonTestServer(TopoServer topoServer) throws TopoException {
         List<Topodata.TabletAlias> tabletAliasList = topoServer.getTabletAliasByCell(VtContext.withCancel(VtContext.background()), TOPO_CELL);
         for (Topodata.TabletAlias tabletAlias : tabletAliasList) {
-            TopoTabletInfo topoTabletInfo = topoServer.getTablet(VtContext.withCancel(VtContext.background()), tabletAlias);
-            Assert.assertNotNull(topoTabletInfo);
+            Topodata.Tablet tablet = topoServer.getTablet(VtContext.withCancel(VtContext.background()), tabletAlias);
+            Assert.assertNotNull(tablet);
         }
 
         Topodata.SrvKeyspace srvKeyspace = topoServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, TOPO_KEYSPACE);

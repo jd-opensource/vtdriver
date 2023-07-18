@@ -23,7 +23,7 @@ import com.jd.jdbc.queryservice.util.VtResultSetUtils;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtType;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import io.vitess.proto.Query;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -57,7 +57,7 @@ public class StreamIterator implements VtIterator<VtResultSet> {
                 for (int idx = 0, col = 1; idx < cols; idx++, col++) {
                     Query.Field.Builder fieldBuilder = Query.Field.newBuilder();
                     Query.Type queryType = VtType.getQueryType(metaData.getColumnTypeName(col));
-                    fieldBuilder.setDatabase(SchemaUtil.getLogicSchema(metaData.getCatalogName(col)))
+                    fieldBuilder.setDatabase(KeyspaceUtil.getLogicSchema(metaData.getCatalogName(col)))
                         .setJdbcClassName(metaData.getColumnClassName(col))
                         .setPrecision(metaData.getPrecision(col))
                         .setIsSigned(metaData.isSigned(col))

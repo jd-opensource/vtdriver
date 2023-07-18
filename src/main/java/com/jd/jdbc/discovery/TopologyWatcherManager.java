@@ -21,7 +21,6 @@ package com.jd.jdbc.discovery;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.topo.TopoServer;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,11 +39,11 @@ public enum TopologyWatcherManager {
         cellTopologyWatcherMap = new ConcurrentHashMap<>(16);
     }
 
-    public void startWatch(IContext ctx, TopoServer topoServer, String cell, Set<String> keySpaces) {
+    public void startWatch(IContext ctx, TopoServer topoServer, String cell, String tabletKeyspace) {
         lock.lock();
         try {
             if (!cellTopologyWatcherMap.containsKey(cell)) {
-                TopologyWatcher topologyWatcher = new TopologyWatcher(topoServer, cell, keySpaces);
+                TopologyWatcher topologyWatcher = new TopologyWatcher(topoServer, cell, tabletKeyspace);
                 topologyWatcher.start(ctx);
                 cellTopologyWatcherMap.put(cell, topologyWatcher);
             }
@@ -53,11 +52,11 @@ public enum TopologyWatcherManager {
         }
     }
 
-    public void watch(IContext ctx, String cell, Set<String> keySpaces) {
+    public void watch(IContext ctx, String cell, String tabletKeyspace) {
         if (!cellTopologyWatcherMap.containsKey(cell)) {
             throw new RuntimeException("topo watcher for cell " + cell + " is not started");
         }
-        cellTopologyWatcherMap.get(cell).watchKeyspace(ctx, keySpaces);
+        cellTopologyWatcherMap.get(cell).watchKeyspace(ctx, tabletKeyspace);
     }
 
     public void close() {

@@ -18,29 +18,24 @@ limitations under the License.
 
 package com.jd.jdbc.srvtopo;
 
-import com.jd.jdbc.concurrency.AllErrorRecorder;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.CurrentShard;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.TopoException;
+import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
-
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 public class SrvTopo {
     private static final Log log = LogFactory.getLog(SrvTopo.class);
@@ -86,73 +81,50 @@ public class SrvTopo {
      * @return
      * @throws SrvTopoException
      */
-    public static List<Query.Target> findAllTargets(IContext ctx, SrvTopoServer srvTopoServer, String cell, Set<String> keyspaceNameSet, List<Topodata.TabletType> tabletTypeList)
-        throws InterruptedException, SQLException {
+    public static List<Query.Target> findAllTargets(IContext ctx, SrvTopoServer srvTopoServer, String cell, String keyspace, List<Topodata.TabletType> tabletTypeList) throws SQLException {
         List<Query.Target> targetList = new ArrayList<>();
-        CountDownLatch countDownLatch = new CountDownLatch(keyspaceNameSet.size());
-        ReentrantLock lock = new ReentrantLock(true);
-        AllErrorRecorder errRecorder = new AllErrorRecorder();
-
-        for (String keyspace : keyspaceNameSet) {
-            VtDaemonExecutorService.execute(() -> {
-                try {
-                    // Get SrvKeyspace for cell/keyspace.
-                    ResilientServer.GetSrvKeyspaceResponse srvKeyspace = srvTopoServer.getSrvKeyspace(ctx, cell, keyspace);
-                    Topodata.SrvKeyspace ks = srvKeyspace.getSrvKeyspace();
-                    Exception err = srvKeyspace.getException();
-                    if (err != null) {
-                        if (TopoException.isErrType(err, NO_NODE)) {
-                            // Possibly a race condition, or leftover
-                            // crud in the topology service. Just log it.
-                            log.error("GetSrvKeyspace(" + cell + ", " + keyspace + ") returned ErrNoNode, skipping that SrvKeyspace");
-                        } else {
-                            // More serious error, abort.
-                            errRecorder.recordError(err);
-                        }
-                        return;
-                    }
-
-                    // Get all shard names that are used for serving.
-                    for (Topodata.SrvKeyspace.KeyspacePartition ksPartition : ks.getPartitionsList()) {
-                        // Check we're waiting for tablets of that type.
-                        boolean waitForIt = false;
-                        for (Topodata.TabletType tt : tabletTypeList) {
-                            if (tt.equals(ksPartition.getServedType())) {
-                                waitForIt = true;
-                                break;
-                            }
-                        }
-                        if (!waitForIt) {
-                            continue;
-                        }
-
-                        // Add all the shards. Note we can't have
-                        // duplicates, as there is only one entry per
-                        // TabletType in the Partitions list.
-                        lock.lock();
-                        try {
-                            CurrentShard.setShardReferences(keyspace, ksPartition.getShardReferencesList());
-                            for (Topodata.ShardReference shard : ksPartition.getShardReferencesList()) {
-                                targetList.add(Query.Target.newBuilder()
-                                    .setCell(cell)
-                                    .setKeyspace(keyspace)
-                                    .setShard(shard.getName())
-                                    .setTabletType(ksPartition.getServedType())
-                                    .build());
-                            }
-                        } finally {
-                            lock.unlock();
-                        }
-                    }
-                } finally {
-                    countDownLatch.countDown();
+        // Get SrvKeyspace for cell/keyspace.
+        ResilientServer.GetSrvKeyspaceResponse srvKeyspace = srvTopoServer.getSrvKeyspace(ctx, cell, keyspace);
+        Topodata.SrvKeyspace ks = srvKeyspace.getSrvKeyspace();
+        Exception err = srvKeyspace.getException();
+        if (err != null) {
+            if (TopoException.isErrType(err, TopoExceptionCode.NO_NODE)) {
+                // Possibly a race condition, or leftover
+                // crud in the topology service. Just log it.
+                log.error("GetSrvKeyspace(" + cell + ", " + keyspace + ") returned ErrNoNode, skipping that SrvKeyspace");
+                throw new SQLSyntaxErrorException("Unknown database '" + keyspace + "'");
+            } else {
+                // More serious error, abort.
+                throw new SQLException(err);
+            }
+        }
+        if (ks == null || CollectionUtils.isEmpty(ks.getPartitionsList())) {
+            throw new SQLSyntaxErrorException("Unknown database '" + keyspace + "'");
+        }
+        // Get all shard names that are used for serving.
+        for (Topodata.SrvKeyspace.KeyspacePartition ksPartition : ks.getPartitionsList()) {
+            // Check we're waiting for tablets of that type.
+            boolean waitForIt = false;
+            for (Topodata.TabletType tt : tabletTypeList) {
+                if (tt.equals(ksPartition.getServedType())) {
+                    waitForIt = true;
+                    break;
                 }
-            });
+            }
+            if (!waitForIt) {
+                continue;
+            }
+            CurrentShard.setShardReferences(keyspace, ksPartition.getShardReferencesList());
+            for (Topodata.ShardReference shard : ksPartition.getShardReferencesList()) {
+                targetList.add(Query.Target.newBuilder()
+                    .setCell(cell)
+                    .setKeyspace(keyspace)
+                    .setShard(shard.getName())
+                    .setTabletType(ksPartition.getServedType())
+                    .build());
+            }
         }
-        countDownLatch.await(10, TimeUnit.SECONDS);
-        if (errRecorder.hasErrors()) {
-            throw errRecorder.error();
-        }
+
         return targetList;
     }
 }

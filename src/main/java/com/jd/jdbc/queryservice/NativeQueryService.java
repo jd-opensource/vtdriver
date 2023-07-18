@@ -38,7 +38,7 @@ import com.jd.jdbc.sqltypes.VtType;
 import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.prometheus.client.Histogram;
 import io.vitess.proto.Query;
@@ -451,7 +451,7 @@ public class NativeQueryService implements IQueryService {
                 Query.Field.Builder fieldBuilder = Query.Field.newBuilder();
                 Query.Type queryType = VtType.getQueryType(metaData.getColumnTypeName(col));
                 columnClassNames.add(metaData.getColumnClassName(col));
-                fieldBuilder.setDatabase(SchemaUtil.getLogicSchema(metaData.getCatalogName(col)))
+                fieldBuilder.setDatabase(KeyspaceUtil.getLogicSchema(metaData.getCatalogName(col)))
                     .setTable(metaData.getTableName(col))
                     .setName(metaData.getColumnLabel(col))
                     .setOrgName(metaData.getColumnName(col))

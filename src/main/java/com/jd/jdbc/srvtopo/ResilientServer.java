@@ -594,6 +594,10 @@ public class ResilientServer implements SrvTopoServer {
                     CurrentShard.setShardReferences(keyspace, shardReferencesList);
                     SrvKeyspaceCollector.getSrvKeyspaceTaskCounter().labels(keyspace, cell).inc();
                 } catch (TopoException e) {
+                    if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
+                        log.warn("getSrvKeyspace error,cause by" + e.getMessage());
+                        continue;
+                    }
                     log.error("srvKeyspace-Timer getSrvKeyspace failed for " + cell + "/" + keyspace + ": " + e.getMessage());
                     SrvKeyspaceCollector.getSrvKeyspaceTaskErrorCounter().labels(keyspace, cell).inc();
                 } catch (Exception e) {

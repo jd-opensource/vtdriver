@@ -34,7 +34,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.Data;
@@ -62,20 +61,12 @@ public class TabletGateway extends Gateway {
      */
     private ReentrantLock lock;
 
-    /**
-     * statusAggregators is a map indexed by the key
-     * keyspace/shard/tablet_type.
-     */
-    private Map<String, TabletStatusAggregator> statusAggregators;
-
-    private TabletGateway(SrvTopoServer srvTopoServer, Integer retryCount,
-                          Map<String, TabletStatusAggregator> statusAggregators) {
+    private TabletGateway(SrvTopoServer srvTopoServer, Integer retryCount) {
         this.hc = HealthCheck.INSTANCE;
         this.srvTopoServer = srvTopoServer;
         this.retryCount = retryCount;
         this.tabletGatewayManager = new HashSet<>(16, 1);
         this.lock = new ReentrantLock();
-        this.statusAggregators = statusAggregators;
     }
 
     public static TabletGateway build(SrvTopoServer serv) throws Exception {
@@ -84,8 +75,7 @@ public class TabletGateway extends Gateway {
                 return tabletGateways.get(serv);
             }
 
-            Map<String, TabletStatusAggregator> statusAggregators = new ConcurrentHashMap<>(16, 1);
-            TabletGateway gw = new TabletGateway(serv, 2, statusAggregators);
+            TabletGateway gw = new TabletGateway(serv, 2);
             gw.setQueryService(new RetryTabletQueryService(gw));
             tabletGateways.put(serv, gw);
 
@@ -94,22 +84,18 @@ public class TabletGateway extends Gateway {
     }
 
     @Override
-    public void waitForTablets(IContext ctx, String cell, Set<String> keyspaceNameList,
-                               List<Topodata.TabletType> tabletTypeList) throws InterruptedException, SQLException {
-        Map<String, String> noWatchedMap = new HashMap<>(keyspaceNameList.size());
-        for (String keyspaceName : keyspaceNameList) {
-            for (Topodata.TabletType tabletType : tabletTypeList) {
-                String cacheKey = String.format("%s.%s.%s", cell, keyspaceName, tabletType);
-                if (!this.tabletGatewayManager.contains(cacheKey)) {
-                    noWatchedMap.put(cacheKey, keyspaceName);
-                }
+    public void waitForTablets(IContext ctx, String cell, String keyspace, List<Topodata.TabletType> tabletTypeList) throws SQLException {
+        Map<String, String> noWatchedMap = new HashMap<>();
+        for (Topodata.TabletType tabletType : tabletTypeList) {
+            String cacheKey = cell + "." + keyspace + "." + tabletType;
+            if (!this.tabletGatewayManager.contains(cacheKey)) {
+                noWatchedMap.put(cacheKey, keyspace);
             }
         }
         if (noWatchedMap.isEmpty()) {
             return;
         }
-        List<Query.Target> targetList = SrvTopo.findAllTargets(ctx, srvTopoServer, cell,
-            new HashSet<>(noWatchedMap.values()), tabletTypeList);
+        List<Query.Target> targetList = SrvTopo.findAllTargets(ctx, srvTopoServer, cell, keyspace, tabletTypeList);
         hc.waitForAllServingTablets(VtContext.withDeadline(ctx, 30, TimeUnit.SECONDS), Lists.newArrayList(targetList));
         noWatchedMap.forEach((cacheKey, v) -> this.tabletGatewayManager.add(cacheKey));
     }
@@ -117,8 +103,5 @@ public class TabletGateway extends Gateway {
     @Override
     public IQueryService queryServiceByAlias(Topodata.TabletAlias alias) {
         return hc.tabletConnection(alias);
-    }
-
-    public static class TabletStatusAggregator {
     }
 }

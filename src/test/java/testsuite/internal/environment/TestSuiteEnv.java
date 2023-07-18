@@ -35,11 +35,6 @@ public abstract class TestSuiteEnv implements TestSuiteConn {
 
     @Override
     public Connection getConnection(String url) throws SQLException {
-        try {
-            return DriverManager.getConnection(url);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return DriverManager.getConnection(url);
     }
 }

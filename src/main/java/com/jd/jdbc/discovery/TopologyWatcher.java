@@ -24,10 +24,10 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.monitor.TopologyCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.topo.TopoTabletInfo;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import io.vitess.proto.Topodata;
@@ -68,11 +68,11 @@ public class TopologyWatcher {
 
     private Map<String, Topodata.Tablet> currentTablets = new ConcurrentHashMap<>(16);
 
-    public TopologyWatcher(TopoServer ts, String cell, Set<String> keyspaces) {
+    public TopologyWatcher(TopoServer ts, String cell, String tabletKeyspace) {
         this.ts = ts;
         this.hc = HealthCheck.INSTANCE;
         this.cell = cell;
-        this.ksSet.addAll(keyspaces);
+        this.ksSet.add(tabletKeyspace);
         this.firstLoadTabletsFlag = true;
         log.info("start topo watcher for cell: " + cell);
     }
@@ -122,11 +122,12 @@ public class TopologyWatcher {
     private Map<String, Topodata.Tablet> getTopoTabletInfoMap(IContext ctx) {
         Map<String, Topodata.Tablet> newTablets;
         if (firstLoadTabletsFlag) {
-            List<TopoTabletInfo> topoTabletInfoList;
+            List<Topodata.Tablet> tabletList;
             try {
-                topoTabletInfoList = ts.getTabletsByRange(ctx, cell);
+                tabletList = ts.getTabletsByRange(ctx, cell);
             } catch (TopoException e) {
                 if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
+                    log.warn("getTabletsByRange error,cause by" + e.getMessage());
                     return null;
                 }
                 log.error("get topoTabletInfo fail", e);
@@ -136,12 +137,15 @@ public class TopologyWatcher {
                 return null;
             }
             newTablets = new HashMap<>();
-            for (TopoTabletInfo topoTabletInfo : topoTabletInfoList) {
-                if (!ksSet.contains(topoTabletInfo.getTablet().getKeyspace())) {
-                    ignoreTopo.ignore(topoTabletInfo.getTablet().getKeyspace(), topoTabletInfo.getTablet());
+            for (Topodata.Tablet tablet : tabletList) {
+                if (StringUtils.isEmpty(tablet.getKeyspace())) {
                     continue;
                 }
-                newTablets.put(TopoProto.tabletAliasString(topoTabletInfo.getTablet().getAlias()), topoTabletInfo.getTablet());
+                if (!ksSet.contains(tablet.getKeyspace())) {
+                    ignoreTopo.ignore(tablet.getKeyspace(), tablet);
+                    continue;
+                }
+                newTablets.put(TopoProto.tabletAliasString(tablet.getAlias()), tablet);
             }
             firstLoadTabletsFlag = false;
             return newTablets;
@@ -151,6 +155,10 @@ public class TopologyWatcher {
         try {
             tablets = ts.getTabletAliasByCell(ctx, cell);
         } catch (TopoException e) {
+            if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
+                log.warn("getTabletAliasByCell error,cause by" + e.getMessage());
+                return null;
+            }
             log.error("Build Tablets fail,current ksSet=" + ksSet, e);
             TopologyCollector.getErrorCounter().labels(cell).inc();
             return null;
@@ -180,14 +188,18 @@ public class TopologyWatcher {
         for (Topodata.TabletAlias alias : tablets) {
             VtHealthCheckExecutorService.execute(() -> {
                 try {
-                    TopoTabletInfo topoTabletInfo = ts.getTablet(ctx, alias);
-                    if (!ksSet.contains(topoTabletInfo.getTablet().getKeyspace())) {
-                        ignoreTopo.ignore(topoTabletInfo.getTablet().getKeyspace(), topoTabletInfo.getTablet());
+                    Topodata.Tablet tablet = ts.getTablet(ctx, alias);
+                    if (StringUtils.isEmpty(tablet.getKeyspace())) {
                         return;
                     }
-                    newTablets.put(TopoProto.tabletAliasString(alias), topoTabletInfo.getTablet());
+                    if (!ksSet.contains(tablet.getKeyspace())) {
+                        ignoreTopo.ignore(tablet.getKeyspace(), tablet);
+                        return;
+                    }
+                    newTablets.put(TopoProto.tabletAliasString(alias), tablet);
                 } catch (TopoException e) {
                     if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
+                        log.warn("getTablet error,cause by" + e.getMessage());
                         return;
                     }
                     log.error("get topoTabletInfo fail", e);
@@ -218,31 +230,26 @@ public class TopologyWatcher {
         }, 0, 30000);
     }
 
-    public void watchKeyspace(IContext ctx, Set<String> keyspace) {
-        if (ksSet.containsAll(keyspace)) {
+    public void watchKeyspace(IContext ctx, String tabletKeyspace) {
+        if (ksSet.contains(tabletKeyspace)) {
             return;
         }
-        for (String ks : keyspace) {
-            if (this.ksSet.contains(ks)) {
-                continue;
-            }
-            log.info("topo watcher for cell " + cell + " watches: " + ks);
-            this.ksSet.add(ks);
-            Set<Topodata.Tablet> tablets = this.ignoreTopo.watchKs(ks);
-            if (CollectionUtils.isEmpty(tablets)) {
-                return;
-            }
-            for (Topodata.Tablet tablet : tablets) {
-                hc.addTablet(tablet);
-            }
-            this.lock.lock();
-            try {
-                Map<String, Topodata.Tablet> newTablets = tablets.stream()
-                    .collect(Collectors.toMap(a -> TopoProto.tabletAliasString(a.getAlias()), s -> s, (s1, s2) -> s1));
-                currentTablets.putAll(newTablets);
-            } finally {
-                this.lock.unlock();
-            }
+        log.info("topo watcher for cell " + cell + " watches: " + tabletKeyspace);
+        this.ksSet.add(tabletKeyspace);
+        Set<Topodata.Tablet> tablets = this.ignoreTopo.watchKs(tabletKeyspace);
+        if (CollectionUtils.isEmpty(tablets)) {
+            return;
+        }
+        for (Topodata.Tablet tablet : tablets) {
+            hc.addTablet(tablet);
+        }
+        this.lock.lock();
+        try {
+            Map<String, Topodata.Tablet> newTablets = tablets.stream()
+                .collect(Collectors.toMap(a -> TopoProto.tabletAliasString(a.getAlias()), s -> s, (s1, s2) -> s1));
+            currentTablets.putAll(newTablets);
+        } finally {
+            this.lock.unlock();
         }
     }
 

@@ -26,7 +26,6 @@ import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.SchemaUtil;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
@@ -120,6 +119,10 @@ public enum HealthCheck {
 
     public static String keyFromTablet(final Topodata.Tablet tablet) {
         return tablet.getKeyspace() + "." + tablet.getShard() + "." + TopoProto.tabletTypeLstring(tablet.getType());
+    }
+
+    public static int getSecondsBehindMaster() {
+        return HealthCheck.secondsBehindsMaster;
     }
 
     public Map<String, TabletHealthCheck> getHealthByAliasCopy() {
@@ -411,10 +414,9 @@ public enum HealthCheck {
     }
 
     public void initConnectionPool(final String keyspace) {
-        String tabletKeyspace = SchemaUtil.getLogicSchema(keyspace);
         for (TabletHealthCheck tabletHealthCheck : healthByAlias.values()) {
             Topodata.Tablet tablet = tabletHealthCheck.getTablet();
-            if (tablet == null || !tablet.getKeyspace().equalsIgnoreCase(tabletKeyspace) || !tabletHealthCheck.getServing().get()) {
+            if (tablet == null || !tablet.getKeyspace().equalsIgnoreCase(keyspace) || !tabletHealthCheck.getServing().get()) {
                 continue;
             }
             if (!Objects.equals(Topodata.TabletType.MASTER, tablet.getType())) {

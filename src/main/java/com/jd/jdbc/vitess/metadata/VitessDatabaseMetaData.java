@@ -19,7 +19,7 @@ package com.jd.jdbc.vitess.metadata;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.util.RoleUtils;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.resultset.DatabaseMetaDataResultSet;
 import java.io.IOException;
@@ -332,10 +332,10 @@ public class VitessDatabaseMetaData extends AbstractDatabaseMetaData {
     }
 
     private String getCatalog(String catalog) {
-        return SchemaUtil.getRealSchema(catalog);
+        return KeyspaceUtil.getRealSchema(catalog);
     }
 
     private String getSchema(String schema) {
-        return SchemaUtil.getRealSchema(schema);
+        return KeyspaceUtil.getRealSchema(schema);
     }
 }
