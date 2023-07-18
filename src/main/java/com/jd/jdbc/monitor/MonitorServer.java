@@ -61,6 +61,7 @@ public final class MonitorServer {
             }
             ThreadPoolCollector.getInstance().register(COLLECTOR_REGISTRY);
             HealthCheckCollector.getInstance().register(COLLECTOR_REGISTRY);
+            HealthyCollector.getInstance().register(COLLECTOR_REGISTRY);
             SqlErrorCollector.getInstance().register(COLLECTOR_REGISTRY);
             SrvKeyspaceCollector.getInstance().register(COLLECTOR_REGISTRY);
             PlanCollector.PlanCacheSizeCollector.getInstance().register(COLLECTOR_REGISTRY);
@@ -80,7 +81,7 @@ public final class MonitorServer {
 
     public static void stop() {
         if (server != null) {
-            server.stop();
+            server.close();
             LOG.info(" Stop monitorServer succeed");
         }
     }
