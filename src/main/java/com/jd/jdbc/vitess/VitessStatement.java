@@ -99,6 +99,8 @@ public class VitessStatement extends AbstractVitessStatement {
 
     private static final String FUNCATION_IDENTITY = "@@IDENTITY";
 
+    private static Query.Field[] generatedKeyField;
+
     @Getter
     protected final Executor executor;
 
@@ -582,10 +584,8 @@ public class VitessStatement extends AbstractVitessStatement {
             throw new SQLException("does not support insert multiple rows in one sql statement");
         }
         long generatedKey = lastInsertId;
-        VtResultSet vtStaticResultSet = null;
-        Query.Field field = Query.Field.newBuilder().setName("GENERATED_KEY").setJdbcClassName("java.math.BigInteger").setType(Query.Type.UINT64).setColumnLength(20).setPrecision(20).build();
         List<List<VtResultValue>> rows = new ArrayList<>();
-
+        VtResultSet vtStaticResultSet = new VtResultSet(getGeneratedKeyField(), rows);
         if (!this.resultSets.isEmpty()) {
             if (generatedKey < 0) {
                 throw new SQLException("generatedKey error");
@@ -593,7 +593,6 @@ public class VitessStatement extends AbstractVitessStatement {
             if (generatedKey != 0 && (numKeys > 0)) {
                 List<VtResultValue> row = Collections.singletonList(VtResultValue.newVtResultValue(Query.Type.UINT64, BigInteger.valueOf(generatedKey)));
                 rows.add(row);
-                vtStaticResultSet = new VtResultSet(new Query.Field[] {field}, rows);
             }
         }
         return vtStaticResultSet;
@@ -1143,6 +1142,20 @@ public class VitessStatement extends AbstractVitessStatement {
         String charEncoding = connection.getProperties().getProperty(VitessPropertyKey.CHARACTER_ENCODING.getKeyName());
         SqlErrorCollector.getInstance().add(connection.getDefaultKeyspace(), sql, bindVariableMap, charEncoding, e);
         StatementCollector.getStatementErrorCounter().labels(connection.getDefaultKeyspace(), VitessJdbcProperyUtil.getRole(connection.getProperties())).inc();
+    }
+
+    private Query.Field[] getGeneratedKeyField() {
+        if (generatedKeyField == null) {
+            synchronized (VitessStatement.class) {
+                if (generatedKeyField == null) {
+                    Query.Field field = Query.Field.newBuilder().setName("GENERATED_KEY").setJdbcClassName("java.math.BigInteger")
+                        .setType(Query.Type.UINT64).setColumnLength(20).setPrecision(20).build();
+                    generatedKeyField = new Query.Field[] {field};
+                    return generatedKeyField;
+                }
+            }
+        }
+        return generatedKeyField;
     }
 
     @Getter
