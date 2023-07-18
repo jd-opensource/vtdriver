@@ -49,4 +49,13 @@ public class TabletDialer {
         final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
         TABLETQUERYSERVICECACHE.remove(addr);
     }
+
+    protected static void registerTabletCache(final Topodata.Tablet tablet, final IParentQueryService combinedQueryService) {
+        final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
+        TABLETQUERYSERVICECACHE.putIfAbsent(addr, combinedQueryService);
+    }
+
+    protected static void clearTabletCache() {
+        TABLETQUERYSERVICECACHE.clear();
+    }
 }

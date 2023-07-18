@@ -59,6 +59,8 @@
         <tomcat-dbcp.version>10.0.8</tomcat-dbcp.version>
         <spring-context.version>3.2.9.RELEASE</spring-context.version>
         <cglib.version>3.2.10</cglib.version>
+        <grpc.testing.version>1.45.1</grpc.testing.version>
+        <grpc.mockserver.version>1.97.1</grpc.mockserver.version>
     </properties>
 
     <dependencies>
@@ -224,6 +226,18 @@
             <artifactId>spring-context</artifactId>
             <version>${spring-context.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-testing</artifactId>
+            <version>${grpc.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.api.grpc</groupId>
+            <artifactId>grpc-google-cloud-pubsub-v1</artifactId>
+            <version>${grpc.mockserver.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

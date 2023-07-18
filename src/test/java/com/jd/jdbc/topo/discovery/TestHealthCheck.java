@@ -28,8 +28,9 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,7 +50,9 @@ public class TestHealthCheck {
             .setTabletType(Topodata.TabletType.MASTER)
             .build());
 
-        ExecutorService fixedThreadPool = Executors.newFixedThreadPool(1);
+        ExecutorService fixedThreadPool = new ThreadPoolExecutor(1, 1,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>());
         FutureTask<Boolean> task = new FutureTask<>(new Callable<Boolean>() {
             @Override
             public Boolean call() throws SQLException {
@@ -69,6 +72,5 @@ public class TestHealthCheck {
         } else {
             Assert.fail();
         }
-
     }
 }
