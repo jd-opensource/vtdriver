@@ -32,7 +32,6 @@ import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -177,7 +176,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
                     return vtResultSet;
                 }
                 if (this.sourceStreamResultList == null) {
-                    initSouceStreamResultList();
+                    initSourceStreamResultList();
                 }
                 for (VtStreamResultSet sourceStream : sourceStreamResultList) {
                     if (sourceStream.hasNext()) {
@@ -192,7 +191,7 @@ public class ConcatenateEngine implements PrimitiveEngine {
                 return vtResultSet;
             }
 
-            private void initSouceStreamResultList() throws SQLException {
+            private void initSourceStreamResultList() throws SQLException {
                 if (sources == null) {
                     return;
                 }

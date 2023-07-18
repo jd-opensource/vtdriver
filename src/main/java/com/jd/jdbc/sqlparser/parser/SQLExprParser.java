@@ -1222,7 +1222,7 @@ public class SQLExprParser extends SQLParser {
         return expr;
     }
 
-    public final SQLExpr groupComparisionRest(SQLExpr expr) {
+    public final SQLExpr groupComparisonRest(SQLExpr expr) {
         return expr;
     }
 
