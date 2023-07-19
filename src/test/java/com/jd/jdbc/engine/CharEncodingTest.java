@@ -16,14 +16,17 @@ limitations under the License.
 
 package com.jd.jdbc.engine;
 
+import com.jd.jdbc.util.InnerConnectionPoolUtil;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
@@ -32,6 +35,11 @@ import testsuite.internal.environment.DriverEnv;
 public class CharEncodingTest extends TestSuite {
     protected Connection conn;
 
+    @BeforeClass
+    public static void beforeClass() throws NoSuchFieldException, IllegalAccessException {
+        InnerConnectionPoolUtil.clearAll();
+    }
+
     public void init(String charEncoding) throws SQLException {
         DriverEnv driverEnv = TestSuite.Driver.of(TestSuiteShardSpec.TWO_SHARDS, charEncoding);
         String url = getConnectionUrl(driverEnv);
@@ -39,6 +47,14 @@ public class CharEncodingTest extends TestSuite {
         this.conn = getConnection(driverEnv);
         try (Statement stmt = this.conn.createStatement()) {
             stmt.executeUpdate("delete from plan_test");
+        }
+    }
+
+    @After
+    public void after() throws IllegalAccessException, NoSuchFieldException, SQLException {
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(conn);
+        if (conn != null) {
+            conn.close();
         }
     }
 
@@ -60,6 +76,8 @@ public class CharEncodingTest extends TestSuite {
                 String name = rs.getString(2);
                 System.out.println("Expect:" + "赵欣" + i + "; Actual: " + name);
 
+                System.out.println("(\"赵欣\" + i).getBytes: " + Arrays.toString(("赵欣" + i).getBytes(StandardCharsets.UTF_8)));
+                System.out.println("rs.getBytes(2)" + Arrays.toString(rs.getBytes(2)));
                 Assert.assertArrayEquals(("赵欣" + i).getBytes(StandardCharsets.UTF_8), rs.getBytes(2));
                 Assert.assertArrayEquals("小明".getBytes(StandardCharsets.UTF_8), rs.getBytes(3));
 

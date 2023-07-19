@@ -22,15 +22,19 @@ import com.google.common.collect.Lists;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.api.VtApiServer;
 import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
+import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.discovery.SecurityCenter;
 import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.monitor.ConnectionCollector;
+import com.jd.jdbc.monitor.MonitorServer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.ResilientServer;
+import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.srvtopo.ScatterConn;
 import com.jd.jdbc.srvtopo.SrvTopo;
@@ -56,8 +60,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
-
-import static com.jd.jdbc.common.Constant.DRIVER_PROPERTY_ROLE_RW;
 
 public class VitessDriver implements java.sql.Driver {
     private static final Log log = LogFactory.getLog(VitessDriver.class);
@@ -98,9 +100,10 @@ public class VitessDriver implements java.sql.Driver {
             SecurityCenter.INSTANCE.addCredential(prop);
             String defaultKeyspace = keySpaces.get(0);
 
-            String role = VitessJdbcProperyUtil.getRole(prop);
-            Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);
-            Config.setConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser(), tabletType);
+            String role = prop.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
+            if (!prop.containsKey(Constant.DRIVER_PROPERTY_ROLE_KEY)) {
+                prop.put(Constant.DRIVER_PROPERTY_ROLE_KEY, role);
+            }
             TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
             ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "ResilientSrvTopoServer");
 
@@ -117,21 +120,28 @@ public class VitessDriver implements java.sql.Driver {
                 TopologyWatcherManager.INSTANCE.watch(globalContext, cell, ksSet);
             }
 
-            List<Topodata.TabletType> tabletTypes = role.equalsIgnoreCase(DRIVER_PROPERTY_ROLE_RW)
+            boolean masterFlag = role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW);
+            List<Topodata.TabletType> tabletTypes = masterFlag
                 ? Lists.newArrayList(Topodata.TabletType.MASTER)
                 : Lists.newArrayList(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
             tabletGateway.waitForTablets(globalContext, localCell, ksSet, tabletTypes);
+
             TxConn txConn = new TxConn(tabletGateway, Vtgate.TransactionMode.MULTI);
             ScatterConn scatterConn = ScatterConn.newScatterConn("VttabletCall", txConn, tabletGateway);
             Resolver resolver = new Resolver(resilientServer, tabletGateway, localCell, scatterConn);
+            Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);
 
+            List<ResolvedShard> resolvedShardList = resolver.getAllShards(globalContext, defaultKeyspace, Topodata.TabletType.MASTER).getResolvedShardList();
+            int shardNumber = CollectionUtils.isEmpty(resolvedShardList) ? 0 : resolvedShardList.size();
+            Config.setConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser(), tabletType, shardNumber);
+            if (masterFlag) {
+                HealthCheck.INSTANCE.initConnectionPool(defaultKeyspace);
+            }
             if (initOnly) {
                 return null;
             }
 
-            /**
-             * sharded
-             * */
+            MonitorServer.getInstance().register(defaultKeyspace);
             VSchemaManager vSchemaManager = VSchemaManager.getInstance(topoServer);
             vSchemaManager.initVschema(ksSet);
             VtApiServer apiServer = VtApiServer.getInstance();

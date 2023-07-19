@@ -52,4 +52,22 @@ public class DriverEnv extends TestSuiteEnv {
         }
         return cfg.getJdbcUrl();
     }
+
+    @Override
+    public String getKeyspace() {
+        DriverJdbcCfg cfg = TestSuiteCfgReader.read(DriverJdbcCfg.class, this.shardSpec, DEV);
+        return cfg.getKeyspace();
+    }
+
+    @Override
+    public String getUser() {
+        DriverJdbcCfg cfg = TestSuiteCfgReader.read(DriverJdbcCfg.class, this.shardSpec, DEV);
+        return cfg.getUsername();
+    }
+
+    @Override
+    public String getPassword() {
+        DriverJdbcCfg cfg = TestSuiteCfgReader.read(DriverJdbcCfg.class, this.shardSpec, DEV);
+        return cfg.getPassword();
+    }
 }

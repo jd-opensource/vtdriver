@@ -132,6 +132,18 @@ public abstract class TestSuite extends TestSuitePrinter {
         }
     }
 
+    protected String getKeyspace(TestSuiteEnv env) {
+        return env.getKeyspace();
+    }
+
+    protected String getUser(TestSuiteEnv env) {
+        return env.getUser();
+    }
+
+    protected String getPassword(TestSuiteEnv env) {
+        return env.getPassword();
+    }
+
     protected static class Driver {
         public static DriverEnv of(TestSuiteShardSpec shardSpec) {
             return new DriverEnv(shardSpec);

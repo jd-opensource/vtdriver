@@ -24,6 +24,8 @@ import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Set;
+import java.util.TreeSet;
 
 public final class MonitorServer {
     private static final Log LOG = LogFactory.getLog(MonitorServer.class);
@@ -37,6 +39,8 @@ public final class MonitorServer {
     private static Integer port;
 
     private static HTTPServer server;
+
+    private final Set<String> keyspaceSet = new TreeSet<>();
 
     static {
         String monitorPort = System.getProperty("vtdriver.monitor.port");
@@ -111,6 +115,14 @@ public final class MonitorServer {
             retryCount++;
             if (server != null) {
                 break;
+            }
+        }
+    }
+
+    public void register(final String keyspace) {
+        if (!keyspaceSet.contains(keyspace)) {
+            synchronized (this) {
+                keyspaceSet.add(keyspace);
             }
         }
     }

@@ -16,6 +16,7 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
+import com.jd.jdbc.util.InnerConnectionPoolUtil;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -33,7 +34,7 @@ import lombok.Getter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import testsuite.TestSuite;
 
@@ -45,6 +46,11 @@ public class TimeTest extends TestSuite {
     protected static TimeZone serverTimezone;
 
     protected Connection conn;
+
+    @BeforeClass
+    public static void beforeClass() throws NoSuchFieldException, IllegalAccessException {
+        InnerConnectionPoolUtil.clearAll();
+    }
 
     private static void checkResult(final GetTimeObjectFunction f1, final GetTimeObjectFunction f2) {
         Object ret1 = null;
@@ -81,8 +87,9 @@ public class TimeTest extends TestSuite {
     }
 
     @After
-    public void clean() throws SQLException {
+    public void clean() throws SQLException, NoSuchFieldException, IllegalAccessException {
         if (null != conn) {
+            InnerConnectionPoolUtil.removeInnerConnectionConfig(conn);
             conn.close();
         }
     }
@@ -267,7 +274,6 @@ public class TimeTest extends TestSuite {
     // 依赖sql_mode, 其中这两个选项要关闭: NO_ZERO_IN_DATE,NO_ZERO_DATE
     // 否则会因为不能对时间插入0值导致报错
     @Test
-    @Ignore
     public void exceptionTest() throws SQLException {
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("delete from " + TABLE_NAME);
@@ -299,17 +305,17 @@ public class TimeTest extends TestSuite {
         // {{sql, ExceptionName, ExceptionMessage},{},...}
         String[][] testcases = {
             // TIMESTAMP 不存在的日期
-            {"insert into " + TABLE_NAME + " (timestamp6) values ('2020-08-00 00:00:00.000456')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
+            {"insert into " + TABLE_NAME + " (timestamp6) values ('2020-08-00 00:00:00.000456')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
             // TIMESTAMP 超出范围的时间
-            {"insert into " + TABLE_NAME + " (timestamp6) values ('3000-08-20 00:00:00.000456')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
+            {"insert into " + TABLE_NAME + " (timestamp6) values ('3000-08-20 00:00:00.000456')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
             // DATETIME 超出范围
-            {"insert into " + TABLE_NAME + " (datetime6) values ('12345-08-20 00:00:00.000456')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
+            {"insert into " + TABLE_NAME + " (datetime6) values ('12345-08-20 00:00:00.000456')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
             // DATETIME 不存在的日期
-            {"insert into " + TABLE_NAME + " (datetime6) values ('2021-09-31 00:00:00.000456')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
+            {"insert into " + TABLE_NAME + " (datetime6) values ('2021-09-31 00:00:00.000456')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect datetime value"},
             // DATE 不存在的日期
-            {"insert into " + TABLE_NAME + " (date) values ('2021-13-20')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect date value"},
+            {"insert into " + TABLE_NAME + " (date) values ('2021-13-20')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect date value"},
             // TIME 超出范围
-            {"insert into " + TABLE_NAME + " (time6) values ('900:00:00.000456')", "com.jd.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect time value"},
+            {"insert into " + TABLE_NAME + " (time6) values ('900:00:00.000456')", "com.mysql.cj.jdbc.exceptions.MysqlDataTruncation", "Incorrect time value"},
         };
 
         for (String[] test : testcases) {

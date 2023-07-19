@@ -19,18 +19,26 @@ package com.jd.jdbc.vitess;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
+import com.jd.jdbc.util.InnerConnectionPoolUtil;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.vitess.proto.Topodata;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.tomcat.jdbc.pool.DataSource;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
@@ -56,9 +64,21 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
 
     private String propsUrl;
 
+    private String user;
+
+    private String password;
+
+    @BeforeClass
+    public static void beforeClass() throws NoSuchFieldException, IllegalAccessException {
+        InnerConnectionPoolUtil.clearAll();
+    }
+
     @Before
     public void init() {
         url = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        user = getUser(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        password = getPassword(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+
         url = url.replaceAll("user", "nouser").replaceAll("password", "nopassword");
 
         random = new Random();
@@ -103,6 +123,7 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
 
     @Test
     public void testHikari() throws Exception {
+        print();
         testInit();
 
         HikariConfig config = new HikariConfig();
@@ -110,18 +131,22 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         config.setJdbcUrl(url);
         config.setMinimumIdle(5);
         config.setMaximumPoolSize(5);
-        config.setUsername("vtdriver");
-        config.setPassword("vtdriver_password");
+        config.setUsername(user);
+        config.setPassword(password);
         config.setDataSourceProperties(props);
 
         HikariDataSource hikariDataSource = new HikariDataSource(config);
-
+        Connection conn = hikariDataSource.getConnection();
+        executeSelect(conn);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(conn);
+        conn.close();
     }
 
 
     @Test
     public void testDruid1() throws Exception {
+        print();
         testInit();
 
         DruidDataSource dataSource = new DruidDataSource();
@@ -129,51 +154,57 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         dataSource.setUrl(url);
 
         dataSource.setConnectProperties(props);
-        dataSource.setUsername("vtdriver");
-        dataSource.setPassword("vtdriver_password");
+        dataSource.setUsername(user);
+        dataSource.setPassword(password);
         dataSource.setPoolPreparedStatements(true);
         dataSource.setMaxPoolPreparedStatementPerConnectionSize(10);
 
         DruidPooledConnection connection = dataSource.getConnection();
-
+        executeSelect(connection);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
     }
 
     @Test
     public void testDruid2() throws Exception {
+        print();
         DruidDataSource dataSource = new DruidDataSource();
         dataSource.setDriverClassName(driverName);
         dataSource.setUrl(url);
 
         dataSource.setConnectionProperties(propsUrl);
-        dataSource.setUsername("vtdriver");
-        dataSource.setPassword("vtdriver_password");
+        dataSource.setUsername(user);
+        dataSource.setPassword(password);
         DruidPooledConnection connection = dataSource.getConnection();
-
+        executeSelect(connection);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
     }
 
 
     @Test
     public void testdbcp() throws Exception {
+        print();
         BasicDataSource ds = new BasicDataSource();
         ds.setUrl(url);
         ds.setDriverClassName(driverName);
 
         ds.setConnectionProperties(propsUrl);
-        ds.setUsername("vtdriver");
-        ds.setPassword("vtdriver_password");
+        ds.setUsername(user);
+        ds.setPassword(password);
         Connection connection = ds.getConnection();
-
+        executeSelect(connection);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
     }
 
 
     @Test
     public void testc3p0() throws Exception {
+        print();
         testInit();
 
         ComboPooledDataSource comboPooledDataSource = new ComboPooledDataSource();
@@ -181,27 +212,98 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
 
         comboPooledDataSource.setDriverClass(driverName);
         comboPooledDataSource.setProperties(props);
-        comboPooledDataSource.setUser("vtdriver");
-        comboPooledDataSource.setPassword("vtdriver_password");
+        comboPooledDataSource.setUser(user);
+        comboPooledDataSource.setPassword(password);
 
         Connection connection = comboPooledDataSource.getConnection();
-
+        executeSelect(connection);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
     }
 
     @Test
     public void testTomcat() throws Exception {
+        print();
         DataSource dataSource = new DataSource();
         dataSource.setUrl(url);
         dataSource.setDriverClassName(driverName);
 
         dataSource.setConnectionProperties(propsUrl);
-        dataSource.setUsername("vtdriver");
-        dataSource.setPassword("vtdriver_password");
+        dataSource.setUsername(user);
+        dataSource.setPassword(password);
         Connection connection = dataSource.getConnection();
-
+        executeSelect(connection);
         test0();
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
+    }
+
+    @Test
+    public void testDefaultConnectionPoolSize() throws NoSuchFieldException, IllegalAccessException, SQLException, NoSuchMethodException, InvocationTargetException, InterruptedException {
+        printNormal("testDefaultConnectionPoolSize<<<<<");
+        String url3 = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS)) + "&vtMinimumIdle=6&vtMaximumPoolSize=7";
+        checkInnerPoolSize(url3, Topodata.TabletType.MASTER, 6, 7);
+
+        String url4 = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+        checkInnerPoolSize(url4, Topodata.TabletType.MASTER, 5, 10);
+
+        String url5 = getConnectionUrl(Driver.of(TestSuiteShardSpec.NO_SHARDS)) + "&vtMinimumIdle=7&vtMaximumPoolSize=8";
+        checkInnerPoolSize(url5, Topodata.TabletType.MASTER, 7, 8);
+
+        String url6 = getConnectionUrl(Driver.of(TestSuiteShardSpec.NO_SHARDS));
+        checkInnerPoolSize(url6, Topodata.TabletType.MASTER, 5, 10);
+        printNormal("testDefaultConnectionPoolSize>>>>>");
+    }
+
+    public void checkInnerPoolSize(String url, Topodata.TabletType type, int expectedMin, int expectedMax)
+        throws SQLException, NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException, InterruptedException {
+        printInfo("url: " + url);
+
+        Connection conn = DriverManager.getConnection(url);
+        executeSelect(conn);
+
+        Map<String, Map<String, StatefulConnectionPool>> map = getStatefulConnectionPoolMap();
+        Map<String, StatefulConnectionPool> v1 = map.get(conn.getCatalog());
+        Assert.assertNotNull(v1);
+
+        for (Map.Entry<String, StatefulConnectionPool> entry : v1.entrySet()) {
+            StatefulConnectionPool pool = entry.getValue();
+            if (isTabletType(pool, type)) {
+                int minimumIdle = pool.getHikariPool().config.getMinimumIdle();
+                int maximumPoolSize = pool.getHikariPool().config.getMaximumPoolSize();
+                Assert.assertEquals(expectedMin, minimumIdle);
+                Assert.assertEquals(expectedMax, maximumPoolSize);
+            }
+        }
+        printOk("[OK]");
+
+        InnerConnectionPoolUtil.removeInnerConnectionConfig(conn);
+        conn.close();
+    }
+
+    private void print() {
+        printNormal("url: " + url);
+        printNormal("props: " + propsUrl);
+    }
+
+    private void executeSelect(Connection conn) throws SQLException {
+        Statement stmt = conn.createStatement();
+        stmt.executeQuery("select * from engine_test limit 1");
+        stmt.close();
+    }
+
+    public Map<String, Map<String, StatefulConnectionPool>> getStatefulConnectionPoolMap() throws NoSuchFieldException, IllegalAccessException {
+        Field field = StatefulConnectionPool.class.getDeclaredField("STATEFUL_CONNECTION_POOL_MAP");
+        field.setAccessible(true);
+        Map<String, Map<String, StatefulConnectionPool>> map = (Map<String, Map<String, StatefulConnectionPool>>) field.get(null);
+        return map;
+    }
+
+    public boolean isTabletType(StatefulConnectionPool pool, Topodata.TabletType type) throws NoSuchFieldException, IllegalAccessException {
+        Field field = StatefulConnectionPool.class.getDeclaredField("tablet");
+        field.setAccessible(true);
+        Topodata.Tablet tablet = (Topodata.Tablet) field.get(pool);
+        return Objects.equals(type, tablet.getType());
     }
 }
