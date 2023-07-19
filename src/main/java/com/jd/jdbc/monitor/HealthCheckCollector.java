@@ -30,11 +30,9 @@ import java.util.List;
 import java.util.Map;
 
 public final class HealthCheckCollector extends Collector {
-    private static final List<String> LABEL_NAMES = Lists.newArrayList("Cell", "Keyspace", "Shard", "TabletType", "Serving", "TabletAlias", "Uid", "IP");
-
     private static final String COLLECT_NAME = "health_check";
 
-    private static final String COLLECT_HELP = "health check info.";
+    private static final String COLLECT_HELP = "healthByAlias info in HealthCheck";
 
     private static final HealthCheckCollector HEALTH_CHECK_COLLECTOR = new HealthCheckCollector();
 
@@ -71,23 +69,27 @@ public final class HealthCheckCollector extends Collector {
             return null;
         }
 
-        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, LABEL_NAMES);
+        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, DefaultConfig.HEALTH_CHECK_LABEL_NAMES);
         int notServing = -1;
         for (Map.Entry<String, TabletHealthCheck> entry : healthByAlias.entrySet()) {
             TabletHealthCheck tabletHealthCheck = entry.getValue();
-            Topodata.Tablet tablet = tabletHealthCheck.getTablet();
-            Query.Target target = tabletHealthCheck.getTarget();
-            List<String> labelValues = Lists.newArrayList(tablet.getAlias().getCell(),
-                target.getKeyspace(),
-                target.getShard(),
-                TopoProto.tabletTypeLstring(target.getTabletType()),
-                String.valueOf(tabletHealthCheck.getServing()),
-                TopoProto.tabletAliasString(tablet.getAlias()),
-                TopoProto.getPoolName(tablet),
-                tablet.getMysqlHostname());
-
-            labeledGauge.addMetric(labelValues, tabletHealthCheck.getServing().get() ? 1 : notServing--);
+            buildGaugeMetric(labeledGauge, notServing, tabletHealthCheck);
         }
         return Collections.singletonList(labeledGauge);
+    }
+
+    public static void buildGaugeMetric(GaugeMetricFamily labeledGauge, int notServing, TabletHealthCheck tabletHealthCheck) {
+        Topodata.Tablet tablet = tabletHealthCheck.getTablet();
+        Query.Target target = tabletHealthCheck.getTarget();
+        List<String> labelValues = Lists.newArrayList(tablet.getAlias().getCell(),
+            target.getKeyspace(),
+            target.getShard(),
+            TopoProto.tabletTypeLstring(target.getTabletType()),
+            String.valueOf(tabletHealthCheck.getServing()),
+            TopoProto.tabletAliasString(tablet.getAlias()),
+            TopoProto.getPoolName(tablet),
+            tablet.getMysqlHostname());
+
+        labeledGauge.addMetric(labelValues, tabletHealthCheck.getServing().get() ? 1 : notServing--);
     }
 }
