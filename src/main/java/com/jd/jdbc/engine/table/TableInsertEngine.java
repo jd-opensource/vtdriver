@@ -234,7 +234,7 @@ public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
             bindVariableMap.put(name, SqlTypes.valueBindVariable(rowResolvedValue));
             ActualTable actualTable = this.table.map(rowResolvedValue);
             if (actualTable == null) {
-                throw new SQLException("cannot calculate split table, logic table: " + table.getLogicTable());
+                throw new SQLException("cannot calculate split table, logic table: " + table.getLogicTable() + "； shardingColumnValue: " + rowResolvedValue);
             }
             Query.Value index = Query.Value.newBuilder().setValue(ByteString.copyFrom(String.valueOf(rowNum).getBytes())).build();
             if (actualTableMap.containsKey(actualTable)) {

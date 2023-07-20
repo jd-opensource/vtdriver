@@ -79,7 +79,7 @@ public abstract class TableDMLEngine implements PrimitiveEngine, TableShardQuery
         for (LogicTable ltb : this.logicTables) {
             ActualTable actualTable = ltb.map(value);
             if (actualTable == null) {
-                throw new SQLException("cannot calculate split table, logic table: " + ltb.getLogicTable());
+                throw new SQLException("cannot calculate split table, logic table: " + ltb.getLogicTable() + "； shardingColumnValue: " + value);
             }
             actualTables.add(actualTable);
         }
