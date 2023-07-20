@@ -20,7 +20,6 @@ package com.jd.jdbc.engine.table;
 
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
-import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.engine.UpdateEngine;
 import com.jd.jdbc.engine.Vcursor;
@@ -82,29 +81,29 @@ public class TableUpdateEngine extends TableDMLEngine implements PrimitiveEngine
     }
 
     private IExecute.ExecuteMultiShardResponse execUpdateEqual(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Engine.TableDestinationResponse response = getResolvedShardsEqual(bindVariableMap);
+        TableEngine.TableDestinationResponse response = getResolvedTablesEqual(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
     private IExecute.ExecuteMultiShardResponse execUpdateIn(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Engine.TableDestinationResponse response = resolveShardQueryIn(bindVariableMap);
+        TableEngine.TableDestinationResponse response = resolveTablesQueryIn(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
     private IExecute.ExecuteMultiShardResponse execUpdateByDestination(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Engine.TableDestinationResponse response = resolveAllShardQuery(bindVariableMap);
+        TableEngine.TableDestinationResponse response = resolveAllTablesQuery(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
     private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap,
-                                                                            final Engine.TableDestinationResponse response) throws SQLException {
+                                                                            final TableEngine.TableDestinationResponse response) throws SQLException {
         if (response == null) {
             return new IExecute.ExecuteMultiShardResponse(new VtResultSet());
         }
         if (!(super.executeEngine instanceof UpdateEngine)) {
             throw new SQLException();
         }
-        VtResultSet tableBatchExecuteResult = Engine.getTableBatchExecuteResult(ctx, super.executeEngine, vcursor, bindVariableMap, response);
+        VtResultSet tableBatchExecuteResult = TableEngine.getTableBatchExecuteResult(ctx, super.executeEngine, vcursor, bindVariableMap, response);
         return new IExecute.ExecuteMultiShardResponse(tableBatchExecuteResult).setUpdate();
     }
 }

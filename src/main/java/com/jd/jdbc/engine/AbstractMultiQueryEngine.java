@@ -60,7 +60,7 @@ public abstract class AbstractMultiQueryEngine implements PrimitiveEngine {
         return vcursor.executeBatchMultiShard(rss, queries, true, autocommit);
     }
 
-    protected Map<ResolvedShard, List<BoundQuery>> getResolvedShardListMap() {
+    public Map<ResolvedShard, List<BoundQuery>> getResolvedShardListMap() {
         Map<ResolvedShard, List<BoundQuery>> resolvedShardListMap = new HashMap<>(shardQueryList.size());
 
         for (IExecute.ResolvedShardQuery resolvedShardQuery : shardQueryList) {

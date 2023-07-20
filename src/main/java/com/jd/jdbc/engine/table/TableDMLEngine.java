@@ -19,21 +19,23 @@ limitations under the License.
 package com.jd.jdbc.engine.table;
 
 import com.google.common.collect.Lists;
+import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.DMLOpcode;
-import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.PrimitiveEngine;
+import com.jd.jdbc.engine.TableShardQuery;
+import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
+import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
+import com.jd.jdbc.tindexes.TableDestinationGroup;
 import com.jd.jdbc.vindexes.VKeyspace;
-import io.vitess.proto.Query;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -42,7 +44,7 @@ import vschema.Vschema;
 
 @Getter
 @Setter
-public abstract class TableDMLEngine implements PrimitiveEngine {
+public abstract class TableDMLEngine implements PrimitiveEngine, TableShardQuery {
     // Opcode is the execution opcode.
     protected DMLOpcode opcode;
 
@@ -71,8 +73,8 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
     // LogicTable
     private List<LogicTable> logicTables = new ArrayList<>();
 
-    protected Engine.TableDestinationResponse getResolvedShardsEqual(final Map<String, BindVariable> bindValue) throws SQLException {
-        VtValue value = this.vtPlanValueList.get(0).resolveValue(bindValue);
+    protected TableEngine.TableDestinationResponse getResolvedTablesEqual(final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        VtValue value = this.vtPlanValueList.get(0).resolveValue(bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         for (LogicTable ltb : this.logicTables) {
             ActualTable actualTable = ltb.map(value);
@@ -81,73 +83,21 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
             }
             actualTables.add(actualTable);
         }
-        return new Engine.TableDestinationResponse(
-            Collections.singletonList(actualTables),
-            Collections.singletonList(bindValue)
+        TableDestinationGroup tableDestinationGroup = new TableDestinationGroup(actualTables);
+        return new TableEngine.TableDestinationResponse(
+            Lists.newArrayList(tableDestinationGroup),
+            Lists.newArrayList(bindVariableMap)
         );
     }
 
-    protected Engine.TableDestinationResponse resolveShardQueryIn(final Map<String, BindVariable> bindValue) throws SQLException {
-        List<VtValue> keys = this.vtPlanValueList.get(0).resolveList(bindValue);
-        List<List<ActualTable>> tables = new ArrayList<>();
-        List<List<Query.Value>> planValuePerTableGroup = new ArrayList<>();
-        Map<String, Integer> actualTableMap = new HashMap<>();
-        for (VtValue key : keys) {
-            List<ActualTable> actualTables = new ArrayList<>();
-            StringBuilder tableGroup = new StringBuilder();
-            for (LogicTable ltb : this.logicTables) {
-                ActualTable actualTable = ltb.map(key);
-                if (actualTable == null) {
-                    throw new SQLException("cannot calculate split table, logic table: " + ltb.getLogicTable());
-                }
-                actualTables.add(actualTable);
-                tableGroup.append(actualTable.getActualTableName());
-            }
-            if (actualTableMap.containsKey(tableGroup.toString())) {
-                planValuePerTableGroup.get(actualTableMap.get(tableGroup.toString())).add(key.toQueryValue());
-            } else {
-                planValuePerTableGroup.add(new ArrayList<>());
-                actualTableMap.put(tableGroup.toString(), planValuePerTableGroup.size() - 1);
-                planValuePerTableGroup.get(actualTableMap.get(tableGroup.toString())).add(key.toQueryValue());
-                tables.add(actualTables);
-            }
-        }
-        return new Engine.TableDestinationResponse(tables, Engine.shardVars(bindValue, planValuePerTableGroup));
+    protected TableEngine.TableDestinationResponse resolveTablesQueryIn(final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        List<VtValue> keys = this.vtPlanValueList.get(0).resolveList(bindVariableMap);
 
+        return TableEngine.resolveTablesQueryIn(this.logicTables, bindVariableMap, keys);
     }
 
-    protected Engine.TableDestinationResponse resolveAllShardQuery(final Map<String, BindVariable> bindValue) throws SQLException {
-        List<List<ActualTable>> allActualTableGroup = this.getAllActualTableGroup(this.logicTables);
-        List<Map<String, BindVariable>> bindVariableList = new ArrayList<>();
-        for (int i = 0; i < allActualTableGroup.size(); i++) {
-            bindVariableList.add(bindValue);
-        }
-        return new Engine.TableDestinationResponse(allActualTableGroup, bindVariableList);
-    }
-
-    private List<List<ActualTable>> getAllActualTableGroup(final List<LogicTable> logicTables) {
-        // 将二维数组生成一个笛卡尔积
-        List<List<ActualTable>> allActualTableGroup = new ArrayList<>();
-        if (logicTables == null || logicTables.isEmpty()) {
-            return allActualTableGroup;
-        }
-        for (ActualTable act : logicTables.get(0).getActualTableList()) {
-            List<ActualTable> tableGroup = Lists.newArrayList(act);
-            allActualTableGroup.add(tableGroup);
-        }
-        for (int i = 1; i < logicTables.size(); i++) {
-            List<ActualTable> actualTables = logicTables.get(i).getActualTableList();
-            List<List<ActualTable>> tempActualTableGroup = new ArrayList<>();
-            for (List<ActualTable> tables : allActualTableGroup) {
-                for (int k = 0; k < actualTables.size(); k++) {
-                    List<ActualTable> actualTableGroup = new ArrayList<>(tables);
-                    actualTableGroup.add(actualTables.get(k));
-                    tempActualTableGroup.add(actualTableGroup);
-                }
-            }
-            allActualTableGroup = tempActualTableGroup;
-        }
-        return allActualTableGroup;
+    protected TableEngine.TableDestinationResponse resolveAllTablesQuery(final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        return TableEngine.paramsAllShard(this.logicTables, bindVariableMap);
     }
 
     public void addLogicTable(final LogicTable ltb) {
@@ -155,6 +105,30 @@ public abstract class TableDMLEngine implements PrimitiveEngine {
             this.logicTables = new ArrayList<>();
         }
         this.logicTables.add(ltb);
+    }
+
+    @Override
+    public Map<ResolvedShard, List<BoundQuery>> getShardQueryList(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        TableEngine.TableDestinationResponse response;
+        switch (opcode) {
+            case Equal:
+                response = getResolvedTablesEqual(bindVariableMap);
+                break;
+            case In:
+                response = resolveTablesQueryIn(bindVariableMap);
+                break;
+            case Scatter:
+                response = resolveAllTablesQuery(bindVariableMap);
+                break;
+            default:
+                throw new SQLException("unsupported query route: " + opcode);
+        }
+
+        PrimitiveEngine primitiveEngine = TableEngine.buildTableQueryPlan(ctx, executeEngine, vcursor, bindVariableMap, response);
+        if (!(primitiveEngine instanceof TableQueryEngine)) {
+            throw new SQLException("error: primitiveEngine should be TableQueryEngine");
+        }
+        return ((TableQueryEngine) primitiveEngine).getResolvedShardListMap();
     }
 
     public abstract void setSQLStatement(SQLStatement query) throws SQLException;

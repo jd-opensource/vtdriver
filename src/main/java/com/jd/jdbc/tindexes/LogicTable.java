@@ -20,14 +20,16 @@ import com.google.protobuf.ByteString;
 import com.jd.jdbc.sqltypes.VtValue;
 import io.vitess.proto.Query;
 import java.util.List;
-import lombok.AllArgsConstructor;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-@AllArgsConstructor
 public class LogicTable {
+
+    private String schema;
+
     private String logicTable;
 
     private List<ActualTable> actualTableList;
@@ -35,6 +37,8 @@ public class LogicTable {
     private Column tindexCol;
 
     private TableIndex tableIndex;
+
+    private String sequenceColumnName;
 
     public LogicTable() {
     }
@@ -48,13 +52,6 @@ public class LogicTable {
         return this.getActualTableList().get(index);
     }
 
-    public ActualTable getFirstActualTable() {
-        if (this.actualTableList == null || this.actualTableList.isEmpty()) {
-            return null;
-        }
-        return this.actualTableList.get(0);
-    }
-
     public String getFirstActualTableName() {
         if (this.actualTableList == null || this.actualTableList.isEmpty()) {
             return null;
@@ -64,5 +61,35 @@ public class LogicTable {
             return null;
         }
         return actualTable.getActualTableName();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof LogicTable)) {
+            return false;
+        }
+        LogicTable anotherTable = (LogicTable) o;
+
+        if (anotherTable.getSchema() == null) {
+            if (schema != null) {
+                return false;
+            }
+        } else if (!anotherTable.getSchema().equalsIgnoreCase(schema)) {
+            return false;
+        }
+
+        if (anotherTable.getLogicTable() == null) {
+            return logicTable == null;
+        } else {
+            return anotherTable.getLogicTable().equalsIgnoreCase(logicTable);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.schema, this.logicTable);
     }
 }

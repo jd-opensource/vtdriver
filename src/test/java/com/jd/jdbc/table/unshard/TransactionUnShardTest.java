@@ -26,7 +26,7 @@ import testsuite.internal.TestSuiteShardSpec;
 public class TransactionUnShardTest extends TransactionTest {
 
     @Override
-    protected void getConn() throws SQLException {
+    public void getConn() throws SQLException {
         baseUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.NO_SHARDS));
         Connection conn_0 = DriverManager.getConnection(baseUrl + "&queryParallelNum=0");
         Connection conn_1 = DriverManager.getConnection(baseUrl + "&queryParallelNum=1");

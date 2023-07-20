@@ -22,6 +22,7 @@ import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.InsertEngine;
 import com.jd.jdbc.engine.PrimitiveEngine;
+import com.jd.jdbc.engine.sequence.Generate;
 import com.jd.jdbc.engine.table.TableInsertEngine;
 import com.jd.jdbc.key.Bytes;
 import com.jd.jdbc.key.DestinationKeyspaceID;
@@ -155,7 +156,7 @@ public class InsertPlan {
                     throw new SQLException("column list doesn't match values");
                 }
             }
-            modifyForAutoinc(stmt, vm, insertEngine, defaultKeyspace);
+            insertEngine.setGenerate(modifyForAutoInc(stmt, vm, insertEngine.getTable().getAutoIncrement(), defaultKeyspace));
             insertEngine.setQuery(generateQuery(stmt));
             insertEngine.setInsertReplaceStmt(stmt);
         }
@@ -215,7 +216,7 @@ public class InsertPlan {
         }
 
         if (insertEngine.getTable().getAutoIncrement() != Vschema.AutoIncrement.getDefaultInstance()) {
-            modifyForAutoinc(stmt, vm, insertEngine, defaultKeyspace);
+            insertEngine.setGenerate(modifyForAutoInc(stmt, vm, insertEngine.getTable().getAutoIncrement(), defaultKeyspace));
         }
 
         // Fill out the 3-d Values structure. Please see documentation of Insert.Values for details.
@@ -357,6 +358,13 @@ public class InsertPlan {
             }
         }
 
+        if (!StringUtil.isNullOrEmpty(ltb.getSequenceColumnName())) {
+            Vschema.AutoIncrement autoIncrement = Vschema.AutoIncrement.newBuilder()
+                .setColumn(ltb.getSequenceColumnName())
+                .setSequence(defaultKeyspace + "." + ltb.getLogicTable() + "_seq").build();
+            insertEngine.setGenerate(modifyForAutoInc(stmt, vm, autoIncrement, defaultKeyspace));
+        }
+
         List<VtPlanValue> routeTableValueList = new ArrayList<>();
         Integer colNum = findColumn(stmt, insertEngine.getTable().getTindexCol().getColumnName());
         if (colNum == -1) {
@@ -382,12 +390,14 @@ public class InsertPlan {
         }
         insertEngine.setVindexValueList(routeTableValueList);
         insertEngine.setInsertReplaceStmt(stmt);
+
         MySqlInsertReplaceStatement stmtClone = (MySqlInsertReplaceStatement) stmt.clone();
         SwitchTableVisitor visitor = new SwitchTableVisitor(new HashMap<String, String>() {{
             put(ltb.getLogicTable(), ltb.getFirstActualTableName());
         }});
         stmtClone.accept(visitor);
         InsertEngine innerInsertEigine = (InsertEngine) newBuildInsertPlan(stmtClone, vm, defaultKeyspace);
+
         insertEngine.setInsertOpcode(innerInsertEigine.getInsertOpcode());
         insertEngine.setInsertEngine(innerInsertEigine);
         return insertEngine;
@@ -528,11 +538,11 @@ public class InsertPlan {
      * is set. Bind variable names are generated using baseName.
      *
      * @param insertStmt
-     * @param insertEngine
+     * @param autoIncrement
      * @param defaultKeyspace
      */
-    static void modifyForAutoinc(MySqlInsertReplaceStatement insertStmt, VSchemaManager vm, InsertEngine insertEngine, String defaultKeyspace) throws SQLException {
-        Integer autoIncColIndex = findOrAddColumn(insertStmt, insertEngine.getTable().getAutoIncrement().getColumn());
+    public static Generate modifyForAutoInc(MySqlInsertReplaceStatement insertStmt, VSchemaManager vm, Vschema.AutoIncrement autoIncrement, String defaultKeyspace) throws SQLException {
+        Integer autoIncColIndex = findOrAddColumn(insertStmt, autoIncrement.getColumn());
         VtPlanValue autoIncValues = new VtPlanValue();
         for (int i = 0; i < insertStmt.getValuesList().size(); i++) {
             List<SQLExpr> row = insertStmt.getValuesList().get(i).getValues();
@@ -550,23 +560,22 @@ public class InsertPlan {
                 throw new SQLException("could not compute value for vindex or auto-inc column: " + e.getMessage());
             }
             autoIncValues.getVtPlanValueList().add(planValue);
-            SQLVariantRefExpr variantRefExpr = new SQLVariantRefExpr(InsertEngine.Generate.SEQ_VAR_NAME + i);
-            variantRefExpr.setIndex(InsertEngine.Generate.SEQ_VAR_REFINDEX);
+            SQLVariantRefExpr variantRefExpr = new SQLVariantRefExpr(Generate.SEQ_VAR_NAME + i);
+            variantRefExpr.setIndex(Generate.SEQ_VAR_REFINDEX);
             variantRefExpr.setParent(autoIncExpr.getParent());
             row.set(autoIncColIndex, variantRefExpr);
         }
-        String sequenceTableName = insertEngine.getTable().getAutoIncrement().getSequence();
+        String sequenceTableName = autoIncrement.getSequence();
         if (sequenceTableName.contains(".")) {
             sequenceTableName = sequenceTableName.split("\\.")[1];
         }
-        Vschema.Table table = vm.getTable(defaultKeyspace, sequenceTableName);
-        insertEngine.setGenerate(
-            new InsertEngine.Generate(
-                new VKeyspace(defaultKeyspace),
-                autoIncValues,
-                sequenceTableName,
-                table.getPinned()
-            )
+        Vschema.Table table_seq = vm.getTable(defaultKeyspace, sequenceTableName);
+        String pinned = table_seq != null ? table_seq.getPinned() : "00";
+        return new Generate(
+            new VKeyspace(defaultKeyspace),
+            autoIncValues,
+            sequenceTableName,
+            pinned
         );
     }
 

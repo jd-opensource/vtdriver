@@ -21,7 +21,6 @@ package com.jd.jdbc.engine.table;
 import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.DeleteEngine;
-import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.key.Destination;
@@ -78,18 +77,18 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
     }
 
     private ExecuteMultiShardResponse execDeleteEqual(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Engine.TableDestinationResponse response = getResolvedShardsEqual(bindVariableMap);
+        TableEngine.TableDestinationResponse response = getResolvedTablesEqual(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
     private ExecuteMultiShardResponse execDeleteIn(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Engine.TableDestinationResponse response = resolveShardQueryIn(bindVariableMap);
+        TableEngine.TableDestinationResponse response = resolveTablesQueryIn(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
     private ExecuteMultiShardResponse execDeleteByDestination(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final Destination destination)
         throws SQLException {
-        Engine.TableDestinationResponse response = resolveAllShardQuery(bindVariableMap);
+        TableEngine.TableDestinationResponse response = resolveAllTablesQuery(bindVariableMap);
         return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, response);
     }
 
@@ -103,14 +102,14 @@ public class TableDeleteEngine extends TableDMLEngine implements PrimitiveEngine
     }
 
     private ExecuteMultiShardResponse getExecuteMultiShardResponse(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap,
-                                                                   final Engine.TableDestinationResponse response) throws SQLException {
+                                                                   final TableEngine.TableDestinationResponse response) throws SQLException {
         if (response == null) {
             return new ExecuteMultiShardResponse(new VtResultSet());
         }
         if (!(super.executeEngine instanceof DeleteEngine)) {
             throw new SQLException();
         }
-        VtResultSet tableBatchExecuteResult = Engine.getTableBatchExecuteResult(ctx, super.executeEngine, vcursor, bindVariableMap, response);
+        VtResultSet tableBatchExecuteResult = TableEngine.getTableBatchExecuteResult(ctx, super.executeEngine, vcursor, bindVariableMap, response);
         return new ExecuteMultiShardResponse(tableBatchExecuteResult).setUpdate();
     }
 }
