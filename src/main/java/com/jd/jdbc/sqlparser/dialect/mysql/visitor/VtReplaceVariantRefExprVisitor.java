@@ -51,10 +51,10 @@ import lombok.Getter;
 
 
 public class VtReplaceVariantRefExprVisitor extends MySqlASTVisitorAdapter {
-    private int refIndex = -1;
-
     @Getter
     private final List<SQLVariantRefExpr> varRefList = new ArrayList<>();
+
+    private int refIndex = -1;
 
     @Override
     public boolean visit(final SQLOrderBy x) {
@@ -93,6 +93,17 @@ public class VtReplaceVariantRefExprVisitor extends MySqlASTVisitorAdapter {
             x.setIndex(++refIndex);
         }
         this.varRefList.add(x);
+        return false;
+    }
+
+    @Override
+    public boolean visit(final SQLAggregateExpr x) {
+        visitChilds(x.getArguments());
+        visitChild(x.getKeep());
+        visitChild(x.getOver());
+        visitChild(x.getOverRef());
+        visitChild(x.getWithinGroup());
+        this.visitAggreateRest(x);
         return false;
     }
 
@@ -177,6 +188,37 @@ public class VtReplaceVariantRefExprVisitor extends MySqlASTVisitorAdapter {
         }
         expr.accept(this);
         return false;
+    }
+
+    private void visitChilds(List<? extends SQLObject> objs) {
+        if (objs == null) {
+            return;
+        }
+        for (SQLObject obj : objs) {
+            visitChild(obj);
+        }
+    }
+
+    private void visitChild(SQLObject obj) {
+        if (obj == null) {
+            return;
+        }
+        obj.accept(this);
+    }
+
+    private void visitAggreateRest(final SQLAggregateExpr x) {
+        {
+            SQLOrderBy value = (SQLOrderBy) x.getAttribute("ORDER BY");
+            if (value != null) {
+                value.accept(this);
+            }
+        }
+        {
+            Object value = x.getAttribute("SEPARATOR");
+            if (value != null) {
+                ((SQLObject) value).accept(this);
+            }
+        }
     }
 
     private void rewrite(final SQLObject x) {
@@ -283,19 +325,30 @@ public class VtReplaceVariantRefExprVisitor extends MySqlASTVisitorAdapter {
                 ((SQLIntervalExpr) parent).setValue(this.newVariantRefExpr(parent));
             }
         } else if (parent instanceof SQLAggregateExpr) {
-            List<SQLExpr> parameters = ((SQLAggregateExpr) parent).getArguments();
-            int replaceIndex = -1;
-            for (int i = 0; i < parameters.size(); i++) {
-                SQLExpr expr = parameters.get(i);
-                if (expr instanceof SQLVariantRefExpr) {
-                    continue;
-                }
-                if (expr == x) {
-                    replaceIndex = i;
-                    break;
-                }
+            replaceAggregateChild(x, (SQLAggregateExpr) parent);
+        }
+    }
+
+    private void replaceAggregateChild(SQLObject x, SQLAggregateExpr parent) {
+        List<SQLExpr> parameters = parent.getArguments();
+        int replaceIndex = -1;
+        for (int i = 0; i < parameters.size(); i++) {
+            SQLExpr expr = parameters.get(i);
+            if (expr instanceof SQLVariantRefExpr) {
+                continue;
             }
+            if (expr == x) {
+                replaceIndex = i;
+                break;
+            }
+        }
+        if (replaceIndex != -1) {
             parameters.set(replaceIndex, this.newVariantRefExpr(parent));
+            return;
+        }
+
+        if (parent.getAttribute("SEPARATOR") == x) {
+            parent.getAttributes().put("SEPARATOR", this.newVariantRefExpr(parent));
         }
     }
 

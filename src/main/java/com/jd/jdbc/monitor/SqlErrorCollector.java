@@ -96,6 +96,9 @@ public final class SqlErrorCollector extends Collector {
         SQLStatement stmt = SQLUtils.parseSingleMysqlStatement(userSQL);
 
         Map<String, BindVariable> bdMap = userBindVarMap;
+        if (bdMap == null) {
+            bdMap = new HashMap<>();
+        }
         String sql = userSQL;
         try {
             SqlParser.PrepareAstResult prepareAstResult = SqlParser.prepareAst(stmt, userBindVarMap, charEncoding);
