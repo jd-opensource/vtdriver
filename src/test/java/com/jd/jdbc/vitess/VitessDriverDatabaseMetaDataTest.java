@@ -178,20 +178,13 @@ public class VitessDriverDatabaseMetaDataTest extends TestSuite {
         try (ResultSet info = connection.getMetaData().getTypeInfo()) {
             //Printing the column name and size
             while (info.next()) {
-                System.out.println("Data type name: " + info.getString("TYPE_NAME"));
-                System.out.println("Integer value representing this datatype: " + info.getInt("DATA_TYPE"));
-                System.out.println("Maximum precision of this datatype: " + info.getInt("PRECISION"));
-                if (info.getBoolean("CASE_SENSITIVE")) {
-                    System.out.println("Current datatype is case sensitive ");
-                } else {
-                    System.out.println("Current datatype is not case sensitive ");
-                }
-                if (info.getBoolean("AUTO_INCREMENT")) {
-                    System.out.println("Current datatype can be used for auto increment  ");
-                } else {
-                    System.out.println("Current datatype can not be used for auto increment  ");
-                }
+                info.getString("TYPE_NAME");
+                info.getInt("DATA_TYPE");
+                info.getInt("PRECISION");
+                info.getBoolean("CASE_SENSITIVE");
+                info.getBoolean("AUTO_INCREMENT");
             }
+            Statement statement = info.getStatement();
         }
     }
 

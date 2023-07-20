@@ -24,6 +24,7 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -90,7 +91,7 @@ public final class DatabaseMetaDataResultSet extends AbstractDatabaseMetaDataRes
             if (tableCatIndex == i) {
                 String tableCat = resultSet.getString(i);
                 tableCat = KeyspaceUtil.getLogicSchema(tableCat);
-                if (tableCat.equals("_vt")) {
+                if ("_vt".equals(tableCat)) {
                     return null;
                 }
                 result.addObject(tableCat);
@@ -277,6 +278,12 @@ public final class DatabaseMetaDataResultSet extends AbstractDatabaseMetaDataRes
     @Override
     public Date getDate(final String columnLabel) throws SQLException {
         return getDate(findColumn(columnLabel));
+    }
+
+    @Override
+    public Statement getStatement() throws SQLException {
+        checkClosed();
+        return resultSet.getStatement();
     }
 
     @Override

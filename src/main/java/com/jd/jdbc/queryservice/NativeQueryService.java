@@ -469,6 +469,7 @@ public class NativeQueryService implements IQueryService {
                     .setColumnLength(metaData.getColumnDisplaySize(col))
                     .setDecimals(metaData.getScale(col))
                     .setIsSigned(metaData.isSigned(col))
+                    .setIsCaseSensitive(metaData.isCaseSensitive(col))
                     .setType(queryType);
                 fields[idx] = fieldBuilder.build();
             }

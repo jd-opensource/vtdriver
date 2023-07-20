@@ -41,9 +41,4 @@ public abstract class AbstractVitessResultSetMetaData extends VitessWrapper impl
         throw new SQLFeatureNotSupportedException();
     }
 
-    @Override
-    public boolean isCaseSensitive(int column) throws SQLException {
-        throw new SQLFeatureNotSupportedException();
-    }
-
 }

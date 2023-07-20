@@ -124,4 +124,9 @@ public class VitessResultSetMetaData extends AbstractVitessResultSetMetaData {
         }
         return getField(column).getJdbcClassName();
     }
+
+    @Override
+    public boolean isCaseSensitive(int column) throws SQLException {
+        return getField(column).getIsCaseSensitive();
+    }
 }
