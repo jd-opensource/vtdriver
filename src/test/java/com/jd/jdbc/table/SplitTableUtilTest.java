@@ -14,26 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.tindexes;
+package com.jd.jdbc.table;
 
 import com.google.common.collect.Lists;
+import com.jd.jdbc.tindexes.SplitTableUtil;
 import java.util.List;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class SplitTableUtilTest {
 
     @Test
-    public void getActualTableName() {
+    public void getActualTableNames() {
         List<Integer> ids = Lists.newArrayList(713, 714, 715, 716, 717, 718);
         for (Integer id : ids) {
-            String actualTableName = SplitTableUtil.getActualTableName("vtdriver-split-table.yml", "vtdriver2", "table_engine_test", id);
+            String actualTableName = SplitTableUtil.getActualTableName("vtdriver-split-table.yml", "commerce", "table_engine_test", id);
             System.out.println(String.format("id=%s，actualTableName=%s", id, actualTableName));
         }
     }
 
     @Test
     public void testGetActualTableName() {
-        String actualTableName = SplitTableUtil.getActualTableName("vtdriver2", "table_engine_test", 111);
+        String actualTableName = SplitTableUtil.getActualTableName("commerce", "table_engine_test", 111);
         System.out.println(actualTableName);
+    }
+
+    @Test
+    public void getShardingColumnName() {
+        String shardingColumnName = SplitTableUtil.getShardingColumnName("commerce", "table_engine_test");
+        Assert.assertTrue("getShardingColumnName error", "f_key".equalsIgnoreCase(shardingColumnName));
+    }
+
+    @Test
+    public void getShardingColumnName2() {
+        String shardingColumnName = SplitTableUtil.getShardingColumnName("vtdriver-split-table.yml", "commerce", "table_engine_test");
+        Assert.assertTrue("getShardingColumnName error", "f_key".equalsIgnoreCase(shardingColumnName));
     }
 }

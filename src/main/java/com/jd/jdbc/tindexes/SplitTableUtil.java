@@ -24,8 +24,9 @@ import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.tindexes.config.LogicTableConfig;
 import com.jd.jdbc.tindexes.config.SchemaConfig;
 import com.jd.jdbc.tindexes.config.SplitTableConfig;
-import com.jd.jdbc.vitess.VitessDriver;
 import io.vitess.proto.Query;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,7 +39,7 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.error.YAMLException;
 
-public class SplitTableUtil {
+public final class SplitTableUtil {
 
     private static final String ACTUAL_TABLE_EXPR_REGEX = "\\$\\{\\d+\\.\\.\\d+}";
 
@@ -46,56 +47,77 @@ public class SplitTableUtil {
 
     private static Map<String, Map<String, LogicTable>> tableIndexesMap;
 
-    /**
-     * 根据分表字段的值，获取分表算法计算后的分表名
-     *
-     * @param keyspace       数据库的keyspace
-     * @param logicTableName 逻辑表名
-     * @param value          分表字段的值
-     * @return
-     */
+    private static String preConfigPath;
+
+    private SplitTableUtil() {
+    }
+
     public static String getActualTableName(final String keyspace, final String logicTableName, final Object value) {
         return getActualTableName(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH, keyspace, logicTableName, value);
     }
 
-    /**
-     * 根据分表字段的值，获取分表算法计算后的分表名
-     *
-     * @param configPath     分表配置文件路径
-     * @param keyspace       数据库的keyspace
-     * @param logicTableName 逻辑表名
-     * @param value          分表字段的值
-     * @return
-     */
     public static String getActualTableName(final String configPath, final String keyspace, final String logicTableName, final Object value) {
+        ActualTable actualTable = getActualTable(configPath, keyspace, logicTableName, value);
+        return actualTable.getActualTableName();
+    }
+
+    public static String getShardingColumnName(final String configPath, final String keyspace, final String logicTableName) {
+        LogicTable logicTable = getLogicTable(configPath, keyspace, logicTableName);
+        return logicTable.getTindexCol().getColumnName();
+    }
+
+    public static String getShardingColumnName(final String keyspace, final String logicTableName) {
+        return getShardingColumnName(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH, keyspace, logicTableName);
+    }
+
+    private static LogicTable getLogicTable(String configPath, String keyspace, String logicTableName) {
         if (StringUtils.isEmpty(keyspace) || StringUtils.isEmpty(logicTableName)) {
-            return null;
+            throw new RuntimeException("keyspace or logicTableName should not empty");
         }
-        final Map<String, Map<String, LogicTable>> tableIndexesMap = initTableIndexesMapFromYaml(configPath);
+        Map<String, Map<String, LogicTable>> tableIndexesMap = getTableIndexesMap(configPath);
         if (tableIndexesMap == null || tableIndexesMap.isEmpty()) {
-            return null;
+            throw new RuntimeException("cat not find split-table config through configPath=" + configPath);
         }
         String lowerCaseKeyspace = keyspace.toLowerCase();
         String lowerCaseLogicTable = logicTableName.toLowerCase();
-        if (tableIndexesMap.containsKey(lowerCaseKeyspace) && tableIndexesMap.get(lowerCaseKeyspace).containsKey(lowerCaseLogicTable)) {
-            final LogicTable logicTable = tableIndexesMap.get(lowerCaseKeyspace).get(lowerCaseLogicTable);
-            VtValue vtValue;
-            try {
-                vtValue = VtValue.toVtValue(value);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-            final ActualTable actualTable = logicTable.map(vtValue);
-            return actualTable.getActualTableName();
+        if (!tableIndexesMap.containsKey(lowerCaseKeyspace)) {
+            throw new RuntimeException("cat not find keyspace in split-table config, target keyspace=" + keyspace);
         }
-        return null;
+        if (!tableIndexesMap.get(lowerCaseKeyspace).containsKey(lowerCaseLogicTable)) {
+            throw new RuntimeException("cat not find logicTable in split-table config, target keyspace=" + keyspace + " ,target logicTable=" + logicTableName);
+        }
+        return tableIndexesMap.get(lowerCaseKeyspace).get(lowerCaseLogicTable);
+    }
+
+    private static ActualTable getActualTable(String configPath, String keyspace, String logicTableName, Object value) {
+        LogicTable logicTable = getLogicTable(configPath, keyspace, logicTableName);
+        VtValue vtValue;
+        try {
+            vtValue = VtValue.toVtValue(value);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        final ActualTable actualTable = logicTable.map(vtValue);
+        if (actualTable == null) {
+            throw new RuntimeException("cannot calculate split table, logic table: " + logicTable.getLogicTable() + ",current value: " + vtValue);
+        }
+        return actualTable;
     }
 
     public static Map<String, Map<String, LogicTable>> getTableIndexesMap() {
-        if (SplitTableUtil.tableIndexesMap == null) {
-            SplitTableUtil.tableIndexesMap = initTableIndexesMapFromYaml(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH);
+        return getTableIndexesMap(Constant.DEFAULT_SPLIT_TABLE_CONFIG_PATH);
+    }
+
+    public static synchronized Map<String, Map<String, LogicTable>> getTableIndexesMap(final String configPath) {
+        if (StringUtils.isEmpty(configPath)) {
+            throw new RuntimeException("configPath should not empty");
         }
-        return SplitTableUtil.tableIndexesMap;
+        if (Objects.equals(configPath, preConfigPath)) {
+            return SplitTableUtil.tableIndexesMap;
+        }
+        SplitTableUtil.tableIndexesMap = initTableIndexesMapFromYaml(configPath);
+        preConfigPath = configPath;
+        return tableIndexesMap;
     }
 
     //call by vtdriver-spring-boot-starter
@@ -105,12 +127,12 @@ public class SplitTableUtil {
 
     public static Map<String, Map<String, LogicTable>> initTableIndexesMapFromYaml(final String configPath) {
         Yaml yaml = new Yaml(new Constructor(SplitTableConfig.class));
-        try {
-            SplitTableConfig splitTableConfig = yaml.load(VitessDriver.class.getClassLoader().getResourceAsStream(configPath));
+        try (InputStream resourceAsStream = SplitTableUtil.class.getClassLoader().getResourceAsStream(configPath)) {
+            SplitTableConfig splitTableConfig = yaml.load(resourceAsStream);
             return buildTableIndexesMap(splitTableConfig);
-        } catch (YAMLException e) {
+        } catch (YAMLException | IOException e) {
             if (logger.isDebugEnabled()) {
-                logger.debug("Init split-table from vtdriver-split-table.yaml fail, caused by:" + e.getMessage());
+                logger.debug("Init split-table config through configPath=" + configPath + " fail, caused by:" + e.getMessage());
             }
         }
         return null;
