@@ -53,7 +53,7 @@ public final class SrvKeyspaceCollector extends Collector {
     private static final Counter SRV_KEYSPACE_TASK_ERROR_COUNTER = Counter.build()
         .name("SrvKeyspaceTask_error_counter_total")
         .labelNames("Keyspace", "Cell")
-        .help("SrvKeyspaceTaskerror counter info")
+        .help("SrvKeyspaceTask error counter info")
         .register(MonitorServer.getCollectorRegistry());
 
     private static final SrvKeyspaceCollector srvKeyspaceCollector = new SrvKeyspaceCollector();

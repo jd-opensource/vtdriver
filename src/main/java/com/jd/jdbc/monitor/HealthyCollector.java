@@ -47,12 +47,11 @@ public final class HealthyCollector extends Collector {
         }
 
         GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, DefaultConfig.HEALTH_CHECK_LABEL_NAMES);
-        int notServing = -1;
 
         for (Map.Entry<String, List<TabletHealthCheck>> entry : healthyCopy.entrySet()) {
             List<TabletHealthCheck> tabletHealthCheckList = entry.getValue();
             for (TabletHealthCheck tabletHealthCheck : tabletHealthCheckList) {
-                HealthCheckCollector.buildGaugeMetric(labeledGauge, notServing, tabletHealthCheck);
+                HealthCheckCollector.buildGaugeMetric(labeledGauge, tabletHealthCheck);
             }
         }
         return Collections.singletonList(labeledGauge);

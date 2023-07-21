@@ -35,9 +35,11 @@ public class VitessDataSource extends VitessWrapper implements javax.sql.DataSou
 
     private static final Histogram HISTOGRAM = ConnectionCollector.getConnectionHistogram();
 
-    private static volatile Map<String, Map<String, LogicTable>> tableIndexesMap;
+    private static Map<String, Map<String, LogicTable>> tableIndexesMap;
 
-    private static volatile boolean tableIndexesMapLoaded = false;
+    static {
+        tableIndexesMap = SplitTableUtil.getTableIndexesMap();
+    }
 
     protected final VitessDriver driver = new VitessDriver();
 
@@ -67,14 +69,6 @@ public class VitessDataSource extends VitessWrapper implements javax.sql.DataSou
     }
 
     public static LogicTable getLogicTable(final String keyspace, final String logicTable) {
-        if (tableIndexesMap == null && !tableIndexesMapLoaded) {
-            synchronized (VitessDataSource.class) {
-                if (tableIndexesMap == null) {
-                    VitessDataSource.tableIndexesMap = SplitTableUtil.getTableIndexesMap();
-                    tableIndexesMapLoaded = true;
-                }
-            }
-        }
         if (tableIndexesMap == null || tableIndexesMap.isEmpty() || StringUtils.isEmpty(keyspace) || StringUtils.isEmpty(logicTable)) {
             return null;
         }

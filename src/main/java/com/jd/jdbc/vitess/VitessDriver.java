@@ -40,11 +40,13 @@ import com.jd.jdbc.srvtopo.ScatterConn;
 import com.jd.jdbc.srvtopo.SrvTopo;
 import com.jd.jdbc.srvtopo.TabletGateway;
 import com.jd.jdbc.srvtopo.TxConn;
+import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
+import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.prometheus.client.Histogram;
 import io.vitess.proto.Topodata;
 import io.vitess.proto.Vtgate;
@@ -73,6 +75,11 @@ public class VitessDriver implements java.sql.Driver {
         } catch (SQLException e) {
             throw new RuntimeException("Can't register driver!");
         }
+    }
+
+    static {
+        SplitTableUtil.getTableIndexesMap();
+        new BinaryHash();
     }
 
     private final ReentrantLock lock = new ReentrantLock();

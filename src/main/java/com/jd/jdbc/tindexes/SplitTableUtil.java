@@ -17,6 +17,8 @@ limitations under the License.
 package com.jd.jdbc.tindexes;
 
 import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.common.util.CollectionUtils;
+import com.jd.jdbc.monitor.SplitTableUtilCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
@@ -48,6 +50,8 @@ public final class SplitTableUtil {
     private static Map<String, Map<String, LogicTable>> tableIndexesMap;
 
     private static String preConfigPath;
+
+    private static boolean springFlag = false;
 
     private SplitTableUtil() {
     }
@@ -123,16 +127,20 @@ public final class SplitTableUtil {
             throw new RuntimeException("configPath should not empty");
         }
         if (Objects.equals(configPath, preConfigPath)) {
-            return SplitTableUtil.tableIndexesMap;
+            return tableIndexesMap;
         }
-        SplitTableUtil.tableIndexesMap = initTableIndexesMapFromYaml(configPath);
+        if (springFlag && CollectionUtils.isNotEmpty(tableIndexesMap)) {
+            return tableIndexesMap;
+        }
+        tableIndexesMap = initTableIndexesMapFromYaml(configPath);
         preConfigPath = configPath;
         return tableIndexesMap;
     }
 
     //call by vtdriver-spring-boot-starter
     public static void setSplitIndexesMapFromSpring(SplitTableConfig splitTableConfig) {
-        SplitTableUtil.tableIndexesMap = buildTableIndexesMap(splitTableConfig);
+        tableIndexesMap = buildTableIndexesMap(splitTableConfig);
+        springFlag = true;
     }
 
     public static Map<String, Map<String, LogicTable>> initTableIndexesMapFromYaml(final String configPath) {
@@ -167,6 +175,7 @@ public final class SplitTableUtil {
                     }
                 }
                 map.put(schema.getSchema().toLowerCase(), logicTableMap);
+                SplitTableUtilCollector.getSplitTableGauge().labels(schema.getSchema().toLowerCase()).set(1.0D);
             }
         } catch (InstantiationException | IllegalAccessException e) {
             if (logger.isDebugEnabled()) {

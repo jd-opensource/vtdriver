@@ -70,15 +70,14 @@ public final class HealthCheckCollector extends Collector {
         }
 
         GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, DefaultConfig.HEALTH_CHECK_LABEL_NAMES);
-        int notServing = -1;
         for (Map.Entry<String, TabletHealthCheck> entry : healthByAlias.entrySet()) {
             TabletHealthCheck tabletHealthCheck = entry.getValue();
-            buildGaugeMetric(labeledGauge, notServing, tabletHealthCheck);
+            buildGaugeMetric(labeledGauge, tabletHealthCheck);
         }
         return Collections.singletonList(labeledGauge);
     }
 
-    public static void buildGaugeMetric(GaugeMetricFamily labeledGauge, int notServing, TabletHealthCheck tabletHealthCheck) {
+    public static void buildGaugeMetric(GaugeMetricFamily labeledGauge, TabletHealthCheck tabletHealthCheck) {
         Topodata.Tablet tablet = tabletHealthCheck.getTablet();
         Query.Target target = tabletHealthCheck.getTarget();
         List<String> labelValues = Lists.newArrayList(tablet.getAlias().getCell(),
@@ -90,6 +89,7 @@ public final class HealthCheckCollector extends Collector {
             TopoProto.getPoolName(tablet),
             tablet.getMysqlHostname());
 
-        labeledGauge.addMetric(labelValues, tabletHealthCheck.getServing().get() ? 1 : notServing--);
+        long uid = tablet.getAlias().getUid();
+        labeledGauge.addMetric(labelValues, tabletHealthCheck.getServing().get() ? uid : -uid);
     }
 }
