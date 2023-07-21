@@ -149,6 +149,8 @@ public class VitessDriver implements java.sql.Driver {
                 }
             }
             return new VitessConnection(url, prop, topoServer, resolver, vSchemaManager, defaultKeyspace);
+        } catch (SQLException e) {
+            throw e;
         } catch (Exception e) {
             throw new SQLException(e);
         }
