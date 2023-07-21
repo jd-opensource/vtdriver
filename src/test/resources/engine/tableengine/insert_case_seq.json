@@ -1,0 +1,761 @@
+[
+  {
+    "comment": "# Column 'f_key' specified twice",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key,f_tinyint,f_bit,f_key) values('11',0,true,'12')",
+    "insertVar": [],
+    "exception": "java.sql.SQLSyntaxErrorException",
+    "errorMessage": "Column 'f_key' specified twice"
+  },
+  {
+    "comment": "# insert no column list for sharded table_engine_test table",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test values('2', 3, true)",
+    "insertVar": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "no column list"
+  },
+  {
+    "comment": "# insert no column list for sharded table_engine_test table",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test values('2', 3, true),('3', 4, true),('6', 7, true)",
+    "insertVar": [],
+    "exception": "java.sql.SQLException",
+    "errorMessage": "no column list"
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key,f_tinyint,f_bit) values ('aaa', 1, false)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaa",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into :ks.table_engine_test(f_key,f_tinyint,f_bit) values ('aaa', 1, false)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaa",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint) values ('bbb', 22)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bbb",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint) values ('ccc', 12),('ddd',34),('eee',56)",
+    "rowCount": 3,
+    "foundRows": 3,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "ccc",
+        "_long": 1
+      },
+      {
+        "f_key": "ddd",
+        "_long": 1
+      },
+      {
+        "f_key": "eee",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_bit) values ('a', true),('b', 1),('c', 0)",
+    "rowCount": 3,
+    "foundRows": 3,
+    "insertVar": [],
+    "verifySql": "select f_key, f_bit, count(*) from table_engine_test group by f_key, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "a",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "b",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "c",
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(id,f_key) values (1,'aaaa'),(2,'bbbb'),(3,'cccc')",
+    "rowCount": 3,
+    "foundRows": 3,
+    "insertVar": [],
+    "verifySql": "select id, f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "id",
+        "javaType": "java.lang.BigInteger"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "id": 1,
+        "f_key": "aaaa",
+        "_long": 1
+      },
+      {
+        "id": 2,
+        "f_key": "bbbb",
+        "_long": 1
+      },
+      {
+        "id": 3,
+        "f_key": "cccc",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key, f_tinyint) values('key', 1)"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint) values('key2', 3) on duplicate key update f_tinyint = 2",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, f_tinyint, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "key",
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_key": "key2",
+        "f_tinyint": 3,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with default seq",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key) values ('f_key')",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select id, f_key, count(*) from table_engine_test group by id, f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "f_key",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key) values (?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      "bindVar1"
+    ],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bindVar1",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key) values (?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      "bindVar2"
+    ],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bindVar2",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with non vindex bool value",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_bit, f_key) values (false, '')",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_bit, f_key, count(*) from table_engine_test group by f_bit, f_key",
+    "fields": [
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "",
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# replace sharded",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key, f_tinyint, f_bit) values ('key1', 12, true)"
+    ],
+    "query": "replace into table_engine_test(f_key, f_tinyint, f_bit) values (?, ?, ?)",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      "key2",
+      13,
+      true
+    ],
+    "verifySql": "select f_key, f_tinyint, f_bit, count(*) from table_engine_test group by f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "key1",
+        "f_tinyint": 12,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "key2",
+        "f_tinyint": 13,
+        "f_bit": true,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint, f_bit) values (?,?,?),(?,?,?),(?,?,?),(?,?,?)",
+    "rowCount": 4,
+    "foundRows": 4,
+    "insertVar": [
+      "name1",
+      11,
+      true,
+      "name2",
+      12,
+      true,
+      "name3",
+      13,
+      false,
+      "name4",
+      14,
+      false
+    ],
+    "verifySql": "select f_key, f_tinyint, f_bit, count(*) from table_engine_test group by f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "name1",
+        "f_tinyint": 11,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "name2",
+        "f_tinyint": 12,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "name3",
+        "f_tinyint": 13,
+        "f_bit": false,
+        "_long": 1
+      },
+      {
+        "f_key": "name4",
+        "f_tinyint": 14,
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key, to different shards",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key) values('toshard1')"
+    ],
+    "query": "insert into table_engine_test(f_key) values('toshard2') on duplicate key update f_bit = false, f_tinyint = 123",
+    "rowCount": 1,
+    "foundRows": 1,
+    "shardFlag": true,
+    "verifySql": "select f_key, f_tinyint, f_bit, count(*) from table_engine_test group by f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "toshard1",
+        "f_tinyint": null,
+        "f_bit": null,
+        "_long": 1
+      },
+      {
+        "f_key": "toshard2",
+        "f_tinyint": null,
+        "f_bit": null,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key,f_tinyint,f_bit) values ('aaa', 1, false);",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "aaa",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert on duplicate key",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key, f_tinyint) values('key', 1)"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint) values('key2', 3) on duplicate key update f_tinyint = 2;",
+    "rowCount": 1,
+    "foundRows": 1,
+    "verifySql": "select f_key, f_tinyint, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "key",
+        "f_tinyint": 1,
+        "_long": 1
+      },
+      {
+        "f_key": "key2",
+        "f_tinyint": 3,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_bit) values ('a', true),('b', 1),('c', 0);",
+    "rowCount": 3,
+    "foundRows": 3,
+    "insertVar": [],
+    "verifySql": "select f_key, f_bit, count(*) from table_engine_test group by f_key, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "a",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "b",
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "c",
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key) values (?);",
+    "rowCount": 1,
+    "foundRows": 1,
+    "insertVar": [
+      "bindVar1"
+    ],
+    "verifySql": "select f_key, count(*) from table_engine_test group by f_key",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "bindVar1",
+        "_long": 1
+      }
+    ]
+  },
+  {
+    "comment": "# insert with one vindex and bind var",
+    "initSql": [
+      "delete from table_engine_test"
+    ],
+    "query": "insert into table_engine_test(f_key, f_tinyint, f_bit) values (?,?,?),(?,?,?),(?,?,?),(?,?,?);",
+    "rowCount": 4,
+    "foundRows": 4,
+    "insertVar": [
+      "name1",
+      11,
+      true,
+      "name2",
+      12,
+      true,
+      "name3",
+      13,
+      false,
+      "name4",
+      14,
+      false
+    ],
+    "verifySql": "select f_key, f_tinyint, f_bit, count(*) from table_engine_test group by f_key, f_tinyint, f_bit",
+    "fields": [
+      {
+        "name": "f_key",
+        "javaType": "java.lang.String"
+      },
+      {
+        "name": "f_tinyint",
+        "javaType": "java.lang.Integer"
+      },
+      {
+        "name": "f_bit",
+        "javaType": "java.lang.Boolean"
+      },
+      {
+        "name": "_long",
+        "alias": "count(*)",
+        "javaType": "java.lang.Long"
+      }
+    ],
+    "verifyResult": [
+      {
+        "f_key": "name1",
+        "f_tinyint": 11,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "name2",
+        "f_tinyint": 12,
+        "f_bit": true,
+        "_long": 1
+      },
+      {
+        "f_key": "name3",
+        "f_tinyint": 13,
+        "f_bit": false,
+        "_long": 1
+      },
+      {
+        "f_key": "name4",
+        "f_tinyint": 14,
+        "f_bit": false,
+        "_long": 1
+      }
+    ]
+  }
+]

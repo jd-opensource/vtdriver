@@ -20,19 +20,14 @@ package com.jd.jdbc.engine;
 
 import com.google.common.collect.Lists;
 import com.jd.jdbc.IExecute;
-import com.jd.jdbc.context.IContext;
-import com.jd.jdbc.engine.table.TableQueryEngine;
 import com.jd.jdbc.key.Destination;
-import com.jd.jdbc.planbuilder.MultiQueryPlan;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
-import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
-import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.vindexes.SingleColumn;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -46,7 +41,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvg;
@@ -245,35 +239,6 @@ public class Engine {
         if (rs != null && !Topodata.TabletType.MASTER.equals(rs.getTarget().getTabletType())) {
             throw new SQLException("supported only for master tablet type, current type: " + TopoProto.tabletTypeLstring(rs.getTarget().getTabletType()));
         }
-    }
-
-    public static VtResultSet getTableBatchExecuteResult(IContext ctx, PrimitiveEngine executeEngine, Vcursor vcursor, Map<String, BindVariable> bindVariableMap,
-                                                         TableDestinationResponse resolvedShardsEqual) throws SQLException {
-        List<List<ActualTable>> tableDestinations = resolvedShardsEqual.getTables();
-        List<Map<String, BindVariable>> values = resolvedShardsEqual.getTableVarList();
-        List<PrimitiveEngine> sourceList = new ArrayList<>();
-        List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
-        Map<String, String> shardTableLTMap = new HashMap<>();
-        for (List<ActualTable> destionation : tableDestinations) {
-            Map<String, String> switchTable = new HashMap<>(16);
-            for (ActualTable act : destionation) {
-                shardTableLTMap.put(act.getActualTableName(), act.getLogicTable().getLogicTable());
-                switchTable.put(act.getLogicTable().getActualTableList().get(0).getActualTableName(), act.getActualTableName());
-            }
-            sourceList.add(executeEngine);
-            shardQueryList.add(executeEngine.resolveShardQuery(ctx, vcursor, bindVariableMap, switchTable));
-        }
-        PrimitiveEngine primitive = MultiQueryPlan.buildTableQueryPlan(sourceList, shardQueryList, values, shardTableLTMap);
-        return execCollectMultQueries(ctx, primitive, vcursor, false);
-    }
-
-    public static VtResultSet execCollectMultQueries(IContext ctx, PrimitiveEngine primitive, Vcursor vcursor, boolean wantField) throws SQLException {
-        if (!(primitive instanceof TableQueryEngine)) {
-            throw new SQLException("wrong engine type: execute table query must be TableQueryEngine");
-        }
-
-        IExecute.ExecuteMultiShardResponse executeMultiShardResponses = primitive.execute(ctx, vcursor, null, wantField);
-        return (VtResultSet) executeMultiShardResponses.getVtRowList();
     }
 
     /**
@@ -490,11 +455,4 @@ public class Engine {
         }
     }
 
-    @AllArgsConstructor
-    @Getter
-    public static class TableDestinationResponse {
-        private final List<List<ActualTable>> tables;
-
-        private final List<Map<String, BindVariable>> tableVarList;
-    }
 }

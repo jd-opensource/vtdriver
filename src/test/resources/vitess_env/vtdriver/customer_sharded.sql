@@ -457,7 +457,7 @@ CREATE TABLE IF NOT EXISTS `sbtest1` (
   KEY `k` (`k`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1149567 DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `all_type_test`
+CREATE TABLE IF NOT EXISTS `all_type_test`
 (
     `tinyint`            tinyint(4) NOT NULL,
     `u_tinyint`          tinyint(3) unsigned DEFAULT NULL,
@@ -514,7 +514,7 @@ CREATE TABLE `all_type_test`
     `set` set('Value A','Value B') DEFAULT NULL,
     PRIMARY KEY (`tinyint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `keyword_test` (
+CREATE TABLE IF NOT EXISTS `keyword_test` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `sql` varchar(50) DEFAULT NULL,
   `select` int(11) DEFAULT NULL,
@@ -528,3 +528,10 @@ CREATE TABLE `keyword_test` (
   `bit` bit(1) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `table_engine_test_seq`
+(
+    `id`      int(11) NOT NULL,
+    `next_id` bigint(20) DEFAULT NULL,
+    `cache`   bigint(20) DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='vitess_sequence';

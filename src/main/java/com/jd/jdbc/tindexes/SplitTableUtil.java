@@ -151,7 +151,7 @@ public final class SplitTableUtil {
                 }
                 Map<String, LogicTable> logicTableMap = new ConcurrentHashMap<>(16);
                 for (LogicTableConfig logicTableConfig : schema.getLogicTables()) {
-                    LogicTable logicTable = buildLogicTable(logicTableConfig);
+                    LogicTable logicTable = buildLogicTable(schema.getSchema().toLowerCase(), logicTableConfig);
                     if (logicTable != null) {
                         logicTableMap.put(logicTable.getLogicTable().toLowerCase(), logicTable);
                     }
@@ -166,7 +166,7 @@ public final class SplitTableUtil {
         return map;
     }
 
-    private static LogicTable buildLogicTable(final LogicTableConfig logicTableConfig) throws InstantiationException, IllegalAccessException {
+    private static LogicTable buildLogicTable(final String schema, final LogicTableConfig logicTableConfig) throws InstantiationException, IllegalAccessException {
         if (StringUtils.isEmpty(logicTableConfig.getLogicTable()) || StringUtils.isEmpty(logicTableConfig.getActualTableExprs())
             || StringUtils.isEmpty(logicTableConfig.getShardingColumnType()) || StringUtils.isEmpty(logicTableConfig.getShardingAlgorithms())
             || StringUtils.isEmpty(logicTableConfig.getShardingColumnName())) {
@@ -218,6 +218,7 @@ public final class SplitTableUtil {
             ActualTable actualTable = new ActualTable();
             actualTable.setActualTableName((logicNamePrefix + i).toLowerCase());
             actualTable.setLogicTable(logicTable);
+            actualTable.setIndex(i);
             actualTableList.add(actualTable);
         }
         logicTable.setActualTableList(actualTableList);
@@ -239,6 +240,8 @@ public final class SplitTableUtil {
         } else {
             logicTable.setTableIndex(tableIndex);
         }
+        logicTable.setSequenceColumnName(logicTableConfig.getSequenceColumnName());
+        logicTable.setSchema(schema);
         return logicTable;
     }
 }

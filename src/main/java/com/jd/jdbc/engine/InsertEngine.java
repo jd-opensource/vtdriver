@@ -22,11 +22,8 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
-import com.jd.jdbc.evalengine.EvalEngine;
-import com.jd.jdbc.key.Bytes;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.key.DestinationAllShard;
-import com.jd.jdbc.key.DestinationAnyShard;
 import com.jd.jdbc.key.DestinationKeyspaceID;
 import com.jd.jdbc.key.DestinationNone;
 import com.jd.jdbc.planbuilder.InsertPlan;
@@ -45,9 +42,9 @@ import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.vindexes.VKeyspace;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
+import com.jd.jdbc.engine.sequence.Generate;
 import io.netty.util.internal.StringUtil;
 import io.vitess.proto.Query;
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -66,8 +63,6 @@ import vschema.Vschema;
 @Getter
 @Setter
 public class InsertEngine implements PrimitiveEngine {
-    private static final SequenceCache SEQUENCE_CACHE = new SequenceCache();
-
     /**
      * Opcode is the execution opcode.
      */
@@ -251,7 +246,7 @@ public class InsertEngine implements PrimitiveEngine {
 
     @Override
     public IExecute.ResolvedShardQuery resolveShardQuery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValues) throws SQLException {
-        insertId = this.processGenerate(vcursor, bindValues);
+        insertId = Generate.processGenerate(vcursor, this.generate, bindValues);
         String charEncoding = vcursor.getCharEncoding();
         if (Engine.InsertOpcode.InsertUnsharded.equals(this.insertOpcode)) {
             List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
@@ -286,7 +281,7 @@ public class InsertEngine implements PrimitiveEngine {
      * @throws Exception
      */
     private IExecute.ExecuteMultiShardResponse execInsertUnsharded(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
-        long insertId = this.processGenerate(vcursor, bindVariableMap);
+        long insertId = Generate.processGenerate(vcursor, this.generate, bindVariableMap);
         List<ResolvedShard> rsList = getResolvedUnsharded(vcursor);
         Engine.allowOnlyMaster(rsList);
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = Engine.execShard(vcursor, this.insertReplaceStmt, bindVariableMap, rsList.get(0), true, true).setUpdate();
@@ -303,7 +298,7 @@ public class InsertEngine implements PrimitiveEngine {
     }
 
     private IExecute.ExecuteMultiShardResponse execInsertSharded(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
-        long insertId = this.processGenerate(vcursor, bindVariableMap);
+        long insertId = Generate.processGenerate(vcursor, this.generate, bindVariableMap);
         InsertShardedRouteResult insertShardedRouteResult = this.getInsertShardedRoute(vcursor, bindVariableMap);
         List<ResolvedShard> rss = insertShardedRouteResult.getResolvedShardList();
         List<BoundQuery> queries = insertShardedRouteResult.getBoundQueryList();
@@ -320,7 +315,7 @@ public class InsertEngine implements PrimitiveEngine {
     }
 
     private IExecute.ExecuteMultiShardResponse execInsertByDestination(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, Destination destination) throws SQLException {
-        long insertId = this.processGenerate(vcursor, bindVariableMap);
+        long insertId = Generate.processGenerate(vcursor, this.generate, bindVariableMap);
         List<ResolvedShard> rsList = getResolvedDestinationShard(vcursor, destination);
         IExecute.ExecuteMultiShardResponse executeMultiShardResponse = Engine.execShard(vcursor, this.insertReplaceStmt, bindVariableMap, rsList.get(0), true, true).setUpdate();
         VtResultSet vtResultSet = (VtResultSet) executeMultiShardResponse.getVtRowList();
@@ -333,63 +328,6 @@ public class InsertEngine implements PrimitiveEngine {
             vtResultSet.setInsertID(insertId);
         }
         return new IExecute.ExecuteMultiShardResponse(vtResultSet);
-    }
-
-    /**
-     * processGenerate generates new values using a sequence if necessary.
-     * If no value was generated, it returns 0. Values are generated only
-     * for cases where none are supplied.
-     *
-     * @param vcursor
-     * @param bindVariableMap
-     * @return
-     * @throws Exception
-     */
-    private Long processGenerate(Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
-        Long insertId = 0L;
-        if (this.generate == null) {
-            return insertId;
-        }
-
-        // Scan input values to compute the number of values to generate, and
-        // keep track of where they should be filled.
-        List<VtValue> resolved = this.generate.getVtPlanValue().resolveList(bindVariableMap);
-        int count = 0;
-        for (VtValue val : resolved) {
-            if (this.shouldGenerate(val)) {
-                count++;
-            }
-        }
-
-        // If generation is needed, generate the requested number of values (as one call).
-        List<Long> sequences = null;
-        if (count != 0) {
-            Destination dst;
-            if (!StringUtil.isNullOrEmpty(this.generate.getPinned())) {
-                dst = new DestinationKeyspaceID(Bytes.decodeToByteArray(this.generate.getPinned()));
-            } else {
-                dst = new DestinationAnyShard();
-            }
-            Resolver.ResolveDestinationResult resolveDestinationResult = vcursor.resolveDestinations(this.generate.getKeyspace().getName(), null, Lists.newArrayList(dst));
-            List<ResolvedShard> rss = resolveDestinationResult.getResolvedShards();
-            if (rss.size() != 1) {
-                throw new SQLException("processGenerate len(rss)=" + rss.size());
-            }
-            sequences = SEQUENCE_CACHE.getSequences(vcursor, rss.get(0), this.generate.getKeyspace().getName(), this.generate.getSequenceTableName(), count);
-            insertId = sequences.get(0);
-        }
-
-        // Fill the holes where no value was supplied.
-        for (int i = 0, j = 0; i < resolved.size(); i++) {
-            VtValue v = resolved.get(i);
-            if (shouldGenerate(v)) {
-                bindVariableMap.put(Generate.SEQ_VAR_NAME.substring(1) + i, SqlTypes.int64BindVariable(sequences.get(j++)));
-            } else {
-                bindVariableMap.put(Generate.SEQ_VAR_NAME.substring(1) + i, SqlTypes.valueBindVariable(v));
-            }
-        }
-
-        return insertId;
     }
 
     private InsertShardedRouteResult getInsertShardedRoute(Vcursor vcursor, Map<String, BindVariable> bindVariableMap, List<VtPlanValue> exVindexValueList,
@@ -631,30 +569,6 @@ public class InsertEngine implements PrimitiveEngine {
         }
     }
 
-    /**
-     * shouldGenerate determines if a sequence value should be generated for a given value
-     *
-     * @param vtValue
-     * @return
-     */
-    private Boolean shouldGenerate(VtValue vtValue) {
-        if (vtValue.isNull()) {
-            return Boolean.TRUE;
-        }
-
-        // Unless the NO_AUTO_VALUE_ON_ZERO sql mode is active in mysql, it also
-        // treats 0 as a value that should generate a new sequence.
-        try {
-            BigInteger n = EvalEngine.toUint64(vtValue);
-            if (BigInteger.ZERO.equals(n)) {
-                return Boolean.TRUE;
-            }
-        } catch (SQLException e) {
-            return Boolean.FALSE;
-        }
-        return Boolean.FALSE;
-    }
-
     private List<BoundQuery> getUnshardQueries(Map<String, BindVariable> bindValues, List<SQLInsertStatement.ValuesClause> exMidExprList, String exPrefix, String exSuffix,
                                                List<SQLExpr> exSuffixExpr, Map<String, String> switchTableMap, String charEncoding) throws SQLException {
         String newSuffix = getNewSuffix(bindValues, exSuffix, exSuffixExpr, switchTableMap, charEncoding);
@@ -718,27 +632,5 @@ public class InsertEngine implements PrimitiveEngine {
         private final List<ResolvedShard> resolvedShardList;
 
         private final List<BoundQuery> boundQueryList;
-    }
-
-    @Getter
-    @AllArgsConstructor
-    public static class Generate {
-        public static final Integer SEQ_VAR_REFINDEX = -3;
-
-        public static final String SEQ_VAR_NAME = ":__seq";
-
-        private final VKeyspace keyspace;
-
-        /**
-         * Values are the supplied values for the column, which
-         * will be stored as a list within the PlanValue. New
-         * values will be generated based on how many were not
-         * supplied (NULL).
-         */
-        private final VtPlanValue vtPlanValue;
-
-        private final String sequenceTableName;
-
-        private final String pinned;
     }
 }

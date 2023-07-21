@@ -34,6 +34,7 @@
     "sbtest1": {},
     "all_type_test": {},
     "auto": {},
-    "user": {}
+    "user": {},
+    "table_engine_test_seq": {}
   }
 }

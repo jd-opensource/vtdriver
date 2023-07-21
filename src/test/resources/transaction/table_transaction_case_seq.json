@@ -1,0 +1,110 @@
+[
+  {
+    "comment": "# in Transaction --- table table_engine_test --- simple insert",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('abc',1,false)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('11',2,true)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit_) values('table',3,true)"
+    ],
+    "errorMsg": "Unknown column 'f_bit_' in 'field list'",
+    "verfiyResult": [
+      [
+        0
+      ]
+    ],
+    "verfiySql": [
+      "select f_tinyint from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- simple insert",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(null,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('abc',1,false)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit_) values(3,'table',2,true)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('11',3,true)"
+    ],
+    "errorMsg": "Unknown column 'f_bit_' in 'field list'",
+    "verfiyResult": [
+      [
+        0
+      ]
+    ],
+    "verfiySql": [
+      "select f_tinyint from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('abc',1,false),('table',2,true),('success',null,false),('',6,true)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit_) values('table',3,true),('x',10,false),('11',11,true),('33',11,false)"
+    ],
+    "errorMsg": "Unknown column 'f_bit_' in 'field list'",
+    "verfiyResult": [
+      [
+        0
+      ]
+    ],
+    "verfiySql": [
+      "select f_tinyint from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(null,'abc',1,false),(null,'table',2,true),(null,'success',null,false),(null,'',6,true)",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit_) values(null,'11',11,true)"
+    ],
+    "errorMsg": "Unknown column 'f_bit_' in 'field list'",
+    "verfiyResult": [
+      [
+        0
+      ]
+    ],
+    "verfiySql": [
+      "select f_tinyint from table_engine_test"
+    ]
+  },
+  {
+    "comment": "# in Transaction --- table table_engine_test --- insert multiple values",
+    "initSql": [
+      "delete from table_engine_test",
+      "insert into table_engine_test(id,f_key,f_tinyint,f_bit) values(1,'11',0,true)"
+    ],
+    "needTransaction": true,
+    "executeSqls": [
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('abc',1,false),('table',2,true),('success',null,false),('',6,true)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit) values('aa',11,true)",
+      "insert into table_engine_test(f_key,f_tinyint,f_bit_) values('11',11,true)"
+    ],
+    "errorMsg": "Unknown column 'f_bit_' in 'field list'",
+    "verfiyResult": [
+      [
+        0
+      ]
+    ],
+    "verfiySql": [
+      "select f_tinyint from table_engine_test"
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+schemas:
+  - schema: commerce
+    logicTables:
+      - { actualTableExprs: 'table_engine_test_${1..4}',
+          logicTable: table_engine_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_int,
+          shardingColumnType: INT32}
+  - schema: customer
+    logicTables:
+      - { actualTableExprs: 'table_engine_test_${1..4}',
+          logicTable: table_engine_test,
+          shardingAlgorithms: TableRuleMod,
+          shardingColumnName: f_int,
+          shardingColumnType: INT32}

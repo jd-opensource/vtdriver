@@ -16,8 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.engine;
+package com.jd.jdbc.engine.sequence;
 
+import com.jd.jdbc.engine.Vcursor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqltypes.VtResultSet;

@@ -18,15 +18,15 @@ limitations under the License.
 
 package com.jd.jdbc.engine.table;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.InsertEngine;
 import com.jd.jdbc.engine.PrimitiveEngine;
-import com.jd.jdbc.engine.SequenceCache;
+import com.jd.jdbc.engine.TableShardQuery;
 import com.jd.jdbc.engine.Vcursor;
+import com.jd.jdbc.engine.sequence.Generate;
 import com.jd.jdbc.planbuilder.MultiQueryPlan;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
@@ -39,6 +39,8 @@ import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.srvtopo.BindVariable;
+import com.jd.jdbc.srvtopo.BoundQuery;
+import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.tindexes.ActualTable;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
@@ -50,14 +52,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class TableInsertEngine implements PrimitiveEngine {
-    private static final SequenceCache SEQUENCE_CACHE = new SequenceCache();
-
+public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
     /**
      * Opcode is the execution opcode.
      */
@@ -94,7 +95,7 @@ public class TableInsertEngine implements PrimitiveEngine {
     /**
      * Generate is only set for inserts where a sequence must be generated.
      */
-    private InsertEngine.Generate generate;
+    private Generate generate;
 
     /**
      * Option to override the standard behavior and allow a multi-shard insert
@@ -137,32 +138,42 @@ public class TableInsertEngine implements PrimitiveEngine {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("insert is not allowed for read only connection");
         }
+        PrimitiveEngine primitiveEngine;
         switch (this.insertOpcode) {
             case InsertByDestination:
             case InsertUnsharded:
-                return this.execInsertUnsharded(ctx, vcursor, bindVariableMap, wantFields);
+                primitiveEngine = getInsertUnshardedEngine(ctx, vcursor, bindVariableMap);
+                break;
             case InsertSharded:
             case InsertShardedIgnore:
-                return execInsertSharded(ctx, vcursor, bindVariableMap, wantFields);
+                primitiveEngine = getInsertShardedEngine(ctx, vcursor, bindVariableMap);
+                break;
             default:
                 throw new SQLException("unsupported query route: " + this.insertOpcode);
         }
+
+        if (primitiveEngine == null) {
+            throw new SQLException("error: generate table insert engine failed");
+        }
+        VtResultSet resultSet = TableEngine.execCollectMultQueries(ctx, primitiveEngine, vcursor, wantFields);
+        if (insertId != 0) {
+            resultSet.setInsertID(insertId);
+        }
+        return new IExecute.ExecuteMultiShardResponse(resultSet).setUpdate();
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertUnsharded(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantField)
-        throws SQLException {
-
+    private PrimitiveEngine getInsertUnshardedEngine(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         List<List<Query.Value>> indexesPerTable = new ArrayList<>();
         buildActualTables(bindVariableMap, actualTables, indexesPerTable);
 
         List<SQLInsertStatement.ValuesClause> innerEngineMidExprList = this.insertReplaceStmt.getValuesList();
-        return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, null, innerEngineMidExprList);
+        return getInsertEngine(ctx, vcursor, bindVariableMap, actualTables, indexesPerTable, null, innerEngineMidExprList);
     }
 
-    private IExecute.ExecuteMultiShardResponse execInsertSharded(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap, final boolean wantField)
-        throws SQLException {
-
+    private PrimitiveEngine getInsertShardedEngine(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
+        insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         List<List<Query.Value>> indexesPerTable = new ArrayList<>();
         buildActualTables(bindVariableMap, actualTables, indexesPerTable);
@@ -171,12 +182,12 @@ public class TableInsertEngine implements PrimitiveEngine {
         // as rows and their corresponding plan value will be redistributed to different tables
         List<VtPlanValue> innerEnginePlanValueList = this.insertEngine.getVindexValueList().get(0).getVtPlanValueList().get(0).getVtPlanValueList();
         List<SQLInsertStatement.ValuesClause> innerEngineMidExprList = this.insertEngine.getMidExprList();
-        return getExecuteMultiShardResponse(ctx, vcursor, bindVariableMap, wantField, actualTables, indexesPerTable, innerEnginePlanValueList, innerEngineMidExprList);
+        return getInsertEngine(ctx, vcursor, bindVariableMap, actualTables, indexesPerTable, innerEnginePlanValueList, innerEngineMidExprList);
     }
 
-    private IExecute.ExecuteMultiShardResponse getExecuteMultiShardResponse(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantField,
-                                                                            List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable, List<VtPlanValue> innerEnginePlanValueList,
-                                                                            List<SQLInsertStatement.ValuesClause> innerEngineMidExprList) throws SQLException {
+    private PrimitiveEngine getInsertEngine(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap,
+                                            List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable, List<VtPlanValue> innerEnginePlanValueList,
+                                            List<SQLInsertStatement.ValuesClause> innerEngineMidExprList) throws SQLException {
         List<IExecute.ResolvedShardQuery> shardQueryList = new ArrayList<>();
         List<PrimitiveEngine> sourceList = new ArrayList<>();
         List<Map<String, BindVariable>> batchBindVariableMap = new ArrayList<>();
@@ -209,13 +220,11 @@ public class TableInsertEngine implements PrimitiveEngine {
             sourceList.add(this.insertEngine);
             batchBindVariableMap.add(bindVariableMap);
         }
-        PrimitiveEngine primitive = MultiQueryPlan.buildTableQueryPlan(sourceList, shardQueryList, batchBindVariableMap, shardTableLTMap);
-        VtResultSet resultSet = Engine.execCollectMultQueries(ctx, primitive, vcursor, wantField);
-        return new IExecute.ExecuteMultiShardResponse(resultSet).setUpdate();
+        return MultiQueryPlan.buildTableQueryPlan(sourceList, shardQueryList, batchBindVariableMap, shardTableLTMap);
     }
 
     private void buildActualTables(Map<String, BindVariable> bindVariableMap, List<ActualTable> actualTables, List<List<Query.Value>> indexesPerTable) throws SQLException {
-        Map<String, Integer> actualTableIndex = new HashMap<>();
+        Map<ActualTable, List<Query.Value>> actualTableMap = new TreeMap<>();
         // compute target table partitions and their corresponding value's index
         for (int rowNum = 0; rowNum < this.vindexValueList.size(); rowNum++) {
             VtPlanValue planValue = this.vindexValueList.get(rowNum);
@@ -228,13 +237,17 @@ public class TableInsertEngine implements PrimitiveEngine {
                 throw new SQLException("cannot calculate split table, logic table: " + table.getLogicTable());
             }
             Query.Value index = Query.Value.newBuilder().setValue(ByteString.copyFrom(String.valueOf(rowNum).getBytes())).build();
-            if (actualTableIndex.containsKey(actualTable.getActualTableName())) {
-                indexesPerTable.get(actualTableIndex.get(actualTable.getActualTableName())).add(index);
+            if (actualTableMap.containsKey(actualTable)) {
+                actualTableMap.get(actualTable).add(index);
             } else {
-                actualTables.add(actualTable);
-                actualTableIndex.put(actualTable.getActualTableName(), actualTables.size() - 1);
-                indexesPerTable.add(Lists.newArrayList(index));
+                actualTableMap.put(actualTable, new ArrayList<>());
+                actualTableMap.get(actualTable).add(index);
             }
+        }
+
+        for (Map.Entry<ActualTable, List<Query.Value>> actualTableEntry : actualTableMap.entrySet()) {
+            actualTables.add(actualTableEntry.getKey());
+            indexesPerTable.add(actualTableEntry.getValue());
         }
     }
 
@@ -283,5 +296,31 @@ public class TableInsertEngine implements PrimitiveEngine {
     @Override
     public Boolean needsTransaction() {
         return true;
+    }
+
+    @Override
+    public Map<ResolvedShard, List<BoundQuery>> getShardQueryList(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap) throws SQLException {
+        PrimitiveEngine primitiveEngine;
+        switch (this.insertOpcode) {
+            case InsertByDestination:
+            case InsertUnsharded:
+                primitiveEngine = getInsertUnshardedEngine(ctx, vcursor, bindVariableMap);
+                break;
+            case InsertSharded:
+            case InsertShardedIgnore:
+                primitiveEngine = getInsertShardedEngine(ctx, vcursor, bindVariableMap);
+                break;
+            default:
+                throw new SQLException("unsupported query route: " + this.insertOpcode);
+        }
+
+        if (primitiveEngine == null) {
+            throw new SQLException("error: generate table insert engine failed");
+        }
+
+        if (!(primitiveEngine instanceof TableQueryEngine)) {
+            throw new SQLException("error: primitiveEngine should be TableQueryEngine");
+        }
+        return ((TableQueryEngine) primitiveEngine).getResolvedShardListMap();
     }
 }

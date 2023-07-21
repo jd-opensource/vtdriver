@@ -16,8 +16,8 @@
 
 package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
-import com.jd.jdbc.engine.InsertEngine;
 import com.jd.jdbc.engine.LimitEngine;
+import com.jd.jdbc.engine.sequence.Generate;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLLimit;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
@@ -287,14 +287,14 @@ public class VtPutBindVarsVisitor extends MySqlASTVisitorAdapter {
         BindVariable bindVariable;
         if (LimitEngine.LIMIT_VAR_REFINDEX == x.getIndex() || LimitEngine.LIMIT_VAR_NAME.equals(x.getName())) {
             bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
-        } else if (InsertEngine.Generate.SEQ_VAR_REFINDEX == x.getIndex()) {
+        } else if (Generate.SEQ_VAR_REFINDEX == x.getIndex()) {
             bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
         } else if (DEFAULT_VAR_REFINDEX == x.getIndex()) {
             bindVariable = this.bindVariableMap.get(x.getName().replaceAll(":", ""));
         } else {
             bindVariable = this.bindVariableMap.get(String.valueOf(x.getIndex()));
         }
-        boolean isSeq = x.getName().startsWith(InsertEngine.Generate.SEQ_VAR_NAME);
+        boolean isSeq = x.getName().startsWith(Generate.SEQ_VAR_NAME);
 
         SQLValuableExpr valuableExpr = null;
         try {

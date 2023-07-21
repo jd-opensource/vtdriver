@@ -17,6 +17,7 @@ limitations under the License.
 package com.jd.jdbc.tindexes;
 
 import io.vitess.proto.Query;
+import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -28,4 +29,42 @@ public class Column {
     private final Query.Type type;
 
     private final LogicTable ltb;
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof Column)) {
+            return false;
+        }
+        Column anotherCol = (Column) o;
+
+        if (anotherCol.getColumnName() == null) {
+            if (columnName != null) {
+                return false;
+            }
+        } else if (!anotherCol.getColumnName().equalsIgnoreCase(columnName)) {
+            return false;
+        }
+
+        if (anotherCol.getType() == null) {
+            if (type != null) {
+                return false;
+            }
+        } else if (!anotherCol.getType().equals(type)) {
+            return false;
+        }
+
+        if (anotherCol.getLtb() == null) {
+            return ltb == null;
+        } else {
+            return anotherCol.getLtb().equals(ltb);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(columnName, type, ltb);
+    }
 }

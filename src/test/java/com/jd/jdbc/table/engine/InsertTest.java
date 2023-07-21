@@ -36,6 +36,7 @@ import lombok.NoArgsConstructor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
@@ -49,7 +50,6 @@ public class InsertTest extends TestSuite {
     @Before
     public void init() throws SQLException, IOException {
         conn = DriverManager.getConnection(getUrl());
-        initCase();
     }
 
     protected String getUrl() {
@@ -59,6 +59,10 @@ public class InsertTest extends TestSuite {
     private void initCase() throws IOException, SQLException {
         testCaseList = initCase("src/test/resources/engine/tableengine/insert_case.json", TestCase.class, conn.getCatalog());
         testCaseList.addAll(initCase("src/test/resources/engine/tableengine/insert_case_upperCase.json", TestCase.class, conn.getCatalog()));
+    }
+
+    private void initSequenceCase() throws SQLException, IOException {
+        testCaseList = initCase("src/test/resources/engine/tableengine/insert_case_seq.json", TestCase.class, conn.getCatalog());
     }
 
     @After
@@ -77,15 +81,24 @@ public class InsertTest extends TestSuite {
     @Test
     public void testSamekey() throws Exception {
         // 分片分表键一致
+        initCase();
         TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
         insert();
-
     }
 
     @Test
     public void testDifferentKey() throws Exception {
         // 分片分表键不一致
+        initCase();
         TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
+        insert();
+    }
+
+    @Test
+    @Ignore
+    public void testSameKeySequence() throws Exception {
+        initSequenceCase();
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq.yml");
         insert();
     }
 

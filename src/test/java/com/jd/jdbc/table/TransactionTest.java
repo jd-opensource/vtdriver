@@ -18,6 +18,7 @@ package com.jd.jdbc.table;
 
 import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.vitess.VitessConnection;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -32,6 +33,7 @@ import lombok.NoArgsConstructor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -49,6 +51,14 @@ public class TransactionTest extends TestSuite {
     protected List<Connection> connectionList;
 
     protected List<TransactionTestCase> transactionTestCaseList;
+
+    public void initTest() throws IOException {
+        transactionTestCaseList = iterateExecFile("src/test/resources/transaction/table_transaction_case.json", TransactionTestCase.class);
+    }
+
+    public void initSequenceTest() throws IOException {
+        transactionTestCaseList = iterateExecFile("src/test/resources/transaction/table_transaction_case_seq.json", TransactionTestCase.class);
+    }
 
     @Before
     public void testLoadDriver() throws Exception {
@@ -74,17 +84,60 @@ public class TransactionTest extends TestSuite {
     }
 
     @Test
-    public void test01() throws Exception {
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
-        this.transactionTestCaseList = iterateExecFile("src/test/resources/transaction/transaction/transaction_case.json", TransactionTestCase.class);
-        testTx();
+    public void test() throws SQLException, IOException {
+        initTest();
+        List<String> yamlList = new ArrayList<String>() {{
+            add("engine/tableengine/split-table_1.yml");
+            add("engine/tableengine/split-table_2.yml");
+        }};
+
+        for (String path : yamlList) {
+            TableTestUtil.setSplitTableConfig(path);
+            testTx();
+        }
     }
 
     @Test
-    public void test02() throws Exception {
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_2.yml");
-        this.transactionTestCaseList = iterateExecFile("src/test/resources/transaction/transaction/transaction_case.json", TransactionTestCase.class);
-        testTx();
+    @Ignore
+    public void testSequence() throws SQLException, IOException {
+        initSequenceTest();
+        List<String> yamlList = new ArrayList<String>() {{
+            add("engine/tableengine/split-table-seq.yml");
+            add("engine/tableengine/split-table-seq-tindex.yml");
+        }};
+
+        for (String path : yamlList) {
+            TableTestUtil.setSplitTableConfig(path);
+            testTx();
+        }
+    }
+
+    @Test
+    public void testErrorInTransaction() throws SQLException, IOException {
+        initTest();
+        List<String> yamlList = new ArrayList<String>() {{
+            add("engine/tableengine/split-table_1.yml");
+        }};
+
+        for (String path : yamlList) {
+            TableTestUtil.setSplitTableConfig(path);
+            runErrorInTransactionTest();
+        }
+    }
+
+    @Test
+    @Ignore
+    public void testErrorInTransactionSequence() throws SQLException, IOException {
+        initSequenceTest();
+        List<String> yamlList = new ArrayList<String>() {{
+            add("engine/tableengine/split-table-seq.yml");
+            add("engine/tableengine/split-table-seq-tindex.yml");
+        }};
+
+        for (String path : yamlList) {
+            TableTestUtil.setSplitTableConfig(path);
+            runErrorInTransactionTest();
+        }
     }
 
     @Test
@@ -105,9 +158,7 @@ public class TransactionTest extends TestSuite {
         }
     }
 
-    @Test
-    public void testErrorInTransaction() throws SQLException {
-        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table_1.yml");
+    public void runErrorInTransactionTest() throws SQLException {
         List<List<String>> testCase = new ArrayList<List<String>>() {{
             add(new ArrayList<String>() {{
                 add("DELETE FROM table_engine_test;");

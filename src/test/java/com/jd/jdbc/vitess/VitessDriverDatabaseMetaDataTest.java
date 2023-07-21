@@ -27,13 +27,12 @@ import java.sql.Statement;
 import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import org.junit.Before;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class VitessDriverDatabaseMetaDataTest extends TestSuite {
     protected Connection connection;
