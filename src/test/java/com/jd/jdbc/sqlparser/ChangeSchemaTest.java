@@ -18,7 +18,7 @@ package com.jd.jdbc.sqlparser;
 
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtChangeSchemaVisitor;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.VitessStatement;
 import io.netty.util.internal.StringUtil;
@@ -214,7 +214,7 @@ public class ChangeSchemaTest extends TestSuite {
         try (VitessStatement vitessStatement = (VitessStatement) vitessConnection.createStatement()) {
             VitessStatement.ParseResult parseResult = vitessStatement.parseStatements("select * from " + defaultKeyspace + ".t");
             Assert.assertEquals(defaultKeyspace, parseResult.getSchema());
-            Assert.assertEquals("select * from " + SchemaUtil.getRealSchema(defaultKeyspace) + ".t", SQLUtils.toMySqlString(parseResult.getStatement(), SQLUtils.NOT_FORMAT_OPTION));
+            Assert.assertEquals("select * from " + KeyspaceUtil.getRealSchema(defaultKeyspace) + ".t", SQLUtils.toMySqlString(parseResult.getStatement(), SQLUtils.NOT_FORMAT_OPTION));
         }
 
         // different database expr no watch
@@ -224,13 +224,6 @@ public class ChangeSchemaTest extends TestSuite {
             Assert.assertEquals("unexpected keyspace (ks) in sql: select * from ks.tb", e.getMessage());
         }
 
-        // different database expr in SQL - replace different database expr, defaultKeyspace is 'vt_' + different database expr
-        try (VitessStatement vitessStatement = (VitessStatement) vitessConnection.createStatement()) {
-            vitessConnection.getKsSet().add("ks");
-            VitessStatement.ParseResult parseResult = vitessStatement.parseStatements("select * from ks.tb");
-            Assert.assertEquals("ks", parseResult.getSchema());
-            Assert.assertEquals("select * from " + SchemaUtil.getRealSchema("ks") + ".tb", SQLUtils.toMySqlString(parseResult.getStatement(), SQLUtils.NOT_FORMAT_OPTION));
-        }
         clearAll();
     }
 

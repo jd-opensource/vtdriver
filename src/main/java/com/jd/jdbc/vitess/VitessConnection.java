@@ -36,7 +36,7 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.Resolver;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.util.TimeUtil;
 import com.jd.jdbc.vitess.metadata.CachedDatabaseMetaData;
 import com.jd.jdbc.vitess.metadata.VitessDatabaseMetaData;
@@ -56,7 +56,6 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -100,12 +99,9 @@ public class VitessConnection extends AbstractVitessConnection {
     private Vtgate.Session session;
 
     @Getter
-    private Set<String> ksSet;
-
-    @Getter
     private String defaultKeyspace;
 
-    public VitessConnection(String url, Properties prop, TopoServer topoServer, Resolver resolver, Set<String> ksSet, VSchemaManager vSchemaManager, String defaultKeyspace) throws SQLException {
+    public VitessConnection(String url, Properties prop, TopoServer topoServer, Resolver resolver, VSchemaManager vSchemaManager, String defaultKeyspace) throws SQLException {
         this.isClosed = false;
         this.url = url;
         this.properties = prop;
@@ -119,7 +115,6 @@ public class VitessConnection extends AbstractVitessConnection {
         this.ctx.setContextValue(ContextKey.CTX_TX_CONN, resolver.getScatterConn().getTxConn());
         this.ctx.setContextValue(ContextKey.CTX_VSCHEMA_MANAGER, this.vm);
 
-        this.ksSet = ksSet;
         this.defaultKeyspace = defaultKeyspace;
 
         this.session = Vtgate.Session.newBuilder()
@@ -446,7 +441,7 @@ public class VitessConnection extends AbstractVitessConnection {
     }
 
     public void closeInnerConnection() {
-        List<Topodata.Tablet> tabletList = HealthCheck.INSTANCE.getHealthyTablets(SchemaUtil.getLogicSchema(defaultKeyspace));
+        List<Topodata.Tablet> tabletList = HealthCheck.INSTANCE.getHealthyTablets(KeyspaceUtil.getLogicSchema(defaultKeyspace));
         for (Topodata.Tablet tablet : tabletList) {
             IParentQueryService queryService = TabletDialer.dial(tablet);
             queryService.closeNativeQueryService();

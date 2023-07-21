@@ -22,7 +22,7 @@ import com.jd.jdbc.monitor.ThreadPoolCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.mysql.cj.jdbc.ConnectionImpl;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
@@ -70,7 +70,7 @@ public class HikariUtil {
 
         hikariConfig.setDataSourceProperties(dsProperties);
 
-        String realSchema = SchemaUtil.getRealSchema(tablet.getKeyspace());
+        String realSchema = KeyspaceUtil.getRealSchema(tablet.getKeyspace());
         hikariConfig.setDriverClassName(Constant.MYSQL_PROTOCOL_DRIVER_CLASS);
         String nativeUrl = "jdbc:mysql://" + tablet.getMysqlHostname() + ":" + tablet.getMysqlPort() + "/" + realSchema;
         hikariConfig.setJdbcUrl(nativeUrl);

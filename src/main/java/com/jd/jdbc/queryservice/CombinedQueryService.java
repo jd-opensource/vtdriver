@@ -28,7 +28,6 @@ import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.srvtopo.BindVariable;
 import com.jd.jdbc.srvtopo.BoundQuery;
 import com.jd.jdbc.vitess.Config;
-import com.jd.jdbc.vitess.VitessJdbcProperyUtil;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import io.vitess.proto.Query;

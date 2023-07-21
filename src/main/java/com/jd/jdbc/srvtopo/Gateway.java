@@ -22,7 +22,6 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.queryservice.IQueryService;
 import io.vitess.proto.Topodata;
 import java.util.List;
-import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -59,9 +58,9 @@ public abstract class Gateway {
      *
      * @param ctx
      * @param cell
-     * @param keyspaceNameList
+     * @param keyspace
      * @param tabletTypeList
      * @throws Exception
      */
-    public abstract void waitForTablets(IContext ctx, String cell, Set<String> keyspaceNameList, List<Topodata.TabletType> tabletTypeList) throws Exception;
+    public abstract void waitForTablets(IContext ctx, String cell, String keyspace, List<Topodata.TabletType> tabletTypeList) throws Exception;
 }

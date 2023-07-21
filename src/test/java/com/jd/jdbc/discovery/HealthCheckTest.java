@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
-import com.google.common.collect.Sets;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus;
@@ -766,11 +765,10 @@ public class HealthCheckTest extends TestSuite {
         printOk();
     }
 
-    private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) throws TopoException {
+    private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {
         for (String cell : cells) {
-            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, Sets.newHashSet(keyspaceName));
+            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName);
         }
-
     }
 
     private void closeQueryService(MockTablet... tablets) throws InterruptedException {
@@ -782,10 +780,8 @@ public class HealthCheckTest extends TestSuite {
 
     private HealthCheck getHealthCheck() {
         HealthCheck hc = HealthCheck.INSTANCE;
-
         Assert.assertEquals(0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals(0, hc.getHealthyCopy().size());
-
         return hc;
     }
 

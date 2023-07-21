@@ -18,13 +18,13 @@ limitations under the License.
 
 package com.jd.jdbc.pool;
 
+import com.jd.jdbc.common.util.MapUtil;
 import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.discovery.SecurityCenter;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.common.util.MapUtil;
 import com.jd.jdbc.vitess.Config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.pool.HikariPool;

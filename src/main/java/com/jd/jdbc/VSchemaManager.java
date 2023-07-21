@@ -25,7 +25,6 @@ import io.netty.util.internal.StringUtil;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import vschema.Vschema;
 
@@ -58,16 +57,15 @@ public class VSchemaManager {
     }
 
     /**
-     * @param ksSet
+     *
+     * @param tabletKeyspace
      * @throws TopoException
      */
-    public void initVschema(Set<String> ksSet) throws TopoException {
-        for (String ks : ksSet) {
-            if (this.ksMap.containsKey(ks)) {
-                continue;
-            }
-            this.ksMap.put(ks, this.topoServer.getVschema(null, ks));
+    public void initVschema(String tabletKeyspace) throws TopoException {
+        if (this.ksMap.containsKey(tabletKeyspace)) {
+            return;
         }
+        this.ksMap.put(tabletKeyspace, this.topoServer.getVschema(null, tabletKeyspace));
     }
 
     /**

@@ -57,10 +57,23 @@ public abstract class TestSuite extends TestSuitePrinter {
         return env.getDevConnection();
     }
 
+    public static void closeConnection(Connection... conns) {
+        for (Connection conn : conns) {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException throwables) {
+                    printFail(throwables.getMessage());
+                    throw new RuntimeException(throwables);
+                }
+            }
+        }
+    }
+
     protected static ExecutorService getThreadPool(int num, int max) {
         ExecutorService pool = new ThreadPoolExecutor(num, max,
             0L, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
+            new LinkedBlockingQueue<>(),
             new ThreadFactory() {
                 private final AtomicInteger threadNumber = new AtomicInteger(1);
 
@@ -124,9 +137,9 @@ public abstract class TestSuite extends TestSuitePrinter {
         }
     }
 
-    public void sleep(long millsec) {
+    public void sleep(long second) {
         try {
-            TimeUnit.SECONDS.sleep(millsec);
+            TimeUnit.SECONDS.sleep(second);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

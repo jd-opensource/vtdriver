@@ -62,21 +62,11 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
 
     static final String CELLS_ALIAS_FILE = "CellsAlias";
 
-    static final String KEYSPACE_FILE = "Keyspace";
-
-    static final String SHARD_FILE = "Shard";
-
     static final String VSCHEMA_FILE = "VSchema";
-
-    static final String SHARD_REPLICATION_FILE = "ShardReplication";
 
     static final String TABLET_FILE = "Tablet";
 
-    static final String SRV_VSCHEMA_FILE = "SrvVSchema";
-
     static final String SRV_KEYSPACE_FILE = "SrvKeyspace";
-
-    static final String ROUTING_RULES_FILE = "RoutingRules";
 
     static final String CELLS_PATH = "cells";
 
@@ -84,11 +74,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
 
     static final String KEYSPACES_PATH = "keyspaces";
 
-    static final String SHARDS_PATH = "shards";
-
     static final String TABLETS_PATH = "tablets";
-
-    static final String METADATA_PATH = "metadata";
 
     private final TopoCellsToAliasesMap cellsAliases;
 
@@ -364,20 +350,23 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
      * @throws TopoException
      */
     @Override
-    public List<TopoTabletInfo> getTabletsByRange(IContext ctx, String cell) throws TopoException {
+    public List<Topodata.Tablet> getTabletsByRange(IContext ctx, String cell) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, cell);
         List<ConnGetResponse> connGetResponseList = topoConnection.getTabletsByCell(ctx, TABLETS_PATH);
-        List<TopoTabletInfo> topoTabletInfos = new ArrayList<>(connGetResponseList.size());
+        List<Topodata.Tablet> tablets = new ArrayList<>(connGetResponseList.size());
         Topodata.Tablet tablet;
         try {
             for (ConnGetResponse connGetResponse : connGetResponseList) {
                 tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
-                topoTabletInfos.add(new TopoTabletInfo(connGetResponse.getVersion(), tablet));
+                if (tablet == null) {
+                    continue;
+                }
+                tablets.add(tablet);
             }
         } catch (InvalidProtocolBufferException e) {
             throw TopoException.wrap(e.getMessage());
         }
-        return topoTabletInfos;
+        return tablets;
     }
 
     /**
@@ -387,7 +376,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
      * @throws TopoException
      */
     @Override
-    public TopoTabletInfo getTablet(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
+    public Topodata.Tablet getTablet(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, tabletAlias.getCell());
 
         String tabletPath = pathForTabletAlias(TopoProto.tabletAliasString(tabletAlias));
@@ -395,24 +384,24 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
         Topodata.Tablet tablet;
         try {
             tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
+            return tablet;
         } catch (InvalidProtocolBufferException e) {
             throw TopoException.wrap(e.getMessage());
         }
-        return new TopoTabletInfo(connGetResponse.getVersion(), tablet);
     }
 
     @Override
-    public CompletableFuture<TopoTabletInfo> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
+    public CompletableFuture<Topodata.Tablet> getTabletFuture(IContext ctx, Topodata.TabletAlias tabletAlias) throws TopoException {
         TopoConnection topoConnection = this.connForCell(ctx, tabletAlias.getCell());
         String tabletPath = pathForTabletAlias(TopoProto.tabletAliasString(tabletAlias));
         return topoConnection.getFuture(ctx, tabletPath).thenApply(connGetResponse -> {
             Topodata.Tablet tablet;
             try {
                 tablet = Topodata.Tablet.parseFrom(connGetResponse.getContents());
+                return tablet;
             } catch (InvalidProtocolBufferException e) {
                 throw new CompletionException(TopoException.wrap(e.getMessage()));
             }
-            return new TopoTabletInfo(connGetResponse.getVersion(), tablet);
         });
     }
 

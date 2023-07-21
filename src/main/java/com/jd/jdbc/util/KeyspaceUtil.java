@@ -16,11 +16,10 @@ limitations under the License.
 
 package com.jd.jdbc.util;
 
+import static com.jd.jdbc.common.Constant.DEFAULT_DATABASE_PREFIX;
 import io.netty.util.internal.StringUtil;
 
-import static com.jd.jdbc.common.Constant.DEFAULT_DATABASE_PREFIX;
-
-public class SchemaUtil {
+public class KeyspaceUtil {
     public static String getLogicSchema(String tableCat) {
         if (StringUtil.isNullOrEmpty(tableCat)) {
             return tableCat;

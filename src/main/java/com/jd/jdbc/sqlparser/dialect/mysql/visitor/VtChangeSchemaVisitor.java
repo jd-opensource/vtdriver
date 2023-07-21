@@ -43,7 +43,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlDeleteStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlUpdateStatement;
-import com.jd.jdbc.util.SchemaUtil;
+import com.jd.jdbc.util.KeyspaceUtil;
 import java.util.List;
 
 
@@ -601,9 +601,9 @@ public class VtChangeSchemaVisitor extends MySqlASTVisitorAdapter {
     private void replaceSchema(final SQLPropertyExpr tableExpr) {
         String keyspaceInSql = tableExpr.getOwnernName();
         if (this.defaultKeyspace.equalsIgnoreCase(keyspaceInSql)) {
-            this.newDefaultKeyspace = SchemaUtil.getRealSchema(this.defaultKeyspace);
+            this.newDefaultKeyspace = KeyspaceUtil.getRealSchema(this.defaultKeyspace);
         } else {
-            this.newDefaultKeyspace = SchemaUtil.getRealSchema(keyspaceInSql);
+            this.newDefaultKeyspace = KeyspaceUtil.getRealSchema(keyspaceInSql);
         }
         this.isReplace = true;
         tableExpr.setOwner(this.newDefaultKeyspace);
@@ -611,9 +611,9 @@ public class VtChangeSchemaVisitor extends MySqlASTVisitorAdapter {
 
     public String getNewDefaultKeyspace() {
         if (this.isReplace) {
-            return SchemaUtil.getLogicSchema(this.newDefaultKeyspace);
+            return KeyspaceUtil.getLogicSchema(this.newDefaultKeyspace);
         }
-        this.newDefaultKeyspace = SchemaUtil.getRealSchema(this.defaultKeyspace);
-        return SchemaUtil.getLogicSchema(this.newDefaultKeyspace);
+        this.newDefaultKeyspace = KeyspaceUtil.getRealSchema(this.defaultKeyspace);
+        return KeyspaceUtil.getLogicSchema(this.newDefaultKeyspace);
     }
 }

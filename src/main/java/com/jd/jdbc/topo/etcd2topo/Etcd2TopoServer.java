@@ -227,7 +227,6 @@ public class Etcd2TopoServer implements TopoConnection {
         }
         ConnGetResponse connGetResponse = new ConnGetResponse();
         connGetResponse.setContents(response.getKvs().get(0).getValue().getBytes());
-        connGetResponse.setVersion(new Etcd2Version(response.getKvs().get(0).getModRevision()));
         return connGetResponse;
     }
 
@@ -254,7 +253,6 @@ public class Etcd2TopoServer implements TopoConnection {
         for (KeyValue kv : response.getKvs()) {
             connGetResponse = new ConnGetResponse();
             connGetResponse.setContents(kv.getValue().getBytes());
-            connGetResponse.setVersion(new Etcd2Version(kv.getModRevision()));
             connGetResponseList.add(connGetResponse);
         }
         return connGetResponseList;
@@ -271,7 +269,6 @@ public class Etcd2TopoServer implements TopoConnection {
             }
             ConnGetResponse connGetResponse = new ConnGetResponse();
             connGetResponse.setContents(response.getKvs().get(0).getValue().getBytes());
-            connGetResponse.setVersion(new Etcd2Version(response.getKvs().get(0).getModRevision()));
             return connGetResponse;
         });
     }

@@ -54,10 +54,8 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
@@ -96,9 +94,8 @@ public class VitessDriver implements java.sql.Driver {
         }
 
         try {
-            List<String> keySpaces = Arrays.asList(prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA).split(","));
             SecurityCenter.INSTANCE.addCredential(prop);
-            String defaultKeyspace = keySpaces.get(0);
+            String defaultKeyspace = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
 
             String role = prop.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
             if (!prop.containsKey(Constant.DRIVER_PROPERTY_ROLE_KEY)) {
@@ -109,22 +106,21 @@ public class VitessDriver implements java.sql.Driver {
 
             List<String> cells = Arrays.asList(prop.getProperty("cell").split(","));
             String localCell = cells.get(0);
-            Set<String> ksSet = new HashSet<>(keySpaces);
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, ksSet);
+                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, defaultKeyspace);
             }
 
             TabletGateway tabletGateway = TabletGateway.build(resilientServer);
 
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.watch(globalContext, cell, ksSet);
+                TopologyWatcherManager.INSTANCE.watch(globalContext, cell, defaultKeyspace);
             }
 
             boolean masterFlag = role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW);
             List<Topodata.TabletType> tabletTypes = masterFlag
                 ? Lists.newArrayList(Topodata.TabletType.MASTER)
                 : Lists.newArrayList(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
-            tabletGateway.waitForTablets(globalContext, localCell, ksSet, tabletTypes);
+            tabletGateway.waitForTablets(globalContext, localCell, defaultKeyspace, tabletTypes);
 
             TxConn txConn = new TxConn(tabletGateway, Vtgate.TransactionMode.MULTI);
             ScatterConn scatterConn = ScatterConn.newScatterConn("VttabletCall", txConn, tabletGateway);
@@ -143,7 +139,7 @@ public class VitessDriver implements java.sql.Driver {
 
             MonitorServer.getInstance().register(defaultKeyspace);
             VSchemaManager vSchemaManager = VSchemaManager.getInstance(topoServer);
-            vSchemaManager.initVschema(ksSet);
+            vSchemaManager.initVschema(defaultKeyspace);
             VtApiServer apiServer = VtApiServer.getInstance();
             if (apiServer != null) {
                 apiServer.register(defaultKeyspace, vSchemaManager);
@@ -152,7 +148,7 @@ public class VitessDriver implements java.sql.Driver {
                     log.warn("cannot get apiServer, register:" + defaultKeyspace + "skipped.");
                 }
             }
-            return new VitessConnection(url, prop, topoServer, resolver, ksSet, vSchemaManager, defaultKeyspace);
+            return new VitessConnection(url, prop, topoServer, resolver, vSchemaManager, defaultKeyspace);
         } catch (Exception e) {
             throw new SQLException(e);
         }
