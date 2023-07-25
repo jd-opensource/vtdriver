@@ -16,6 +16,9 @@ limitations under the License.
 
 package com.jd.jdbc.vitess.metadata;
 
+import static com.jd.jdbc.common.Constant.DRIVER_MAJOR_VERSION;
+import static com.jd.jdbc.common.Constant.DRIVER_MINOR_VERSION;
+import static com.jd.jdbc.common.Constant.DRIVER_NAME;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.util.RoleUtils;
