@@ -18,7 +18,9 @@ package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import io.vitess.proto.Topodata;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -82,9 +84,23 @@ public class VitessJdbcProperyUtil {
         if (canonicalTimezone == null) {
             throw new IllegalArgumentException("serverTimezone is not found in jdbc url");
         }
-        if (!"GMT".equalsIgnoreCase(canonicalTimezone) && TimeZone.getTimeZone(canonicalTimezone).getID().equals("GMT")) {
+        if (!"GMT".equalsIgnoreCase(canonicalTimezone) && "GMT".equals(TimeZone.getTimeZone(canonicalTimezone).getID())) {
             throw new IllegalArgumentException("invalid serverTimezone in jdbc url");
         }
+    }
+
+    public static void checkCharacterEncoding(Properties properties) {
+        String characterEncoding = properties.getProperty(VitessPropertyKey.characterEncoding.getKeyName());
+        if (StringUtils.isEmpty(characterEncoding)) {
+            throw new IllegalArgumentException("characterEncoding is not found in jdbc url");
+        }
+        String csn = Charset.defaultCharset().name();
+        boolean characterEncodingFlag = "UTF-8".equalsIgnoreCase(characterEncoding) || "UTF8".equalsIgnoreCase(characterEncoding);
+        boolean csnFlag = "UTF-8".equalsIgnoreCase(csn);
+        if (characterEncodingFlag && csnFlag) {
+            return;
+        }
+        throw new IllegalArgumentException("Only supports utf8 encoding, please check characterEncoding in jdbcurl and file.encoding in environment variable,characterEncoding = " + characterEncoding + ", file.encoding=" + csn);
     }
 
     public static String getDefaultKeyspace(Properties props) {

@@ -30,7 +30,8 @@ public enum VitessPropertyKey {
     ALLOW_MULTI_QUERIES("allowMultiQueries"),
     MAX_ROWS("maxRows"),
     REWRITE_BATCHED_STATEMENTS("rewriteBatchedStatements"),
-    ZERO_DATE_TIME_BEHAVIOR("zeroDateTimeBehavior");
+    ZERO_DATE_TIME_BEHAVIOR("zeroDateTimeBehavior"),
+    characterEncoding("characterEncoding");
 
     private final String keyName;
 
