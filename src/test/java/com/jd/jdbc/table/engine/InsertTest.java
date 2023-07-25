@@ -17,6 +17,8 @@ limitations under the License.
 package com.jd.jdbc.table.engine;
 
 import com.jd.jdbc.table.TableTestUtil;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -30,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -43,6 +47,7 @@ import testsuite.internal.TestSuiteShardSpec;
 import testsuite.internal.testcase.TestSuiteCase;
 
 public class InsertTest extends TestSuite {
+
     protected Connection conn;
 
     protected List<InsertTest.TestCase> testCaseList;
@@ -54,6 +59,14 @@ public class InsertTest extends TestSuite {
 
     protected String getUrl() {
         return getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS)) + "&useAffectedRows=false";
+    }
+
+    protected String getUser() {
+        return getUser(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
+    }
+
+    protected String getPassword() {
+        return getPassword(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
     }
 
     private void initCase() throws IOException, SQLException {
@@ -100,6 +113,84 @@ public class InsertTest extends TestSuite {
         initSequenceCase();
         TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq.yml");
         insert();
+    }
+
+    @Test
+    @Ignore
+    public void testConcurrentSequence() throws Exception {
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq.yml");
+        ExecutorService executorService = getThreadPool(10, 10);
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("delete from table_engine_test");
+        }
+
+        HikariConfig config = new HikariConfig();
+        config.setDriverClassName("com.jd.jdbc.vitess.VitessDriver");
+        config.setJdbcUrl(getUrl());
+        config.setMinimumIdle(10);
+        config.setMaximumPoolSize(10);
+        config.setUsername(getUser());
+        config.setPassword(getPassword());
+
+        HikariDataSource hikariDataSource = new HikariDataSource(config);
+
+        AtomicBoolean atomicBoolean = new AtomicBoolean(true);
+        for (int i = 0; i < 20; i++) {
+            int finalI = i;
+            executorService.execute(() -> {
+                    try (Connection connection = hikariDataSource.getConnection()) {
+                        // insert split table sequence return generatedKey
+                        PreparedStatement prepareStatement = connection.prepareStatement("insert into table_engine_test(f_key) values (?)", Statement.RETURN_GENERATED_KEYS);
+                        prepareStatement.setInt(1, finalI);
+                        Assert.assertFalse(prepareStatement.execute());
+                        Assert.assertEquals(1, prepareStatement.getUpdateCount());
+
+                        // check getGeneratedKeys
+                        ResultSet generatedKeys = prepareStatement.getGeneratedKeys();
+                        Assert.assertTrue(generatedKeys.next());
+                        long id = generatedKeys.getLong(1);
+                        Assert.assertFalse(generatedKeys.next());
+
+                        // check last_insert_id
+                        final ResultSet lastInsertIdResultSet = connection.createStatement().executeQuery("select last_insert_id()");
+                        Assert.assertTrue(lastInsertIdResultSet.next());
+                        Assert.assertEquals(id, lastInsertIdResultSet.getLong(1));
+                        Assert.assertFalse(lastInsertIdResultSet.next());
+
+                        // check last_insert_id
+                        final ResultSet identityResultSet = connection.createStatement().executeQuery("select @@identity");
+                        Assert.assertTrue(identityResultSet.next());
+                        Assert.assertEquals(id, identityResultSet.getLong(1));
+                        Assert.assertFalse(identityResultSet.next());
+
+                        // select by id
+                        PreparedStatement selectPrepareStatement = connection.prepareStatement("select f_key,id from table_engine_test where f_key = ? and id = ?");
+                        selectPrepareStatement.setInt(1, finalI);
+                        selectPrepareStatement.setLong(2, id);
+                        Assert.assertTrue(selectPrepareStatement.execute());
+                        ResultSet resultSet = selectPrepareStatement.getResultSet();
+                        Assert.assertTrue(resultSet.next());
+                        Assert.assertEquals(finalI, resultSet.getInt(1));
+                        Assert.assertEquals(id, resultSet.getLong(2));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        atomicBoolean.set(false);
+                    }
+                }
+            );
+        }
+        final long start = System.currentTimeMillis();
+        while (true) {
+            if (!atomicBoolean.get()) {
+                Assert.fail();
+                break;
+            }
+            if (System.currentTimeMillis() - start > 15 * 1000) {
+                break;
+            }
+        }
+        executorService.shutdownNow();
     }
 
     protected void insert() throws SQLException, NoSuchFieldException, IllegalAccessException {

@@ -28,6 +28,16 @@ public class InsertUnShardTest extends InsertTest {
     }
 
     @Override
+    protected String getUser() {
+        return getUser(Driver.of(TestSuiteShardSpec.NO_SHARDS));
+    }
+
+    @Override
+    protected String getPassword() {
+        return getPassword(Driver.of(TestSuiteShardSpec.NO_SHARDS));
+    }
+
+    @Override
     protected void insert() throws SQLException, NoSuchFieldException, IllegalAccessException {
         insert(false, false);
     }
