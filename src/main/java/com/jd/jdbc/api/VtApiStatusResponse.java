@@ -14,40 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.monitor.discovery;
+package com.jd.jdbc.api;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
 
-@Setter
-@Getter
-@NoArgsConstructor
-public class HeartBeatReport {
+@AllArgsConstructor
+public class VtApiStatusResponse {
 
-    private String id;
+    private final String status;
 
-    private String name;
+    private final String statusUrl;
 
-    private String address;
+    private final String refreshVschemaUrl;
 
-    private Integer port;
-
-    private String version;
+    private final String keyspaces;
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("{");
-        sb.append("\"id\":\"")
-            .append(id).append('\"');
-        sb.append(",\"name\":\"")
-            .append(name).append('\"');
-        sb.append(",\"address\":\"")
-            .append(address).append('\"');
-        sb.append(",\"port\":")
-            .append(port);
-        sb.append(",\"version\":\"")
-            .append(version).append('\"');
+        sb.append("\"status\":\"")
+            .append(status).append('\"');
+        sb.append(",\"statusUrl\":\"")
+            .append(statusUrl).append('\"');
+        sb.append(",\"refreshVschemaUrl\":\"")
+            .append(refreshVschemaUrl).append('\"');
+        sb.append(",\"keyspaces\":\"")
+            .append(keyspaces).append('\"');
         sb.append('}');
         return sb.toString();
     }

@@ -24,9 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.jd.jdbc.api.VtApiServerResponse.FAILURE;
-import static com.jd.jdbc.api.VtApiServerResponse.SUCCESS;
-
 public abstract class VtHttpHandler implements HttpHandler {
 
     /**
@@ -34,7 +31,7 @@ public abstract class VtHttpHandler implements HttpHandler {
      * @throws IOException
      */
     protected void success(HttpExchange httpExchange) throws IOException {
-        this.success(httpExchange, SUCCESS.getMessage());
+        this.success(httpExchange, VtApiServerResponse.SUCCESS.getMessage());
     }
 
     /**
@@ -44,7 +41,7 @@ public abstract class VtHttpHandler implements HttpHandler {
      */
     protected void success(HttpExchange httpExchange, String successMessage) throws IOException {
         try (OutputStream os = httpExchange.getResponseBody()) {
-            httpExchange.sendResponseHeaders(SUCCESS.getCode(), successMessage.length());
+            httpExchange.sendResponseHeaders(VtApiServerResponse.SUCCESS.getCode(), successMessage.length());
             os.write(successMessage.getBytes(StandardCharsets.UTF_8));
             os.flush();
         }
@@ -55,7 +52,7 @@ public abstract class VtHttpHandler implements HttpHandler {
      * @throws IOException
      */
     protected void failure(HttpExchange httpExchange) throws IOException {
-        this.failure(httpExchange, FAILURE.getMessage());
+        this.failure(httpExchange, VtApiServerResponse.FAILURE.getMessage());
     }
 
     /**
@@ -65,7 +62,7 @@ public abstract class VtHttpHandler implements HttpHandler {
      */
     protected void failure(HttpExchange httpExchange, String errorMessage) throws IOException {
         try (OutputStream os = httpExchange.getResponseBody()) {
-            httpExchange.sendResponseHeaders(FAILURE.getCode(), errorMessage.length());
+            httpExchange.sendResponseHeaders(VtApiServerResponse.FAILURE.getCode(), errorMessage.length());
             os.write(errorMessage.getBytes(StandardCharsets.UTF_8));
             os.flush();
         }
