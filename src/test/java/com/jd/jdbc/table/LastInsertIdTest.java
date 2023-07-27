@@ -16,12 +16,14 @@ limitations under the License.
 
 package com.jd.jdbc.table;
 
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
@@ -65,7 +67,7 @@ public class LastInsertIdTest extends TestSuite {
         }
     }
 
-    private void lastInsertId(final Statement stmt, final int expectedValue, final int expectedEffectRows, final boolean isSingleValue) throws SQLException {
+    private void lastInsertId(final Statement stmt, final Object expectedValue, final int expectedEffectRows, final boolean isSingleValue) throws SQLException {
         Assert.assertEquals(expectedEffectRows, effectRows);
         if (isSingleValue) {
             // last insert id
@@ -82,29 +84,39 @@ public class LastInsertIdTest extends TestSuite {
         }
     }
 
-    private void testByQuery(final Statement stmt, final String query, final String columnLabel, final int expectedValue) throws SQLException {
+    private void testByQuery(final Statement stmt, final String query, final String columnLabel, final Object expectedValue) throws SQLException {
         ResultSet rs = stmt.executeQuery(query);
         rs.next();
-        long lastInsertId1 = rs.getLong(columnLabel);
-        Assert.assertEquals(expectedValue, lastInsertId1);
+        Assert.assertEquals(expectedValue, rs.getObject(columnLabel, expectedValue.getClass()));
         rs.close();
 
         rs = stmt.executeQuery(query);
         rs.next();
-        long lastInsertId2 = rs.getLong(columnLabel);
-        Assert.assertEquals(expectedValue, lastInsertId2);
+        Assert.assertEquals(expectedValue, rs.getObject(columnLabel, expectedValue.getClass()));
         rs.close();
 
         rs = stmt.executeQuery(query);
         rs.next();
-        long lastInsertId3 = rs.getLong(columnLabel);
-        Assert.assertEquals(expectedValue, lastInsertId3);
+        Assert.assertEquals(expectedValue, rs.getObject(columnLabel, expectedValue.getClass()));
         rs.close();
 
         rs = stmt.executeQuery(query);
         rs.next();
-        long lastInsertId4 = rs.getLong(columnLabel);
-        Assert.assertEquals(expectedValue, lastInsertId4);
+        Assert.assertEquals(expectedValue, rs.getObject(columnLabel, expectedValue.getClass()));
         rs.close();
+    }
+
+    @Test
+    @Ignore
+    public void testResultIdBigInteger() throws SQLException {
+        String insertSql = "insert into `type_test` (`id`, `f_key`, `f_decimal`) values('17000098931012360000', 'x', 2)";
+        String initSql = "delete from type_test";
+        BigInteger expectedValue = new BigInteger("17000098931012360000");
+
+        try (Statement stmt = driverConnection.createStatement()) {
+            stmt.executeUpdate(initSql);
+            effectRows = stmt.executeUpdate(insertSql);
+            lastInsertId(stmt, expectedValue, 1, true);
+        }
     }
 }

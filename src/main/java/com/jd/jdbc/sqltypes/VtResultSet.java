@@ -20,6 +20,7 @@ package com.jd.jdbc.sqltypes;
 
 import com.jd.jdbc.vitess.VitessStatement;
 import io.vitess.proto.Query;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +35,7 @@ public class VtResultSet implements VtRowList {
 
     private long rowsAffected;
 
-    private long insertID;
+    private BigInteger insertID;
 
     private List<List<VtResultValue>> rows;
 
@@ -48,9 +49,10 @@ public class VtResultSet implements VtRowList {
 
     public VtResultSet() {
         this.rows = new ArrayList<>();
+        this.insertID = BigInteger.valueOf(0);
     }
 
-    public VtResultSet(long insertID, long rowsAffected) {
+    public VtResultSet(BigInteger insertID, long rowsAffected) {
         this.insertID = insertID;
         this.rowsAffected = rowsAffected;
     }
@@ -58,11 +60,13 @@ public class VtResultSet implements VtRowList {
     public VtResultSet(Query.Field[] fields, List<List<VtResultValue>> rows) {
         this.fields = fields;
         this.rows = rows;
+        this.insertID = BigInteger.valueOf(0);
     }
 
     public VtResultSet(long rowsAffected, List<List<VtResultValue>> rows) {
         this.rowsAffected = rowsAffected;
         this.rows = rows;
+        this.insertID = BigInteger.valueOf(0);
     }
 
     @Override
@@ -107,7 +111,7 @@ public class VtResultSet implements VtRowList {
             }
         }
         this.rowsAffected += src.rowsAffected;
-        if (src.insertID != 0) {
+        if (!src.insertID.equals(BigInteger.valueOf(0))) {
             this.insertID = src.insertID;
         }
         if (this.rows == null || this.rows.isEmpty()) {
@@ -227,4 +231,17 @@ public class VtResultSet implements VtRowList {
         VtRowList vtRowList = new VtResultSet(this.fields, this.rows);
         return vtRowList;
     }
+
+    public BigInteger getInsertID() {
+        return this.insertID;
+    }
+
+    public void setInsertID(long setId) {
+        this.insertID = BigInteger.valueOf(setId);
+    }
+
+    public void setInsertID(BigInteger setId) {
+        this.insertID = setId;
+    }
+
 }

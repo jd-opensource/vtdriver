@@ -16,34 +16,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.sqltypes;
+package com.jd.jdbc.session;
 
-import io.vitess.proto.Query;
 import java.math.BigInteger;
-import java.sql.SQLException;
-import java.util.List;
+import lombok.Getter;
 
-public interface VtRowList extends VtResultSetMessage {
+public class VitessSession {
 
-    Query.Field[] getFields();
+    @Getter
+    private BigInteger lastInsertId;
 
-    long getRowsAffected();
+    public VitessSession() {
+        this.lastInsertId = BigInteger.ZERO;
+    }
 
-    BigInteger getInsertID();
+    public void setLastInsertId(long setId) {
+        this.lastInsertId = BigInteger.valueOf(setId);
+    }
 
-    boolean isQuery();
+    public void setLastInsertId(BigInteger setId) {
+        this.lastInsertId = setId;
+    }
 
-    VtRowList setDML();
-
-    VtRowList reserve(int maxRows);
-
-    boolean hasNext() throws SQLException;
-
-    List<VtResultValue> next() throws SQLException;
-
-    void close() throws SQLException;
-
-    boolean isClosed();
-
-    int getResultSetSize();
 }

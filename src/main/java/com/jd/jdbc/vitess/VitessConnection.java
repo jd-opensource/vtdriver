@@ -29,6 +29,7 @@ import com.jd.jdbc.queryservice.IParentQueryService;
 import com.jd.jdbc.queryservice.TabletDialer;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
+import com.jd.jdbc.session.VitessSession;
 import com.jd.jdbc.sqlparser.ast.statement.SQLCommitStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLRollbackStatement;
 import com.jd.jdbc.sqlparser.support.logging.Log;
@@ -102,6 +103,10 @@ public class VitessConnection extends AbstractVitessConnection {
     private Vtgate.Session session;
 
     @Getter
+    @Setter
+    private VitessSession sessionNew;
+
+    @Getter
     private String defaultKeyspace;
 
     public VitessConnection(String url, Properties prop, TopoServer topoServer, Resolver resolver, VSchemaManager vSchemaManager, String defaultKeyspace) throws SQLException {
@@ -127,6 +132,7 @@ public class VitessConnection extends AbstractVitessConnection {
             .setAutocommit(true)
             .build();
         buildServerSessionPropertiesMap();
+        this.sessionNew = new VitessSession();
         if (log.isDebugEnabled()) {
             log.debug("create VitessConnection");
         }
