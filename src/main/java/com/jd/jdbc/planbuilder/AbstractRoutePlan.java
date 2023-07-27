@@ -26,6 +26,7 @@ import com.jd.jdbc.sqlparser.ast.SQLName;
 import com.jd.jdbc.sqlparser.ast.SQLOrderBy;
 import com.jd.jdbc.sqlparser.ast.SQLSetQuantifier;
 import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOpExpr;
+import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.NotEqual;
 import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLInListExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLIntegerExpr;
@@ -54,8 +55,6 @@ import java.util.HashMap;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-
-import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.NotEqual;
 
 @Getter
 @Setter
@@ -222,6 +221,12 @@ public abstract class AbstractRoutePlan implements Builder {
         SQLSelectGroupByClause newGroupBy = new SQLSelectGroupByClause();
         for (SQLExpr item : groupBy.getItems()) {
             newGroupBy.addItem(item);
+        }
+        if (groupBy.isWithCube()) {
+            newGroupBy.setWithCube(true);
+        }
+        if (groupBy.isWithRollUp()) {
+            newGroupBy.setWithRollUp(true);
         }
         ((MySqlSelectQueryBlock) this.select).setGroupBy(newGroupBy);
     }

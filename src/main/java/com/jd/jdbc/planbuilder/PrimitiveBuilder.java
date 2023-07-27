@@ -21,6 +21,12 @@ package com.jd.jdbc.planbuilder;
 import com.google.protobuf.UnknownFieldSet;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.engine.Engine;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutExists;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutIn;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutNotIn;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutValue;
+import static com.jd.jdbc.engine.Engine.RouteOpcode.SelectDBA;
+import static com.jd.jdbc.engine.Engine.RouteOpcode.SelectReference;
 import com.jd.jdbc.engine.OrderedAggregateEngine;
 import com.jd.jdbc.engine.RouteEngine;
 import com.jd.jdbc.engine.table.TableRouteEngine;
@@ -32,6 +38,13 @@ import com.jd.jdbc.planbuilder.Symtab.Table;
 import com.jd.jdbc.planbuilder.tableplan.TableRoutePlan;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.SqlParser;
+import static com.jd.jdbc.sqlparser.SqlParser.GroupByExpr.ColName;
+import static com.jd.jdbc.sqlparser.SqlParser.GroupByExpr.Literal;
+import static com.jd.jdbc.sqlparser.SqlParser.HAVING_STR;
+import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.AliasedExpr;
+import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.Nextval;
+import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.StarExpr;
+import static com.jd.jdbc.sqlparser.SqlParser.WHERE_STR;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLLimit;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
@@ -39,6 +52,9 @@ import com.jd.jdbc.sqlparser.ast.SQLOrderBy;
 import com.jd.jdbc.sqlparser.ast.SQLSetQuantifier;
 import com.jd.jdbc.sqlparser.ast.expr.SQLAllColumnExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOpExpr;
+import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.BooleanAnd;
+import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.BooleanOr;
+import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.Equality;
 import com.jd.jdbc.sqlparser.ast.expr.SQLExistsExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLInSubQueryExpr;
@@ -48,6 +64,7 @@ import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefListExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLExprTableSource;
 import com.jd.jdbc.sqlparser.ast.statement.SQLJoinTableSource;
+import static com.jd.jdbc.sqlparser.ast.statement.SQLJoinTableSource.JoinType;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelect;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectGroupByClause;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSelectItem;
@@ -65,12 +82,17 @@ import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtFindOriginVisitor.SubqueryI
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRewriteTableSchemaVisitor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import static com.jd.jdbc.sqlparser.utils.JdbcConstants.MYSQL;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.tindexes.TableIndex;
 import com.jd.jdbc.vindexes.VKeyspace;
+import static com.jd.jdbc.vindexes.Vschema.CODE_PINNED_TABLE;
+import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
+import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
+import static com.jd.jdbc.vindexes.Vschema.TYPE_SEQUENCE;
 import com.jd.jdbc.vindexes.hash.Binary;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import com.jd.jdbc.vindexes.hash.Hash;
@@ -895,28 +917,6 @@ public class PrimitiveBuilder {
         Symtab symtab = new Symtab(routeBuilder);
         this.symtab = symtab;
         symtab.addVSchemaTable(tableExpr, vschemaTable, routeBuilder);
-
-//        sub := &tableSubstitution{
-//            oldExpr: tableExpr,
-//        }
-//        if tableExpr.As.IsEmpty() {
-//            if tableName.Name != vschemaTable.Name {
-//                // Table name does not match. Change and alias it to old name.
-//                sub.newExpr = &sqlparser.AliasedTableExpr{
-//                    Expr: sqlparser.TableName{Name: vschemaTable.Name},
-//                    As:   tableName.Name,
-//                }
-//            }
-//        } else {
-//            // Table is already aliased.
-//            if tableName.Name != vschemaTable.Name {
-//                // Table name does not match. Change it and reuse existing alias.
-//                sub.newExpr = &sqlparser.AliasedTableExpr{
-//                    Expr: sqlparser.TableName{Name: vschemaTable.Name},
-//                    As:   tableExpr.As,
-//                }
-//            }
-//        }
 
         RouteEngine routeEngine;
         if (TYPE_SEQUENCE.equalsIgnoreCase(vschemaTable.getType())) {

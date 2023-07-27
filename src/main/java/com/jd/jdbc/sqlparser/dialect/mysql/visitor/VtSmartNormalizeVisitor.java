@@ -226,11 +226,38 @@ public class VtSmartNormalizeVisitor extends MySqlExportParameterVisitor {
 
     @Override
     public boolean visit(final SQLSelectGroupByClause x) {
-        if (parameterizedGroupbyOutput) {
-            return super.visit(x);
+        int itemSize = x.getItems().size();
+        if (itemSize > 0) {
+            print0(ucase ? "GROUP BY " : "group by ");
+            this.indentCount++;
+            for (int i = 0; i < itemSize; ++i) {
+                if (i != 0) {
+                    if (groupItemSingleLine) {
+                        println(", ");
+                    } else {
+                        print(", ");
+                    }
+                }
+                print0(SQLUtils.toMySqlString(x.getItems().get(i), SQLUtils.NOT_FORMAT_OPTION));
+            }
+            this.indentCount--;
         }
 
-        print0(SQLUtils.toMySqlString(x, SQLUtils.NOT_FORMAT_OPTION));
+        if (x.getHaving() != null) {
+            if (itemSize > 0) {
+                println();
+            }
+            print0(ucase ? "HAVING " : "having ");
+            x.getHaving().accept(this);
+        }
+
+        if (x.isWithRollUp()) {
+            print0(ucase ? " WITH ROLLUP" : " with rollup");
+        }
+
+        if (x.isWithCube()) {
+            print0(ucase ? " WITH CUBE" : " with cube");
+        }
 
         return false;
     }
