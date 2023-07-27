@@ -143,9 +143,11 @@ public class RouteStream implements IExecute.VtStream {
         }
 
         VtResultSet vtResultSet = new VtResultSet();
-        if (wantFields && vtResultSet.getFields() == null) {
+        if (wantFields && fields == null) {
             vtResultSet.appendResult(this.routeEngine.getFields(vcursor, bindVariableMap));
             fields = vtResultSet.getFields();
+        } else if (wantFields) {
+            vtResultSet.setFields(fields);
         }
 
         if (sortedValues.isEmpty()) {
