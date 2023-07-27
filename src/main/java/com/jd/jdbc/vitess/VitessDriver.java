@@ -32,7 +32,6 @@ import com.jd.jdbc.monitor.ConnectionCollector;
 import com.jd.jdbc.monitor.MonitorServer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
-import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.ResilientServer;
 import com.jd.jdbc.srvtopo.ResolvedShard;
 import com.jd.jdbc.srvtopo.Resolver;
@@ -43,8 +42,7 @@ import com.jd.jdbc.srvtopo.TxConn;
 import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
-import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
+import com.jd.jdbc.util.threadpool.InitThreadPoolService;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.prometheus.client.Histogram;
 import io.vitess.proto.Topodata;
@@ -83,8 +81,6 @@ public class VitessDriver implements java.sql.Driver {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private volatile boolean inited = false;
-
     public Connection initConnect(String url, Properties info, boolean initOnly) throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug("initConnect,url=" + url);
@@ -92,12 +88,7 @@ public class VitessDriver implements java.sql.Driver {
 
         Properties prop = VitessJdbcUrlParser.parse(url, info);
 
-        this.lock.lock();
-        try {
-            initializePoolSize(prop);
-        } finally {
-            this.lock.unlock();
-        }
+        InitThreadPoolService.getInstance();
 
         try {
             SecurityCenter.INSTANCE.addCredential(prop);
@@ -121,7 +112,6 @@ public class VitessDriver implements java.sql.Driver {
             for (String cell : cells) {
                 TopologyWatcherManager.INSTANCE.watch(globalContext, cell, defaultKeyspace);
             }
-
             boolean masterFlag = role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW);
             List<Topodata.TabletType> tabletTypes = masterFlag
                 ? Lists.newArrayList(Topodata.TabletType.MASTER)
@@ -219,23 +209,4 @@ public class VitessDriver implements java.sql.Driver {
         throw new SQLFeatureNotSupportedException();
     }
 
-    private void initializePoolSize(Properties prop) {
-        if (this.inited) {
-            return;
-        }
-
-        Integer queryCorePoolSize = Utils.getInteger(prop, "queryCoreSize");
-        Integer queryMaximumPoolSize = Utils.getInteger(prop, "queryMaximumSize");
-        Integer queryQueueSize = Utils.getInteger(prop, "queryQueueSize");
-        Long queryRejectedExecutionTimeoutMillis = Utils.getLong(prop, "queryRejectedTimeout");
-        VtQueryExecutorService.initialize(queryCorePoolSize, queryMaximumPoolSize, queryQueueSize, queryRejectedExecutionTimeoutMillis);
-
-        Integer healthCheckCorePoolSize = Utils.getInteger(prop, "healthCheckCoreSize");
-        Integer healthCheckMaximumPoolSize = Utils.getInteger(prop, "healthCheckMaximumSize");
-        Integer healthCheckQueueSize = Utils.getInteger(prop, "healthCheckQueueSize");
-        Long healthCheckRejectedExecutionTimeoutMillis = Utils.getLong(prop, "healthCheckRejectedTimeout");
-        VtHealthCheckExecutorService.initialize(healthCheckCorePoolSize, healthCheckMaximumPoolSize, healthCheckQueueSize, healthCheckRejectedExecutionTimeoutMillis);
-
-        this.inited = true;
-    }
 }

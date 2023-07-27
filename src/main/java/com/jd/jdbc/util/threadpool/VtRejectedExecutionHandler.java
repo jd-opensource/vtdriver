@@ -29,6 +29,7 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import lombok.Getter;
 
 public class VtRejectedExecutionHandler implements RejectedExecutionHandler {
     private static final Log LOGGER = LogFactory.getLog(VtRejectedExecutionHandler.class);
@@ -53,6 +54,7 @@ public class VtRejectedExecutionHandler implements RejectedExecutionHandler {
 
     private final String threadPoolName;
 
+    @Getter
     private final Long timeout;
 
     public VtRejectedExecutionHandler(final String threadPoolName, final Long timeout) {
