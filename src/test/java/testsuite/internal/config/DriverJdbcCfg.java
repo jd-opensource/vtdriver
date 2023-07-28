@@ -27,6 +27,10 @@ public class DriverJdbcCfg extends TestSuiteJdbcCfg {
         this.cell = cell;
     }
 
+    public String getCell() {
+        return this.cell;
+    }
+
     public void setSocketTimeout(String socketTimeout) {
         this.socketTimeout = socketTimeout;
     }
@@ -38,8 +42,8 @@ public class DriverJdbcCfg extends TestSuiteJdbcCfg {
 
     @Override
     public String getJdbcUrl() {
-        return String.format("%s/%s?cell=%s&user=%s&password=%s&serverTimezone=%s&characterEncoding=%s&socketTimeout=%s",
-            this.urlPrefix, this.keyspace, this.cell, this.username, this.password, this.serverTimezone,
+        return String.format("%s/%s?user=%s&password=%s&serverTimezone=%s&characterEncoding=%s&socketTimeout=%s",
+            this.urlPrefix, this.keyspace, this.username, this.password, this.serverTimezone,
             this.characterEncoding, this.socketTimeout);
     }
 

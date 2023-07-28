@@ -344,7 +344,7 @@ public enum HealthCheck {
         try {
             thc = this.healthByAlias.get(tabletAlias);
             if (thc == null) {
-                log.error("we have no health data for tablet " + TopoProto.tabletToHumanString(tablet) + ", it might have been delete already");
+                log.info("we have no health data for tablet " + TopoProto.tabletToHumanString(tablet) + ", it might have been delete already");
                 return;
             }
 

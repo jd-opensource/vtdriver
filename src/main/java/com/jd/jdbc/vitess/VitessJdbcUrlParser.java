@@ -68,7 +68,6 @@ public class VitessJdbcUrlParser {
             }
         }
 
-        VitessJdbcProperyUtil.checkCell(parsedProperties);
         VitessJdbcProperyUtil.checkCredentials(path, parsedProperties);
         VitessJdbcProperyUtil.checkServerTimezone(parsedProperties);
         VitessJdbcProperyUtil.addDefaultProperties(parsedProperties);

@@ -64,16 +64,6 @@ public class VitessJdbcProperyUtil {
         }
     }
 
-    public static void checkCell(Properties info) throws SQLException {
-        if (info.getProperty("cell") == null) {
-            throw new SQLException("no cell found in jdbc url");
-        }
-        String[] cells = info.getProperty("cell").split(",");
-        if (cells.length < 1) {
-            throw new SQLException("no cell found in jdbc url");
-        }
-    }
-
     public static void checkSchema(String path) throws SQLException {
         if (path == null || !path.startsWith("/")) {
             throw new SQLException("wrong database name path: '" + path + "'");

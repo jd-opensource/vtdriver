@@ -20,8 +20,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import testsuite.internal.TestSuiteShardSpec;
 import testsuite.internal.config.DriverJdbcCfg;
-import static testsuite.internal.config.TestSuiteCfgPath.DEV;
 import testsuite.internal.config.TestSuiteCfgReader;
+
+import static testsuite.internal.config.TestSuiteCfgPath.DEV;
 
 public class DriverEnv extends TestSuiteEnv {
 
@@ -68,5 +69,11 @@ public class DriverEnv extends TestSuiteEnv {
     public String getPassword() {
         DriverJdbcCfg cfg = TestSuiteCfgReader.read(DriverJdbcCfg.class, this.shardSpec, DEV);
         return cfg.getPassword();
+    }
+
+    @Override
+    public String getCell() {
+        DriverJdbcCfg cfg = TestSuiteCfgReader.read(DriverJdbcCfg.class, this.shardSpec, DEV);
+        return cfg.getCell();
     }
 }

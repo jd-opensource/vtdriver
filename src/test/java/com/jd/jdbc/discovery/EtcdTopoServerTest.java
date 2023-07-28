@@ -19,6 +19,7 @@ limitations under the License.
 package com.jd.jdbc.discovery;
 
 import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.monitor.SrvKeyspaceCollector;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoConnection;
@@ -37,7 +38,6 @@ import io.vitess.proto.Topodata;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,9 +90,10 @@ public class EtcdTopoServerTest extends TestSuite {
         String connectionUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         Properties prop = VitessJdbcUrlParser.parse(connectionUrl, null);
         keyspace = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
-        cells = Arrays.asList(prop.getProperty("cell").split(","));
+
         String topoServerAddress = "http://" + prop.getProperty("host") + ":" + prop.getProperty("port");
         topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
+        cells = topoServer.getAllCells(VtContext.withCancel(VtContext.background()));
         cell = cells.get(0);
         keyspacePrefix = "testkeyspace";
 

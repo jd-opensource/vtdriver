@@ -18,6 +18,13 @@ limitations under the License.
 
 package com.jd.jdbc.topo;
 
+import com.jd.jdbc.topo.etcd2topo.Etcd2TopoFactory;
+import io.vitess.proto.Vtrpc;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_IMPLEMENTATION;
 import static com.jd.jdbc.topo.TopoServer.CELLS_PATH;
 import static com.jd.jdbc.topo.TopoServer.CELL_INFO_FILE;
@@ -28,12 +35,6 @@ import static com.jd.jdbc.topo.TopoServer.SRV_KEYSPACE_FILE;
 import static com.jd.jdbc.topo.TopoServer.TABLETS_PATH;
 import static com.jd.jdbc.topo.TopoServer.TABLET_FILE;
 import static com.jd.jdbc.topo.TopoServer.VSCHEMA_FILE;
-import com.jd.jdbc.topo.etcd2topo.Etcd2TopoFactory;
-import io.vitess.proto.Vtrpc;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class Topo {
 
@@ -125,6 +126,7 @@ public class Topo {
         topoServer.globalReadOnlyCell = connReadOnly;
         topoServer.topoFactory = topoFactory;
         topoServer.cells = new HashMap<>(16);
+        topoServer.serverAddress = serverAddress;
         return topoServer;
     }
 

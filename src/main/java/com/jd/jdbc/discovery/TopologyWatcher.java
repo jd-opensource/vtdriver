@@ -78,6 +78,15 @@ public class TopologyWatcher {
         log.info("start topo watcher for cell: " + cell);
     }
 
+    public TopologyWatcher(TopoServer ts, String cell, Set<String> tabletKeyspaces) {
+        this.ts = ts;
+        this.hc = HealthCheck.INSTANCE;
+        this.cell = cell;
+        this.ksSet.addAll(tabletKeyspaces);
+        this.firstLoadTabletsFlag = true;
+        log.info("start topo watcher for cell: " + cell);
+    }
+
     private void loadTablets(IContext ctx) {
         try {
             Map<String, Topodata.Tablet> newTablets = getTopoTabletInfoMap(ctx);
@@ -85,19 +94,24 @@ public class TopologyWatcher {
             TopologyCollector.getCounter().labels(cell).inc();
         } catch (Throwable t) {
             TopologyCollector.getErrorCounter().labels(cell).inc();
-            log.error("Unexpected error occur at loadTablets, cause: " + t.getMessage(), t);
+            log.error("Unexpected Throwable error occur at loadTablets, cause: " + t.getMessage(), t);
         }
     }
 
     private void connectTablets(Map<String, Topodata.Tablet> newTablets) {
-        if (CollectionUtils.isEmpty(newTablets)) {
-            for (Map.Entry<String, Topodata.Tablet> entry : currentTablets.entrySet()) {
-                hc.removeTablet(entry.getValue());
-            }
-            return;
-        }
         this.lock.lock();
         try {
+            if (CollectionUtils.isEmpty(newTablets)) {
+                if (currentTablets == null || currentTablets.isEmpty()) {
+                    return;
+                }
+                for (Map.Entry<String, Topodata.Tablet> entry : currentTablets.entrySet()) {
+                    hc.removeTablet(entry.getValue());
+                }
+                currentTablets = new ConcurrentHashMap<>();
+                return;
+            }
+
             for (Map.Entry<String, Topodata.Tablet> entry : newTablets.entrySet()) {
                 Topodata.Tablet newTablet = entry.getValue();
                 Topodata.Tablet oldTablet = currentTablets.get(entry.getKey());
@@ -208,8 +222,19 @@ public class TopologyWatcher {
         if (ksSet.contains(tabletKeyspace)) {
             return;
         }
+
+        this.lock.lock();
+        try {
+            if (ksSet.contains(tabletKeyspace)) {
+                return;
+            }
+            this.ksSet.add(tabletKeyspace);
+        } finally {
+            this.lock.unlock();
+        }
+
         log.info("topo watcher for cell " + cell + " watches: " + tabletKeyspace);
-        this.ksSet.add(tabletKeyspace);
+
         Set<Topodata.Tablet> tablets = this.ignoreTopo.watchKs(tabletKeyspace);
         if (CollectionUtils.isEmpty(tablets)) {
             return;
@@ -229,6 +254,9 @@ public class TopologyWatcher {
 
     public void close() {
         timer.cancel();
+        if (currentTablets == null) {
+            return;
+        }
         for (Map.Entry<String, Topodata.Tablet> entry : currentTablets.entrySet()) {
             hc.removeTablet(entry.getValue());
         }
