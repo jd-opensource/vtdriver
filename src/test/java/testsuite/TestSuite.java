@@ -59,13 +59,23 @@ public abstract class TestSuite extends TestSuitePrinter {
 
     public static void closeConnection(Connection... conns) {
         for (Connection conn : conns) {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException throwables) {
-                    printFail(throwables.getMessage());
-                    throw new RuntimeException(throwables);
-                }
+            closeConnection(conn);
+        }
+    }
+
+    public static void closeConnection(List<Connection> connectionList) {
+        for (Connection connection : connectionList) {
+            closeConnection(connection);
+        }
+    }
+
+    public static void closeConnection(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException throwables) {
+                printFail(throwables.getMessage());
+                throw new RuntimeException(throwables);
             }
         }
     }
@@ -83,23 +93,6 @@ public abstract class TestSuite extends TestSuitePrinter {
                 }
             });
         return pool;
-    }
-
-    public static void closeConnection(Connection conn) {
-        if (conn != null) {
-            try {
-                conn.close();
-            } catch (SQLException throwables) {
-                printFail(throwables.getMessage());
-                throw new RuntimeException(throwables);
-            }
-        }
-    }
-
-    public static void closeConnection(List<Connection> connectionList) {
-        for (Connection connection : connectionList) {
-            closeConnection(connection);
-        }
     }
 
     protected static <T extends TestSuiteCase> List<T> iterateExecFile(String filename, Class<T> caseClazz) throws IOException {
