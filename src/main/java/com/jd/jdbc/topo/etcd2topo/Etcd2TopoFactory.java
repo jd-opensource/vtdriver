@@ -31,6 +31,12 @@ import java.util.List;
 
 public class Etcd2TopoFactory implements TopoFactory {
 
+    private static final Duration KEEPALIVE_DURATION = Duration.ofSeconds(10L);
+
+    private static final long CONNECT_TIMEOUT_LONG = Long.getLong("vtdriver.topoConnectTimeout", 5000L);
+
+    private static final Duration CONNECT_DURATION = Duration.ofMillis(CONNECT_TIMEOUT_LONG);
+
     private String clientCertPath = "";
 
     private String clientKeyPath = "";
@@ -90,10 +96,10 @@ public class Etcd2TopoFactory implements TopoFactory {
         }
         List<URI> endpoints = Util.toURIs(Arrays.asList(result));
         Client client = Client.builder().endpoints(endpoints)
-            .keepaliveTimeout(Duration.ofSeconds(10L))
-            .keepaliveTime(Duration.ofSeconds(10L))
+            .keepaliveTimeout(KEEPALIVE_DURATION)
+            .keepaliveTime(KEEPALIVE_DURATION)
             .keepaliveWithoutCalls(true)
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(CONNECT_DURATION)
             .waitForReady(false)
             .executorService(TabletNettyExecutorService.getNettyExecutorService()).build();
 

@@ -53,7 +53,7 @@ public class Etcd2TopoServer implements TopoConnection {
 
     private static final String END_TAG_OF_RANGE_SEARCH = "1";
 
-    private static final long DEFALUT_TIMEOUT = 10L;
+    private static final long DEFALUT_TIMEOUT = Long.getLong("vtdriver.topoExecuteTimeout", 10000L);
 
     private static final ConcurrentMap<String, Watch.Watcher> WATCHER_MAP = new ConcurrentHashMap<>(16);
 
@@ -86,7 +86,7 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
         GetResponse response;
         try {
-            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
@@ -196,7 +196,7 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
         GetResponse response;
         try {
-            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
@@ -224,7 +224,7 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(beginSequence, option);
         GetResponse response;
         try {
-            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
@@ -270,7 +270,7 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(key, option);
         GetResponse initial;
         try {
-            initial = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+            initial = future.get(DEFALUT_TIMEOUT, TimeUnit.MILLISECONDS);
         } catch (TimeoutException | InterruptedException | ExecutionException e) {
             throw TopoException.wrap(e.getMessage());
         }

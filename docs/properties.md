@@ -71,8 +71,18 @@
 ### VtDriver中的系统参数
 通过JVM参数方式传入，比如-Dvtdriver.api.port=9999
 
-| 属性 | 数据类型 | 默认值 | 备注 |
-|---|---|---|---|
-| vtdriver.api.port | int | 15002 | 指定开启的http端口 |
-| vtdriver.monitor.port | int | 15001 | 指定开启的http端口(prometheus) |
-| vtdriver.secondsBehindMaster | int | 7200 | 指定HealthCheck中判定tablet为可用的最大主从延迟，默认值为7200s |
+| 属性 | 数据类型 | 默认值                                                                                 | 备注                                         |
+|---|---|-------------------------------------------------------------------------------------|--------------------------------------------|
+| vtdriver.api.port | int | 15002                                                                               | 指定开启的http端口                                |
+| vtdriver.monitor.port | int | 15001                                                                               | 指定开启的http端口(prometheus)                    |
+| vtdriver.secondsBehindMaster | int | 7200                                                                                | 指定HealthCheck中判定tablet为可用的最大主从延迟，默认值为7200s |
+| vtdriver.queryCoreSize | int | jdk1.8.0_131以前的版本默认值为8，之后的版本的默认值根据应用容器的cpu核数来设定，核数小于8取8，核数大于32取32，核数在8-32之间取应用cpu核数 | 执行SQL线程池核心线程数                              |
+| vtdriver.queryMaximumSize | int | 100                                                                                 | 执行SQL线程池最大线程数                              |
+| vtdriver.queryQueueSize | int | 1000                                                                                | 执行SQL线程池任务队列长度                             |
+| vtdriver.queryRejectedTimeout | long | 3000                                                                                | 执行SQL线程池拒绝任务丢弃超时(毫秒)                       |
+| vtdriver.healthCheckCoreSize | int | 10                                                                                  | healthCheck线程池核心线程数                        |
+| vtdriver.healthCheckMaximumSize | int | 100                                                                                 | healthCheck线程池最大线程数                        |
+| vtdriver.healthCheckQueueSize | int | 10000                                                                               | healthCheck线程池任务队列长度                       |
+| vtdriver.healthCheckRejectedTimeout | long | 3000                                                                                | healthCheck线程池拒绝任务丢弃超时(毫秒)                 |
+| vtdriver.topoExecuteTimeout | long | 10000                                                                                | 访问拓扑元数据的执行超时时间(毫秒)                         |
+| vtdriver.topoConnectTimeout | long | 5000                                                                                | 访问拓扑元数据连接超时时间(毫秒)                          |
