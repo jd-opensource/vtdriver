@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.queryservice;
 
+import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.threadpool.JdkUtil;
 import com.jd.jdbc.util.threadpool.VtThreadFactoryBuilder;
 import com.jd.jdbc.util.threadpool.impl.TabletNettyExecutorService;
@@ -40,11 +41,13 @@ public class TabletDialer {
     private static final Map<String, IParentQueryService> TABLET_QUERY_SERVICE_CACHE = new ConcurrentHashMap<>(128 + 1);
 
     public static IParentQueryService dial(final Topodata.Tablet tablet) {
-        final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
-        if (TABLET_QUERY_SERVICE_CACHE.containsKey(addr)) {
-            return TABLET_QUERY_SERVICE_CACHE.get(addr);
+        final String aliasString = TopoProto.tabletAliasString(tablet.getAlias());
+        IParentQueryService queryService = TABLET_QUERY_SERVICE_CACHE.get(aliasString);
+        if (queryService != null) {
+            return queryService;
         }
 
+        String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
         ManagedChannel channel = NettyChannelBuilder.forTarget(addr).usePlaintext()
             .offloadExecutor(TabletNettyExecutorService.getNettyExecutorService())
             .executor(TabletNettyExecutorService.getNettyExecutorService())
@@ -53,18 +56,18 @@ public class TabletDialer {
             .keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
 
         IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet);
-        TABLET_QUERY_SERVICE_CACHE.putIfAbsent(addr, combinedQueryService);
+        TABLET_QUERY_SERVICE_CACHE.putIfAbsent(aliasString, combinedQueryService);
         return combinedQueryService;
     }
 
     public static void close(final Topodata.Tablet tablet) {
-        final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
-        TABLET_QUERY_SERVICE_CACHE.remove(addr);
+        final String aliasString = TopoProto.tabletAliasString(tablet.getAlias());
+        TABLET_QUERY_SERVICE_CACHE.remove(aliasString);
     }
 
     protected static void registerTabletCache(final Topodata.Tablet tablet, final IParentQueryService combinedQueryService) {
-        final String addr = tablet.getHostname() + ":" + tablet.getPortMapMap().get("grpc");
-        TABLET_QUERY_SERVICE_CACHE.putIfAbsent(addr, combinedQueryService);
+        final String aliasString = TopoProto.tabletAliasString(tablet.getAlias());
+        TABLET_QUERY_SERVICE_CACHE.putIfAbsent(aliasString, combinedQueryService);
     }
 
     protected static void clearTabletCache() {

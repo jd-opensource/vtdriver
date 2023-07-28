@@ -374,8 +374,7 @@ public enum HealthCheck {
         this.addTablet(newTablet);
     }
 
-    public void updateHealth(final TabletHealthCheck th, final Query.Target preTarget,
-                             final boolean trivialUpdate, boolean up) {
+    public void updateHealth(final TabletHealthCheck th, final Query.Target preTarget, final boolean trivialUpdate, boolean up) {
         String tabletAlias = TopoProto.tabletAliasString(th.getTablet().getAlias());
         String targetKey = keyFromTarget(th.getTarget());
         boolean targetChanged = preTarget.getTabletType() != th.getTarget().getTabletType()
@@ -388,11 +387,16 @@ public enum HealthCheck {
                 return;
             }
             if (targetChanged) {
+                // keyspace and shard are not expected to change, but just in case ...
+                // move this tabletHealthCheck to the correct map
                 String oldTargetKey = keyFromTarget(preTarget);
                 this.healthData.get(oldTargetKey).remove(tabletAlias);
                 MapUtil.computeIfAbsent(healthData, targetKey, key -> new HashMap<>());
             }
+            // add it to the map by target and create the map record if needed
+            MapUtil.computeIfAbsent(healthData, targetKey, key -> new HashMap<>());
             this.healthData.get(targetKey).put(tabletAlias, th);
+
             boolean isPrimary = th.getTarget().getTabletType() == Topodata.TabletType.MASTER;
             if (isPrimary) {
                 if (up) {

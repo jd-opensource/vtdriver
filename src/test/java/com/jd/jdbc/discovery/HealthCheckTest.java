@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
+import com.google.common.collect.Lists;
 import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
@@ -44,6 +45,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -1036,6 +1039,90 @@ public class HealthCheckTest extends TestSuite {
 
         sleepMillisSeconds(2000);
         MockTablet.closeQueryService(mockTablet0, mockTablet1, mockTablet2);
+    }
+
+    @Test
+    public void ipReUse() {
+        @AllArgsConstructor
+        @ToString
+        class TestCase {
+            final Topodata.TabletType oldType;
+
+            final Topodata.TabletType newType;
+        }
+        TestCase testCase1 = new TestCase(Topodata.TabletType.REPLICA, Topodata.TabletType.MASTER);
+        TestCase testCase2 = new TestCase(Topodata.TabletType.REPLICA, Topodata.TabletType.REPLICA);
+        TestCase testCase3 = new TestCase(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
+        TestCase testCase4 = new TestCase(Topodata.TabletType.MASTER, Topodata.TabletType.MASTER);
+        TestCase testCase5 = new TestCase(Topodata.TabletType.MASTER, Topodata.TabletType.REPLICA);
+        TestCase testCase6 = new TestCase(Topodata.TabletType.MASTER, Topodata.TabletType.RDONLY);
+        TestCase testCase7 = new TestCase(Topodata.TabletType.RDONLY, Topodata.TabletType.MASTER);
+        TestCase testCase8 = new TestCase(Topodata.TabletType.RDONLY, Topodata.TabletType.REPLICA);
+        TestCase testCase9 = new TestCase(Topodata.TabletType.RDONLY, Topodata.TabletType.RDONLY);
+        ArrayList<TestCase> testCases = Lists.newArrayList(testCase1, testCase2, testCase3, testCase4, testCase5, testCase6, testCase7, testCase8, testCase9);
+
+        for (TestCase testCase : testCases) {
+            printComment("HealthCheck Test when Tablet ip reuse");
+            HealthCheck hc = getHealthCheck();
+
+            printComment("1. Add a no-serving Tablet");
+            String ip = "127.0.0.1";
+            MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, ip, "k", "s", portMap, testCase.oldType);
+            hc.addTablet(mockTablet.getTablet());
+
+            Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+            Assert.assertEquals("Wrong Healthy Tablet data", 0, getHealthySize(hc.getHealthyCopy()));
+            sleepMillisSeconds(200);
+
+            printComment("2. Modify the status of Tablet to serving");
+            sendOnNextMessage(mockTablet, testCase.oldType, true, 0, 0.5, 0);
+
+            sleepMillisSeconds(200);
+
+            Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+            Assert.assertEquals("Wrong Healthy Tablet data", 1, getHealthySize(hc.getHealthyCopy()));
+
+            printComment("3. Modify the status of Tablet to no serving");
+            sendOnNextMessage(mockTablet, testCase.oldType, false, 0, 0.5, 0);
+
+            sleepMillisSeconds(200);
+
+            printComment("4. Add another no-serving new Tablet");
+            MockTablet mockTablet2 = MockTablet.buildMockTablet(grpcCleanup, "cell", 1, ip, "k2", "s", portMap, testCase.newType);
+            hc.addTablet(mockTablet2.getTablet());
+
+            Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
+            Assert.assertEquals("Wrong Healthy Tablet data", 0, getHealthySize(hc.getHealthyCopy()));
+            sleepMillisSeconds(200);
+
+            printComment("5. Modify the status of new Tablet to serving");
+            sendOnNextMessage(mockTablet2, testCase.newType, true, 0, 0.5, 1);
+
+            sleepMillisSeconds(200);
+
+            Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
+            Assert.assertEquals("Wrong Healthy Tablet data", 1, getHealthySize(hc.getHealthyCopy()));
+
+            printComment("4. removeTablet old Tablet");
+            hc.removeTablet(mockTablet.getTablet());
+
+            sleepMillisSeconds(2000);
+
+            Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+            Assert.assertEquals("Wrong Healthy Tablet data", 1, getHealthySize(hc.getHealthyCopy()));
+
+            MockTablet.closeQueryService(mockTablet, mockTablet2);
+            printOk("test ipReUse success,testCase :" + testCase);
+            HealthCheck.resetHealthCheck();
+        }
+    }
+
+    private int getHealthySize(Map<String, List<TabletHealthCheck>> map) {
+        int size = 0;
+        for (Map.Entry<String, List<TabletHealthCheck>> entry : map.entrySet()) {
+            size += entry.getValue().size();
+        }
+        return size;
     }
 
     private List<TabletHealthCheck> mockGetHealthyTabletStats(Map<String, List<TabletHealthCheck>> healthy, Query.Target target) {

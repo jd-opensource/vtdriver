@@ -45,6 +45,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -76,7 +77,7 @@ public class ServerTest extends TestSuite {
     //The ip address needs to be modified to the ip address of the machine where etcd is located
     public static String TOPO_GLOBAL_SERVER_ADDRESS = "http://127.0.0.1:2379";
 
-    private static ExecutorService executorService = getThreadPool(10, 10);
+    private static final ExecutorService executorService = getThreadPool(10, 10);
 
     @AfterClass
     public static void afterClass() {
@@ -109,7 +110,7 @@ public class ServerTest extends TestSuite {
     }
 
     @Test
-    public void case01_testClient() throws ExecutionException, InterruptedException {
+    public void case01_testClient() throws ExecutionException, InterruptedException, TimeoutException {
         Client client = Client.builder().endpoints(TOPO_GLOBAL_PROXY_ADDRESS).build();
         Assert.assertNotNull(client);
 
@@ -119,7 +120,7 @@ public class ServerTest extends TestSuite {
             .withPrefix(ByteSequence.from(sequence.getBytes()))
             .build();
         CompletableFuture<GetResponse> future = client.getKVClient().get(sequence, option);
-        GetResponse resp = future.get();
+        GetResponse resp = future.get(10, TimeUnit.SECONDS);
         for (KeyValue kv : resp.getKvs()) {
             String key = kv.getKey().toString(Charset.defaultCharset());
             Assert.assertNotNull(key);
@@ -248,7 +249,7 @@ public class ServerTest extends TestSuite {
     }
 
     @Test
-    public void case09_getTabletsByRange() throws ExecutionException, InterruptedException {
+    public void case09_getTabletsByRange() throws ExecutionException, InterruptedException, TimeoutException {
 
         Client client = Client.builder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -264,7 +265,7 @@ public class ServerTest extends TestSuite {
             .withRange(endSequence)
             .build();
         CompletableFuture<GetResponse> future = client.getKVClient().get(startSequence, option);
-        GetResponse resp = future.get();
+        GetResponse resp = future.get(10, TimeUnit.SECONDS);
         for (KeyValue kv : resp.getKvs()) {
             String key = kv.getKey().toString(Charset.defaultCharset());
             Assert.assertNotNull(key);

@@ -81,57 +81,17 @@ public class MockTablet {
 
     public static MockTablet buildMockTablet(GrpcCleanupRule grpcCleanup, String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap,
                                              Topodata.TabletType type) {
-        String serverName = InProcessServerBuilder.generateName();
-        BlockingQueue<MockQueryServer.HealthCheckMessage> healthMessage = new ArrayBlockingQueue<>(2);
-        MockQueryServer queryServer = new MockQueryServer(healthMessage);
-        Server server = null;
-        try {
-            server = InProcessServerBuilder.forName(serverName).directExecutor().addService(queryServer).build().start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        grpcCleanup.register(server);
-
-        ManagedChannel channel =
-            InProcessChannelBuilder.forName(serverName).directExecutor().keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
-        grpcCleanup.register(channel);
-
-        Topodata.Tablet tablet = buildTablet(cell, uid, hostName, keyspaceName, shard, portMap, type, 3358);
-        IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet);
-        TabletDialerAgent.registerTabletCache(tablet, combinedQueryService);
-
-        return new MockTablet(tablet, healthMessage, queryServer, server, channel);
+        return buildMockTablet(grpcCleanup, cell, uid, hostName, keyspaceName, shard, portMap, type, 3358);
     }
 
     public static MockTablet buildMockTablet(GrpcCleanupRule grpcCleanup, String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap,
-                                             Topodata.TabletType type,
-                                             int defaultMysqlPort) {
-        String serverName = InProcessServerBuilder.generateName();
-        BlockingQueue<MockQueryServer.HealthCheckMessage> healthMessage = new ArrayBlockingQueue<>(2);
-        MockQueryServer queryServer = new MockQueryServer(healthMessage);
-        Server server = null;
-        try {
-            server = InProcessServerBuilder.forName(serverName).directExecutor().addService(queryServer).build().start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        grpcCleanup.register(server);
-
-        ManagedChannel channel =
-            InProcessChannelBuilder.forName(serverName).directExecutor().keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
-        grpcCleanup.register(channel);
-
+                                             Topodata.TabletType type, int defaultMysqlPort) {
         Topodata.Tablet tablet = buildTablet(cell, uid, hostName, keyspaceName, shard, portMap, type, defaultMysqlPort);
-        IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet);
-        TabletDialerAgent.registerTabletCache(tablet, combinedQueryService);
-
-        return new MockTablet(tablet, healthMessage, queryServer, server, channel);
+        return buildMockTablet(tablet, grpcCleanup);
     }
 
-    public static Topodata.Tablet buildTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type,
-                                              int defaultMysqlPort) {
+    private static Topodata.Tablet buildTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type,
+                                               int defaultMysqlPort) {
         Topodata.TabletAlias tabletAlias = Topodata.TabletAlias.newBuilder().setCell(cell).setUid(uid).build();
         Topodata.Tablet.Builder tabletBuilder = Topodata.Tablet.newBuilder()
             .setHostname(hostName).setAlias(tabletAlias).setKeyspace(keyspaceName).setShard(shard).setType(type).setMysqlHostname(hostName).setMysqlPort(defaultMysqlPort);
@@ -141,7 +101,7 @@ public class MockTablet {
         return tabletBuilder.build();
     }
 
-    public static void closeQueryService(MockTablet... tablets)  {
+    public static void closeQueryService(MockTablet... tablets) {
         MockQueryServer.HealthCheckMessage close = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Close, null);
         for (MockTablet tablet : tablets) {
             try {
