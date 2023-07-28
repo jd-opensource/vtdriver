@@ -426,7 +426,7 @@
     "Query": "select user.col from user join user_extra on user.name = 5 and user.name = user_extra.user_id",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -491,7 +491,7 @@
         "Query": "select user.col from user where user.name = 5",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "hash"
       },
@@ -532,7 +532,7 @@
         "Query": "select user.col from user where user.name = 5",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "hash"
       },
@@ -659,7 +659,7 @@
     "Query": "select id from ( select id, col from user where name = 5 ) t",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "hash"
   }
@@ -681,7 +681,7 @@
     "Query": "select t.name from ( select name from user where name = 5 ) t join user_extra on t.name = user_extra.user_id",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "hash"
   }
@@ -703,7 +703,7 @@
     "Query": "select t.name from ( select user.name from user where user.name = 5 ) t join user_extra on t.name = user_extra.user_id",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -753,7 +753,7 @@
         "Query": "select t.name from ( select name from user where name = 5 ) t",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "user_index"
       },
@@ -788,7 +788,7 @@
     "Query": "select u.col, e.col from ( select col from user where name = 5 ) u join ( select col from user_extra where user_id = 5 ) e",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "hash"
   }

@@ -51,7 +51,7 @@
     "Query": "select name from user where user.name = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -91,7 +91,7 @@
     "Query": "select id from music where id = 5 and user_id = 4",
     "Table": "music",
     "Values": [
-      4
+      "INT64(4)"
     ],
     "Vindex": "user_index"
   }
@@ -131,8 +131,7 @@
     "Query": "select name from user where user.col = 5 and user.name in (::__vals)",
     "Table": "user",
     "Values": [
-        1,
-        2
+        "(INT64(1), INT64(2))"
     ],
     "Vindex": "user_index"
   }
@@ -154,8 +153,7 @@
     "Query": "select name from user where user.col = case user.col when 'foo' then true else false end and user.name in (::__vals)",
     "Table": "user",
     "Values": [
-        1,
-        2
+        "(INT64(1), INT64(2))"
     ],
     "Vindex": "user_index"
   }
@@ -177,7 +175,7 @@
     "Query": "select id from user where user.col = 5 and user.id in (1, 2) and user.name = 'aa' and user.id = 1",
     "Table": "user",
     "Values": [
-      1
+      "VARCHAR(\"aa\")"
     ],
     "Vindex": "user_index"
   }
@@ -199,7 +197,7 @@
     "Query": "select id from user where user.id = 1 and user.name = 'aa' and user.id in (1, 2) and user.col = 5",
     "Table": "user",
     "Values": [
-      1
+      "VARCHAR(\"aa\")"
     ],
     "Vindex": "user_index"
   }
@@ -239,7 +237,6 @@
     "Query": "select user_id from music where user_id is null",
     "Table": "music",
     "Values": [
-      null
     ],
     "Vindex": "music_user_map"
   }
@@ -315,7 +312,7 @@
     "Query": "select id from music where user_id = 4 and id in (null, 1, 2)",
     "Table": "music",
     "Values": [
-      4
+      "INT64(4)"
     ],
     "Vindex": "user_index"
   }
@@ -355,7 +352,7 @@
     "Query": "select user_extra.id from user join user_extra on user.name = user_extra.user_id where user.name = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -377,7 +374,7 @@
     "Query": "select user_extra.id from user join user_extra on user.name = user_extra.user_id where user_extra.user_id = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -399,7 +396,7 @@
     "Query": "select user_extra.id from user left join user_extra on user.name = user_extra.user_id where user.name = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -421,7 +418,7 @@
     "Query": "select user_extra.id from user left join user_extra on user.name = user_extra.user_id where user_extra.user_id = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -449,7 +446,7 @@
         "Query": "select user.col from user where user.name = 5",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "user_index"
       },
@@ -490,7 +487,7 @@
         "Query": "select user.col from user where user.name = 5",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "user_index"
       },
@@ -505,7 +502,7 @@
         "Query": "select user_extra.id from user_extra where user_extra.col = :user_col and user_extra.user_id = 5",
         "Table": "user_extra",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "user_index"
       }
@@ -607,7 +604,7 @@
     "Query": "select user_extra.Id from user join user_extra on user.nAME = user_extra.User_Id where user.Name = 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -646,7 +643,7 @@
     "Query": "select id from user where name = 18446744073709551615",
     "Table": "user",
     "Values": [
-      18446744073709551615
+      "UINT64(18446744073709551615)"
     ],
     "Vindex": "name_user_map"
   }
@@ -668,7 +665,7 @@
     "Query": "select id from user where costly = 'aa' and name = 'bb'",
     "Table": "user",
     "Values": [
-      "bb"
+      "VARCHAR(\"bb\")"
     ],
     "Vindex": "name_user_map"
   }
@@ -690,10 +687,7 @@
     "Query": "select id from user where costly in ('aa', 'bb') and name in (::__vals)",
     "Table": "user",
     "Values": [
-      [
-        "aa",
-        "bb"
-      ]
+      "(VARCHAR(\"aa\"), VARCHAR(\"bb\"))"
     ],
     "Vindex": "name_user_map"
   }
@@ -715,7 +709,7 @@
     "Query": "select id or col as val from user where user.col = 5 and user.id in (1, 2) and user.name = 'aa'",
     "Table": "user",
     "Values": [
-      "aa"
+      "VARCHAR(\"aa\")"
     ],
     "Vindex": "name_user_map"
   }
@@ -759,7 +753,7 @@
     "Query": "select id from user where user.col = false and user.id in (1, 2) and user.name = 'aa'",
     "Table": "user",
     "Values": [
-      "aa"
+      "VARCHAR(\"aa\")"
     ],
     "Vindex": "name_user_map"
   }
@@ -798,10 +792,7 @@
         "Query": "select u.m from user as u where u.name in (::__vals) and u.name in ( select m2 from user where user.name = u.name and user.col = :user_extra_col )",
         "Table": "user",
         "Values": [
-          [
-            ":user_extra_col",
-            1
-          ]
+          "(:user_extra_col, INT64(1))"
         ],
         "Vindex": "hash"
       }
@@ -842,7 +833,7 @@
         "Query": "select u.m from user as u where u.name = 5 and u.name in ( select m2 from user where user.name = 5 )",
         "Table": "user",
         "Values": [
-          5
+          "INT64(5)"
         ],
         "Vindex": "hash"
       }
@@ -883,10 +874,7 @@
         "Query": "select u.m from user as u where u.name in (::__vals) and u.name in ( select m2 from user where user.name = u.name and user.col = :user_extra_col and user.name in ( select m3 from user_extra where user_extra.user_id = user.name ) )",
         "Table": "user",
         "Values": [
-          [
-            ":user_extra_col",
-            1
-          ]
+          "(:user_extra_col, INT64(1))"
         ],
         "Vindex": "user_index"
       }
@@ -928,7 +916,7 @@
     "Query": "select id from user where name = 5 and user.col in ( select user_extra.col from user_extra where user_extra.user_id = 5 )",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -950,7 +938,7 @@
     "Query": "select id from user where name = 'aa' and user.col in ( select user_extra.col from user_extra where user_extra.user_id = 'aa' )",
     "Table": "user",
     "Values": [
-      "aa"
+      "VARCHAR(\"aa\")"
     ],
     "Vindex": "user_index"
   }

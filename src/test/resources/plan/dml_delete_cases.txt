@@ -91,7 +91,7 @@
     "Query": "delete from music_extra where user_id = 1",
     "TableName": "music_extra",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -171,10 +171,7 @@
     "Query": "delete from user_extra where user_id in (1, 2)",
     "TableName": "user_extra",
     "Values": [
-      [
-        1,
-        2
-      ]
+      "(INT64(1), INT64(2))"
     ],
     "Vindex": "user_index"
   }

@@ -34,7 +34,7 @@
     "Query": "select count(*), col from user where name = 1",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -463,7 +463,7 @@
     "Query": "select name, count(*) as c from user group by name having name = 1 and c = 10",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -1066,7 +1066,7 @@
     "Query": "select user.col1 as a from user where user.name = 5 group by a collate utf8_general_ci",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }

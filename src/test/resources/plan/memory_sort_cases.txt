@@ -236,7 +236,7 @@
             "Query": "select user.col1 as a, user.col2 as b, user.name from user where user.name = 1",
             "Table": "user",
             "Values": [
-              1
+              "INT64(1)"
             ],
             "Vindex": "hash"
           },
@@ -288,7 +288,7 @@
             "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1",
             "Table": "user",
             "Values": [
-              1
+              "INT64(1)"
             ],
             "Vindex": "hash"
           },

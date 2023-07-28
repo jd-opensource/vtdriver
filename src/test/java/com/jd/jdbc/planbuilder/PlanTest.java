@@ -15,13 +15,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package com.jd.jdbc.planbuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Objects;
 import com.jd.jdbc.VSchemaManager;
+import com.jd.jdbc.common.Hex;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.engine.ConcatenateEngine;
 import com.jd.jdbc.engine.DeleteEngine;
 import com.jd.jdbc.engine.Engine;
@@ -43,12 +44,17 @@ import com.jd.jdbc.engine.UpdateEngine;
 import com.jd.jdbc.evalengine.EvalEngine;
 import com.jd.jdbc.key.DestinationShard;
 import com.jd.jdbc.sqlparser.SQLUtils;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
+import com.jd.jdbc.sqltypes.VtPlanValue;
+import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.vindexes.VKeyspace;
 import io.netty.util.internal.StringUtil;
+import static io.netty.util.internal.StringUtil.NEWLINE;
 import io.vitess.proto.Query;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -58,10 +64,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.junit.Test;
-
-import static io.netty.util.internal.StringUtil.NEWLINE;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class PlanTest extends AbstractPlanTest {
 
@@ -246,6 +251,10 @@ public class PlanTest extends AbstractPlanTest {
                 }
             }
             instructions.setSysTableKeyspaceExpr(exprList);
+        }
+        List<Object> values = getValueList(engine.getVtPlanValueList());
+        if (values != null) {
+            instructions.setValueList(values);
         }
         return instructions;
     }
@@ -549,6 +558,10 @@ public class PlanTest extends AbstractPlanTest {
         instructions.setMultiShardAutocommit(engine.isMultiShardAutocommit());
         instructions.setQuery(SQLUtils.toMySqlString(engine.getQuery(), SQLUtils.NOT_FORMAT_OPTION));
         instructions.setTableName(engine.getTableName());
+        List<Object> values = getValueList(engine.getVtPlanValueList());
+        if (values != null) {
+            instructions.setValueList(values);
+        }
         return instructions;
     }
 
@@ -566,6 +579,10 @@ public class PlanTest extends AbstractPlanTest {
         instructions.setMultiShardAutocommit(engine.isMultiShardAutocommit());
         instructions.setQuery(SQLUtils.toMySqlString(engine.getQuery(), SQLUtils.NOT_FORMAT_OPTION));
         instructions.setTableName(engine.getTableName());
+        List<Object> values = getValueList(engine.getVtPlanValueList());
+        if (values != null) {
+            instructions.setValueList(values);
+        }
         return instructions;
     }
 
@@ -586,6 +603,100 @@ public class PlanTest extends AbstractPlanTest {
                 break;
         }
         return str;
+    }
+
+    private List<Object> getValueList(List<VtPlanValue> vtPlanValueList) {
+        if (CollectionUtils.isEmpty(vtPlanValueList)) {
+            return null;
+        }
+        List<Object> values = new ArrayList<>();
+        VtPlanValue vtPlanValue1 = vtPlanValueList.get(0);
+        if (vtPlanValue1.getVtValue() != null && !vtPlanValue1.getVtValue().isNull() && CollectionUtils.isEmpty(vtPlanValue1.getVtPlanValueList())) {
+            values.add(getVtValue(vtPlanValue1.getVtValue()));
+        }
+        if (vtPlanValue1.getVtValue() != null && vtPlanValue1.getVtValue().isNull() && StringUtils.isNotEmpty(vtPlanValue1.getKey())) {
+            values.add(":" + vtPlanValue1.getKey());
+        }
+        if (vtPlanValue1.getVtValue() == null && StringUtils.isNotEmpty(vtPlanValue1.getListKey())) {
+            values.add("::" + vtPlanValue1.getListKey());
+        }
+
+        List<String> invalues = new ArrayList<>();
+        for (VtPlanValue vtPlanValue : vtPlanValue1.getVtPlanValueList()) {
+            if (vtPlanValue.getVtValue() != null && !vtPlanValue.getVtValue().isNull() && CollectionUtils.isEmpty(vtPlanValue.getVtPlanValueList())) {
+                invalues.add(getVtValue(vtPlanValue.getVtValue()));
+            }
+            if (vtPlanValue.getVtValue() != null && vtPlanValue.getVtValue().isNull() && StringUtils.isNotEmpty(vtPlanValue.getKey())) {
+                invalues.add(":" + vtPlanValue.getKey());
+            }
+            if (vtPlanValue.getVtValue() == null && StringUtils.isNotEmpty(vtPlanValue.getListKey())) {
+                values.add("::" + vtPlanValue.getListKey());
+            }
+        }
+        if (CollectionUtils.isNotEmpty(invalues)) {
+            String join = String.join(", ", invalues);
+            values.add("(" + join + ")");
+        }
+        return values;
+    }
+
+    private String getVtValue(VtValue vtValue) {
+        Object object = null;
+        try {
+            switch (vtValue.getVtType()) {
+                case CHAR:
+                case VARBINARY:
+                case VARCHAR:
+                case TEXT:
+                case TIME:
+                    object = "\"" + vtValue + "\"";
+                    break;
+                case BIT:
+                    object = vtValue.toBoolean();
+                    break;
+                case INT8:
+                case UINT8:
+                case INT16:
+                case UINT16:
+                case INT24:
+                case UINT24:
+                case INT32:
+                    object = vtValue.toInt();
+                    break;
+                case UINT32:
+                case INT64:
+                    object = vtValue.toLong();
+                    break;
+                case UINT64:
+                    object = new BigInteger(vtValue.toString());
+                    break;
+                case DECIMAL:
+                case FLOAT32:
+                case FLOAT64:
+                    object = vtValue.toDecimal();
+                    break;
+                case DATE:
+                case YEAR:
+                    object = vtValue.toString();
+                    break;
+                case DATETIME:
+                case TIMESTAMP:
+                    object = vtValue.toString();
+                    break;
+                case BLOB:
+                case BINARY:
+                    object = Hex.encodeHexString(vtValue.getVtValue());
+                    break;
+                case NULL_TYPE:
+                    object = null;
+                    break;
+                default:
+                    throw new RuntimeException("unknown data type:" + vtValue.getVtType());
+            }
+        } catch (SQLException throwables) {
+            Assert.fail();
+        }
+        return vtValue.getVtType().toString().toUpperCase() + "(" + object + ")";
     }
 
     @Data
@@ -727,6 +838,7 @@ public class PlanTest extends AbstractPlanTest {
                 Objects.equal(fieldQuery, that.fieldQuery) &&
                 Objects.equal(query, that.query) &&
                 Objects.equal(table, that.table) &&
+                Objects.equal(valueList, that.valueList) &&
                 Objects.equal(joinColumnIndexes, that.joinColumnIndexes) &&
                 Objects.equal(tableName, that.tableName) &&
                 Objects.equal(columns, that.columns) &&
@@ -742,8 +854,8 @@ public class PlanTest extends AbstractPlanTest {
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(operatorType, variant, aggregates, distinct, groupBy, orderBy, count, keyspace, targetTabletType, multiShardAutocommit, fieldQuery, query, table, joinColumnIndexes,
-                tableName, columns, strColumns, sysTableKeyspaceExpr, expressions, inputs, targetDestination, isDML, singleShardOnly, shardNameNeeded);
+            return Objects.hashCode(operatorType, variant, aggregates, distinct, groupBy, orderBy, count, keyspace, targetTabletType, multiShardAutocommit, fieldQuery, query, table, valueList,
+                joinColumnIndexes, tableName, columns, strColumns, sysTableKeyspaceExpr, expressions, inputs, targetDestination, isDML, singleShardOnly, shardNameNeeded);
         }
 
         @Override
