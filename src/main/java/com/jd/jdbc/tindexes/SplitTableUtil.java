@@ -63,6 +63,9 @@ public final class SplitTableUtil {
 
     public static String getShardingColumnName(final String configPath, final String keyspace, final String logicTableName) {
         LogicTable logicTable = getLogicTable(configPath, keyspace, logicTableName);
+        if (logicTable == null) {
+            return null;
+        }
         return logicTable.getTindexCol().getColumnName();
     }
 
@@ -72,34 +75,41 @@ public final class SplitTableUtil {
 
     private static LogicTable getLogicTable(String configPath, String keyspace, String logicTableName) {
         if (StringUtils.isEmpty(keyspace) || StringUtils.isEmpty(logicTableName)) {
-            throw new RuntimeException("keyspace or logicTableName should not empty");
+            logger.warn("keyspace or logicTableName should not empty");
+            return null;
         }
         Map<String, Map<String, LogicTable>> tableIndexesMap = getTableIndexesMap(configPath);
         if (tableIndexesMap == null || tableIndexesMap.isEmpty()) {
-            throw new RuntimeException("cat not find split-table config through configPath=" + configPath);
+            logger.warn("cannot find split-table config through configPath=" + configPath);
+            return null;
         }
         String lowerCaseKeyspace = keyspace.toLowerCase();
         String lowerCaseLogicTable = logicTableName.toLowerCase();
         if (!tableIndexesMap.containsKey(lowerCaseKeyspace)) {
-            throw new RuntimeException("cat not find keyspace in split-table config, target keyspace=" + keyspace);
+            logger.warn("cannot find keyspace in split-table config, target keyspace=" + keyspace);
+            return null;
         }
         if (!tableIndexesMap.get(lowerCaseKeyspace).containsKey(lowerCaseLogicTable)) {
-            throw new RuntimeException("cat not find logicTable in split-table config, target keyspace=" + keyspace + " ,target logicTable=" + logicTableName);
+            logger.warn("cannot find logicTable in split-table config, target keyspace=" + keyspace + " ,target logicTable=" + logicTableName);
+            return null;
         }
         return tableIndexesMap.get(lowerCaseKeyspace).get(lowerCaseLogicTable);
     }
 
     private static ActualTable getActualTable(String configPath, String keyspace, String logicTableName, Object value) {
-        LogicTable logicTable = getLogicTable(configPath, keyspace, logicTableName);
         VtValue vtValue;
         try {
             vtValue = VtValue.toVtValue(value);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        LogicTable logicTable = getLogicTable(configPath, keyspace, logicTableName);
+        if (logicTable == null) {
+            throw new RuntimeException("get split-table config fail");
+        }
         final ActualTable actualTable = logicTable.map(vtValue);
         if (actualTable == null) {
-            throw new RuntimeException("cannot calculate split table, logic table: " + logicTable.getLogicTable() + ",current value: " + vtValue);
+            throw new RuntimeException("cannot calculate split table, logic table: " + logicTable.getLogicTable() + "； shardingColumnValue: " + vtValue);
         }
         return actualTable;
     }
