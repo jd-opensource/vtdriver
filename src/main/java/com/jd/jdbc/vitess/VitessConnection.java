@@ -35,6 +35,8 @@ import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.srvtopo.Resolver;
+import com.jd.jdbc.tindexes.ActualTable;
+import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.util.TimeUtil;
@@ -53,6 +55,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -456,6 +459,34 @@ public class VitessConnection extends AbstractVitessConnection {
         }
         serverSessionPropertiesMap.put("DEFAULT_TIME_ZONE", TimeZone.getDefault());
         serverSessionPropertiesMap.put(VitessPropertyKey.SERVER_TIMEZONE.getKeyName(), TimeUtil.getTimeZone(this.properties));
+    }
+
+    public String getVindex(String table) {
+        return vm.getVindex(defaultKeyspace, table);
+    }
+
+    public String getVschemaColumnVindex(String tableName) {
+        return vm.getVindex(this.defaultKeyspace, tableName);
+    }
+
+    public String getShardingColumnName(String logicTableName) {
+        LogicTable logicTable = VitessDataSource.getLogicTable(this.defaultKeyspace, logicTableName);
+        if (logicTable == null) {
+            return null;
+        }
+        return logicTable.getTindexCol().getColumnName();
+    }
+
+    public List<String> getActualTables(String logicTableName) {
+        LogicTable logicTable = VitessDataSource.getLogicTable(this.defaultKeyspace, logicTableName);
+        if (logicTable == null) {
+            return null;
+        }
+        List<String> actualTables = new ArrayList<>(logicTable.getActualTableList().size());
+        for (ActualTable actualTable : logicTable.getActualTableList()) {
+            actualTables.add(actualTable.getActualTableName());
+        }
+        return actualTables;
     }
 
     public enum ContextKey {
