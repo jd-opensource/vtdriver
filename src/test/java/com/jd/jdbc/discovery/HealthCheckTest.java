@@ -63,6 +63,8 @@ public class HealthCheckTest extends TestSuite {
 
     private final Map<String, Integer> portMap = new HashMap<>();
 
+    private int defaultMysqlPort = 3358;
+
     @Rule
     public GrpcCleanupRule grpcCleanup;
 
@@ -434,7 +436,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void teestHealthCheckTimeout() throws IOException, InterruptedException {
+    public void testHealthCheckTimeout() throws IOException, InterruptedException {
         printComment("7. HealthCheck Test when health check timeout");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -765,6 +767,78 @@ public class HealthCheckTest extends TestSuite {
         printOk();
     }
 
+    @Test
+    public void testMysqlPort0to3358() throws IOException, InterruptedException {
+        printComment("14. HealthCheck Test in Tablet MySQL port changed from 0 to 3358");
+        printComment("a. Get Health");
+        HealthCheck hc = getHealthCheck();
+
+        printComment("b. Add a no-serving replica Tablet (MysqlPort = 0)");
+        defaultMysqlPort = 0;
+        MockTablet mockTablet = buildMockTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet.getTablet());
+        Thread.sleep(200);
+        Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+
+        printComment("c. replace a no-serving replica Tablet (MysqlPort = 3358)");
+        defaultMysqlPort = 3358;
+        Topodata.Tablet tablet = buildTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        hc.replaceTablet(mockTablet.getTablet(), tablet);
+        Thread.sleep(200);
+        Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+
+        printComment("d. Modify the status of REPLICA Tablet to serving");
+        sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 10);
+        Thread.sleep(200);
+
+        Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
+        List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
+        Assert.assertEquals("Wrong number of healthy replica tablets", 1, hcList.size());
+
+        closeQueryService(mockTablet);
+        printOk();
+    }
+
+    @Test
+    public void testMysqlPort3358to0() throws IOException, InterruptedException {
+        printComment("15. HealthCheck Test in Tablet MySQL port changed from 3358 to 0");
+        printComment("a. Get Health");
+        HealthCheck hc = getHealthCheck();
+
+        printComment("b. Add a no-serving Tablet(MysqlPort = 3358)");
+        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet.getTablet());
+
+        Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+        Thread.sleep(200);
+
+        printComment("c. Modify the status of Tablet to serving");
+        sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
+
+        Thread.sleep(200);
+
+        Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
+        List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
+        Assert.assertEquals("Wrong number of healthy replica tablets", 1, hcList.size());
+
+        printComment("d. replace a no-serving replica Tablet (MysqlPort = 0)");
+        defaultMysqlPort = 0;
+        Topodata.Tablet tablet = buildTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        hc.replaceTablet(mockTablet.getTablet(), tablet);
+        Thread.sleep(6000);
+
+        Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+
+        closeQueryService(mockTablet);
+        printOk();
+    }
+
     private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {
         for (String cell : cells) {
             TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName);
@@ -818,7 +892,8 @@ public class HealthCheckTest extends TestSuite {
     private Topodata.Tablet buildTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type) {
         Topodata.TabletAlias tabletAlias = Topodata.TabletAlias.newBuilder().setCell(cell).setUid(uid).build();
 
-        Topodata.Tablet.Builder tabletBuilder = Topodata.Tablet.newBuilder().setHostname(hostName).setAlias(tabletAlias).setKeyspace(keyspaceName).setShard(shard).setType(type);
+        Topodata.Tablet.Builder tabletBuilder = Topodata.Tablet.newBuilder()
+            .setHostname(hostName).setAlias(tabletAlias).setKeyspace(keyspaceName).setShard(shard).setType(type).setMysqlHostname(hostName).setMysqlPort(defaultMysqlPort);
         for (Map.Entry<String, Integer> portEntry : portMap.entrySet()) {
             tabletBuilder.putPortMap(portEntry.getKey(), portEntry.getValue());
         }

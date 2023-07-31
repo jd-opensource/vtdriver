@@ -86,11 +86,7 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         vtMaximumPoolSize = (random.nextInt(150) + 1) + "";
         vtConnectionTimeout = (random.nextInt(50000) + 250) + "";
         vtIdleTimeout = (random.nextInt(600000) + 10000) + "";
-
-        propsUrl =
-            "vtMinimumIdle=" + vtMinimumIdle + ";vtMaximumPoolSize=" + vtMaximumPoolSize + ";vtConnectionInitSql=select 1;vtConnectionTestQuery=select 1;vtConnectionTimeout=" + vtConnectionTimeout +
-                ";vtIdleTimeout=" + vtIdleTimeout;
-
+        propsUrl = "vtMinimumIdle=" + vtMinimumIdle + ";vtMaximumPoolSize=" + vtMaximumPoolSize + ";vtConnectionInitSql=select 1;vtConnectionTestQuery=select 1;vtConnectionTimeout=" + vtConnectionTimeout + ";vtIdleTimeout=" + vtIdleTimeout;
     }
 
     public void test0() throws NoSuchFieldException, IllegalAccessException {
@@ -108,7 +104,6 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         Assert.assertEquals("select 1", hikariConfig.getConnectionTestQuery() + "");
         Assert.assertEquals(vtConnectionTimeout, hikariConfig.getConnectionTimeout() + "");
         Assert.assertEquals(vtIdleTimeout, hikariConfig.getIdleTimeout() + "");
-
     }
 
     public void testInit() {
@@ -142,7 +137,6 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         InnerConnectionPoolUtil.removeInnerConnectionConfig(conn);
         conn.close();
     }
-
 
     @Test
     public void testDruid1() throws Exception {
@@ -183,7 +177,6 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         connection.close();
     }
 
-
     @Test
     public void testdbcp() throws Exception {
         print();
@@ -200,7 +193,6 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         InnerConnectionPoolUtil.removeInnerConnectionConfig(connection);
         connection.close();
     }
-
 
     @Test
     public void testc3p0() throws Exception {
@@ -256,8 +248,7 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         printNormal("testDefaultConnectionPoolSize>>>>>");
     }
 
-    public void checkInnerPoolSize(String url, Topodata.TabletType type, int expectedMin, int expectedMax)
-        throws SQLException, NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException, InterruptedException {
+    public void checkInnerPoolSize(String url, Topodata.TabletType type, int expectedMin, int expectedMax) throws SQLException, NoSuchFieldException, IllegalAccessException {
         printInfo("url: " + url);
 
         Connection conn = DriverManager.getConnection(url);

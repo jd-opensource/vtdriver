@@ -25,6 +25,7 @@ import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import io.netty.util.internal.StringUtil;
@@ -224,7 +225,8 @@ public enum HealthCheck {
     }
 
     public void addTablet(Topodata.Tablet tablet) {
-        if (tablet.getPortMapMap().get("grpc") == null) {
+        if (checkTabletInfoMissing(tablet)) {
+            log.error("tablet Information missing,tablet = " + tablet);
             return;
         }
         Query.Target target = Query.Target.newBuilder().setKeyspace(tablet.getKeyspace()).setShard(tablet.getShard()).setTabletType(tablet.getType()).build();
@@ -528,5 +530,13 @@ public enum HealthCheck {
                 // ignore
             }
         }
+    }
+
+    private boolean checkTabletInfoMissing(Topodata.Tablet tablet) {
+        return StringUtils.isEmpty(tablet.getKeyspace()) || StringUtils.isEmpty(tablet.getShard())
+            || Objects.equals(Topodata.TabletType.UNRECOGNIZED, tablet.getType())
+            || StringUtils.isEmpty(tablet.getHostname()) || StringUtils.isEmpty(tablet.getMysqlHostname())
+            || tablet.getMysqlPort() == 0 || Objects.equals(Topodata.TabletAlias.getDefaultInstance(), tablet.getAlias())
+            || tablet.getPortMapMap().get("grpc") == null || tablet.getPortMapMap().get("grpc") == 0;
     }
 }

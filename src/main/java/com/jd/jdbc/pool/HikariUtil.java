@@ -81,7 +81,7 @@ public class HikariUtil {
         hikariConfig.setScheduledExecutor(HOUSEKEEPER_EXECUTOR);
         hikariConfig.setMetricsTrackerFactory(METRICS_TRACKER_FACTORY);
         if (logger.isDebugEnabled()) {
-            logger.debug("hikariConfig:nativeUrl=" + nativeUrl + " poolName=" + TopoProto.getPoolName(tablet) + " schema=" + realSchema);
+            logger.debug("hikariConfig:nativeUrl=" + nativeUrl + " poolName=" + TopoProto.getPoolName(tablet));
         }
         return hikariConfig;
     }

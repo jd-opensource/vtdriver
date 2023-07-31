@@ -97,7 +97,11 @@ public class MockQueryServer extends QueryGrpc.QueryImplBase {
                 break;
             default:
                 observers.forEach(observer -> {
-                    observer.onNext(message.getMessage());
+                    try {
+                        observer.onNext(message.getMessage());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
                 System.out.println("server: receive message: " + message.getMessage());
         }
