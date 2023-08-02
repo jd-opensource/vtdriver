@@ -19,13 +19,13 @@ limitations under the License.
 package com.jd.jdbc.srvtopo;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.jd.jdbc.common.util.Crc32Utill;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.key.CurrentShard;
 import com.jd.jdbc.monitor.SrvKeyspaceCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
-import com.jd.jdbc.sqlparser.utils.Utils;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
@@ -93,12 +93,19 @@ public class ResilientServer implements SrvTopoServer {
     public List<SrvKeyspaceCollector.Info> getSrvKeyspaceCollectorInfo() {
         List<SrvKeyspaceCollector.Info> infoList = new ArrayList<>();
         Map<String, SrvKeyspaceEntry> map = new HashMap<>(srvKeyspaceCache);
+
         for (Map.Entry<String, SrvKeyspaceEntry> entry : map.entrySet()) {
             String keyspaceCell = entry.getKey();
             String[] split = keyspaceCell.split("\\.");
             Topodata.SrvKeyspace srvKeyspace = entry.getValue().value;
-            String md5 = srvKeyspace == null ? "" : Utils.md5(srvKeyspace.toString());
-            SrvKeyspaceCollector.Info info = new SrvKeyspaceCollector.Info(md5, split[0], split[1]);
+            long infoCrc32;
+
+            if (srvKeyspace == null) {
+                infoCrc32 = 0;
+            } else {
+                infoCrc32 = Crc32Utill.checksumByCrc32(srvKeyspace.toString().getBytes());
+            }
+            SrvKeyspaceCollector.Info info = new SrvKeyspaceCollector.Info(Long.toString(infoCrc32), split[0], split[1]);
             infoList.add(info);
         }
         return infoList;

@@ -21,6 +21,7 @@ package com.jd.jdbc.discovery;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus;
+import com.jd.jdbc.monitor.HealthyCollector;
 import com.jd.jdbc.queryservice.CombinedQueryService;
 import com.jd.jdbc.queryservice.IParentQueryService;
 import com.jd.jdbc.queryservice.MockQueryServer;
@@ -40,6 +41,7 @@ import io.grpc.testing.GrpcCleanupRule;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -837,6 +839,70 @@ public class HealthCheckTest extends TestSuite {
 
         closeQueryService(mockTablet);
         printOk();
+    }
+
+    @Test
+    public void testHealthyListChecksum() {
+        HealthCheck hc = getHealthCheck();
+        Topodata.Tablet tablet1 = buildTablet("cella", 7, "1.1.1.7", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        Topodata.Tablet tablet2 = buildTablet("cella", 8, "1.1.1.8", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        Query.Target target = Query.Target.newBuilder().setKeyspace(tablet1.getKeyspace()).setShard(tablet1.getShard()).setTabletType(tablet1.getType()).build();
+
+
+        Map<String, List<TabletHealthCheck>> healthy1 = hc.getHealthyCopy();
+        List<TabletHealthCheck> healthyMap1 = new ArrayList<>();
+
+        TabletHealthCheck thc1 = new TabletHealthCheck(null, tablet1, target);
+        thc1.getServing().set(true);
+        TabletHealthCheck thc2 = new TabletHealthCheck(null, tablet2, target);
+        thc2.getServing().set(true);
+
+        healthyMap1.add(thc1);
+        healthyMap1.add(thc2);
+        healthy1.put("k1", healthyMap1);
+
+        Map<String, List<TabletHealthCheck>> healthy2 = hc.getHealthyCopy();
+        List<TabletHealthCheck> healthyMap2 = new ArrayList<>();
+        healthyMap2.add(thc2);
+        healthyMap2.add(thc1);
+        healthy2.put("k1", healthyMap2);
+
+        long healthy1Crc32 = HealthyCollector.stateHealthyChecksum(healthy1);
+        long healthy2Crc32 = HealthyCollector.stateHealthyChecksum(healthy2);
+        Assert.assertEquals("Wrong HealthyChecksum", healthy1Crc32, healthy2Crc32);
+    }
+
+    @Test
+    public void testHealthyChecksumSetBehindMaster() throws IOException, InterruptedException {
+        HealthCheck hc = getHealthCheck();
+        // add tablet
+        String keyInHealthy = "k.s.replica";
+        MockTablet mockTablet1 = buildMockTablet("cella", 7, "1.1.1.7", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet2 = buildMockTablet("cella", 8, "1.1.1.8", "k", "s", portMap, Topodata.TabletType.REPLICA);
+
+        hc.addTablet(mockTablet1.getTablet());
+        hc.addTablet(mockTablet2.getTablet());
+        Thread.sleep(200);
+        sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
+        sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 2);
+        Thread.sleep(200);
+
+        // sort list in healthy order by secondsBehindMaster
+        hc.recomputeHealthyLocked(keyInHealthy);
+        long firstCrc32 = HealthyCollector.stateHealthyChecksum(hc.getHealthyCopy());
+
+        sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 2);
+        sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
+        Thread.sleep(200);
+
+        // sort list in healthy order by secondsBehindMaster
+        hc.recomputeHealthyLocked(keyInHealthy);
+        long secondCrc32 = HealthyCollector.stateHealthyChecksum(hc.getHealthyCopy());
+
+        Assert.assertNotEquals(hc.getHealthyCopy().get(keyInHealthy).get(0).getTablet().getHostname(), hc.getHealthyCopy().get(keyInHealthy).get(1).getTablet().getHostname());
+        Assert.assertEquals("Wrong HealthyChecksum", firstCrc32, secondCrc32);
+
+        closeQueryService(mockTablet1, mockTablet2);
     }
 
     private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {
