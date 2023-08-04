@@ -17,13 +17,14 @@ limitations under the License.
 package com.jd.jdbc.monitor;
 
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
-import com.jd.jdbc.srvtopo.BindVariable;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
 @Data
 @AllArgsConstructor
 public class SqlErrorRecorder {
@@ -35,10 +36,10 @@ public class SqlErrorRecorder {
 
     private SQLStatement sqlStatement;
 
+    @Setter
     private LocalDateTime errorTime;
 
-    private Map<String, BindVariable> bindVariableMap;
-
+    @Setter
     private String sql;
 
     @Override

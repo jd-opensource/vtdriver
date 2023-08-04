@@ -19,6 +19,7 @@ package com.jd.jdbc.monitor;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.SqlParser;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
@@ -50,16 +51,16 @@ public final class SqlErrorCollector extends Collector {
 
     private static final Integer MINUTES_TO_KEEP = 10;
 
-    private static final List<String> LABEL_NAMES = Lists.newArrayList("Keyspace", "sqlStatement", "bindVariableMap", "errorClassName", "errorMessage", "errorTime", "sql");
+    private static final List<String> LABEL_NAMES = Lists.newArrayList("Keyspace", "sqlStatement", "errorClassName", "errorMessage", "errorTime", "sql");
 
     private static final String COLLECT_NAME = "error_sql";
 
     private static final String COLLECT_HELP = "error sql info.";
 
     private static final Cache<String, SqlErrorRecorder> SQL_ERROR_RECORDER_CACHE = CacheBuilder.newBuilder()
-            .maximumSize(DEFAULT_CAPACITY)
-            .expireAfterWrite(MINUTES_TO_KEEP, TimeUnit.MINUTES)
-            .build();
+        .maximumSize(DEFAULT_CAPACITY)
+        .expireAfterWrite(MINUTES_TO_KEEP, TimeUnit.MINUTES)
+        .build();
 
     private static final SqlErrorCollector INSTANCE = new SqlErrorCollector();
 
@@ -78,12 +79,11 @@ public final class SqlErrorCollector extends Collector {
         for (Map.Entry<String, SqlErrorRecorder> entry : copyMap.entrySet()) {
             SqlErrorRecorder recorder = entry.getValue();
             List<String> labelValues = Lists.newArrayList(recorder.getKeyspace(),
-                    recorder.getSqlStatement().toString(),
-                    recorder.getBindVariableMap().isEmpty() ? "" : recorder.getBindVariableMap().toString(),
-                    recorder.getErrorClassName(),
-                    recorder.getErrorMessage(),
-                    DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(recorder.getErrorTime()),
-                    recorder.getSql());
+                recorder.getSqlStatement().toString(),
+                recorder.getErrorClassName(),
+                recorder.getErrorMessage(),
+                DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(recorder.getErrorTime()),
+                recorder.getSql());
             labeledGauge.addMetric(labelValues, index--);
         }
         return Collections.singletonList(labeledGauge);
@@ -93,12 +93,15 @@ public final class SqlErrorCollector extends Collector {
         if (Ignored.match(e)) {
             return;
         }
+        if (CollectionUtils.isNotEmpty(userBindVarMap) && userBindVarMap.size() > MAX_BINDVAR_SIZE) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Error sql size too long, this record has been ignored: userSQL=" + userSQL + ",BindVarMap=" + userBindVarMap);
+            }
+            return;
+        }
         SQLStatement stmt = SQLUtils.parseSingleMysqlStatement(userSQL);
 
         Map<String, BindVariable> bdMap = userBindVarMap;
-        if (bdMap == null) {
-            bdMap = new HashMap<>();
-        }
         String sql = userSQL;
         try {
             SqlParser.PrepareAstResult prepareAstResult = SqlParser.prepareAst(stmt, userBindVarMap, charEncoding);
@@ -112,20 +115,18 @@ public final class SqlErrorCollector extends Collector {
         }
 
         String key = keyspace + ":" + SQLUtils.toMySqlString(stmt, SQLUtils.NOT_FORMAT_OPTION);
-        if (key.length() > MAX_KEY_SIZE || bdMap.size() > MAX_BINDVAR_SIZE) {
+        if (key.length() > MAX_KEY_SIZE || (CollectionUtils.isNotEmpty(bdMap) && bdMap.size() > MAX_BINDVAR_SIZE)) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Error sql size too long, this record has been ignored: key=" + key + "bdMap=" + bdMap);
+                LOG.debug("Error sql size too long, this record has been ignored: key=" + key + ",BindVarMap=" + bdMap);
             }
             return;
         }
 
         LocalDateTime date = LocalDateTime.now();
-        SqlErrorRecorder sqlErrorRecorder = new SqlErrorRecorder(keyspace, e.getMessage() == null ? "" : e.getMessage(),
-                e.getClass().getSimpleName(), stmt, date, bdMap, sql);
+        SqlErrorRecorder sqlErrorRecorder = new SqlErrorRecorder(keyspace, e.getMessage() == null ? "" : e.getMessage(), e.getClass().getSimpleName(), stmt, date, sql);
         synchronized (this) {
             SqlErrorRecorder recorder = SQL_ERROR_RECORDER_CACHE.getIfPresent(key);
             if (recorder != null && recorder.equals(sqlErrorRecorder)) {
-                recorder.setBindVariableMap(bdMap);
                 recorder.setErrorTime(date);
                 recorder.setSql(sql);
             } else {
@@ -137,7 +138,7 @@ public final class SqlErrorCollector extends Collector {
     private static class Ignored {
         public static boolean match(final SQLException e) {
             return e instanceof SQLIntegrityConstraintViolationException
-                    || e instanceof DataTruncation;
+                || e instanceof DataTruncation;
         }
     }
 }
