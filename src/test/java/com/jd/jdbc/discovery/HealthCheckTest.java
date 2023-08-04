@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus;
@@ -838,6 +839,55 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
         closeQueryService(mockTablet);
+        printOk();
+    }
+
+    @Test
+    public void testDoubleMaster() throws IOException, InterruptedException {
+        printComment("16. double master one no serving");
+        printComment("a. Get Health");
+        HealthCheck hc = getHealthCheck();
+
+        printComment("b. Add a no-serving Tablet");
+
+        // add master tablet
+        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
+        hc.addTablet(mockTablet.getTablet());
+        // add replica tablet
+        MockTablet mockTablet1 = buildMockTablet("cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet1.getTablet());
+
+        Thread.sleep(200);
+        Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+
+        printComment("c. Modify the status of Tablet to serving");
+        sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 0, 0.5, 0);
+        sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
+
+        Thread.sleep(200);
+
+        Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 2, hc.getHealthyCopy().size());
+
+        printComment("d. Modify the role of tablet");
+        sendOnNextMessage(mockTablet1, Topodata.TabletType.MASTER, true, 10, 0.5, 0);
+        Thread.sleep(200);
+
+        printComment("e. Modify old master Tablet to no serving");
+        sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, false, 0, 0.5, 0);
+        Thread.sleep(200);
+
+        Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
+
+        List<TabletHealthCheck> healthyTabletStats = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
+        Assert.assertTrue(CollectionUtils.isEmpty(healthyTabletStats));
+
+        healthyTabletStats = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.MASTER));
+        Assert.assertTrue(CollectionUtils.isNotEmpty(healthyTabletStats));
+        Assert.assertEquals(1, healthyTabletStats.size());
+
         printOk();
     }
 
