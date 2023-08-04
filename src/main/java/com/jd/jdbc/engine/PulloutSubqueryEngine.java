@@ -84,7 +84,12 @@ public class PulloutSubqueryEngine implements PrimitiveEngine {
      * @return
      */
     private BindVarsResponse execSubqery(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindVariableMap, boolean wantFields) throws SQLException {
-        IExecute.ExecuteMultiShardResponse subResultSet = this.subquery.execute(ctx, vcursor, bindVariableMap, wantFields);
+
+        Map<String, BindVariable> subBindVarMap = bindVariableMap;
+        if (bindVariableMap != null) {
+            subBindVarMap = new HashMap<>(bindVariableMap);
+        }
+        IExecute.ExecuteMultiShardResponse subResultSet = this.subquery.execute(ctx, vcursor, subBindVarMap, wantFields);
         if (subResultSet.getVtRowList() == null) {
             throw new SQLException("VtRowList is null");
         }
