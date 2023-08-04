@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -131,7 +132,7 @@ public enum HealthCheck {
     }
 
     public Map<String, List<TabletHealthCheck>> getHealthyCopy() {
-        return new HashMap<>(healthy);
+        return new TreeMap<>(healthy);
     }
 
     public IQueryService tabletConnection(Topodata.TabletAlias alias) {

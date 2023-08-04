@@ -47,4 +47,5 @@ public class CollectionUtils {
     public static boolean isNotEmpty(Object[] array) {
         return array != null && array.length > 0;
     }
+
 }
