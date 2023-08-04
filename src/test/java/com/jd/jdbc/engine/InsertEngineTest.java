@@ -16,13 +16,17 @@ limitations under the License.
 
 package com.jd.jdbc.engine;
 
+import com.jd.jdbc.sqlparser.parser.SQLExprParser;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.List;
 import java.util.Random;
@@ -34,6 +38,8 @@ import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
 import testsuite.internal.testcase.TestSuiteCase;
+
+import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
 
 public class InsertEngineTest extends TestSuite {
 
@@ -117,6 +123,81 @@ public class InsertEngineTest extends TestSuite {
             shardedDriverConnection.close();
         }
 
+    }
+
+    @Test
+    public void testReplaceWithKeyWords() throws SQLException {
+        String sql1 =
+                "replace INTO `all_type_test`  (`tinyint`, `u_tinyint`, `tinyint_1`, `u_tinyint_1`, `smallint`, `u_smallint`, `mediumint`, `u_mediumint`,`int`, `u_int`, `bigint`, `u_bigint`, `bit_1`, " +
+                "`bit_64`, `float`, `u_float`, `double`, `u_double`, `char`,`varchar`,`tinytext`,`text`,`mediumtext`,`longtext`,`json`,`binary`," +
+                "`varbinary`,`tinyblob`,`blob`,`mediumblob`,`longblob`,`date`,`time_1`,`time_3`, `year`,`datetime_3`,`datetime_6`,`timestamp_3`,`timestamp_6`) values " +
+                "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        try (Connection conn = getConnection(Driver.of(TWO_SHARDS));
+             PreparedStatement prepareStatement1 = conn.prepareStatement(sql1)) {
+            for (int i = 0; i < 100; i++) {
+                prepareStatement1.setInt(1, i);
+                prepareStatement1.setInt(2, i);
+                prepareStatement1.setInt(3, 0);
+                prepareStatement1.setInt(4, 0);
+                prepareStatement1.setInt(5, i + 100);
+                prepareStatement1.setInt(6, i + 200);
+                prepareStatement1.setInt(7, i + 100);
+                prepareStatement1.setInt(8, i + 200);
+                prepareStatement1.setInt(9, i + 100);
+                prepareStatement1.setInt(10, i + 200);
+
+                prepareStatement1.setLong(11, -10000L + i);
+                prepareStatement1.setLong(12, 10000L + i);
+                prepareStatement1.setBoolean(13, true);
+                prepareStatement1.setBoolean(14, false);
+                prepareStatement1.setFloat(15, -(float) i);
+                prepareStatement1.setFloat(16, (float) i);
+                prepareStatement1.setDouble(17, -(double) i);
+                prepareStatement1.setDouble(18, i);
+
+                prepareStatement1.setString(19, "a" + i);
+                prepareStatement1.setString(20, "String" + i);
+
+                prepareStatement1.setString(21, "tinytext" + i);
+                prepareStatement1.setString(22, "text" + i);
+                prepareStatement1.setString(23, "mediumtext" + i);
+                prepareStatement1.setString(24, "longtext" + i);
+
+                prepareStatement1.setString(25, "{\n" +
+                    "    \"BigIntSupported\": 995815895020119800000,\n" +
+                    "    \"date\": \"20180322\",\n" +
+                    "    \"message\": \"Success !\",\n" +
+                    "    \"status\": 200,\n" +
+                    "    \"city\": \"北京\",\n" +
+                    "    \"count\": 632\n" +
+                    "}");
+
+                byte[] bytes1 = new byte[10];
+                for (int j = 0; j < bytes1.length; j++) {
+                    bytes1[j] = 1;
+                }
+                prepareStatement1.setBytes(26, bytes1);
+                prepareStatement1.setBytes(27, bytes1);
+                prepareStatement1.setBytes(28, bytes1);
+                prepareStatement1.setBytes(29, bytes1);
+                prepareStatement1.setBytes(30, bytes1);
+                prepareStatement1.setBytes(31, bytes1);
+
+                prepareStatement1.setDate(32, new Date(System.currentTimeMillis()));
+                prepareStatement1.setTimestamp(33, new Timestamp(System.currentTimeMillis()));
+                prepareStatement1.setTime(34, new Time(System.currentTimeMillis()));
+                prepareStatement1.setInt(35, 2022);
+                prepareStatement1.setDate(36, new Date(System.currentTimeMillis()));
+                prepareStatement1.setTimestamp(37, new Timestamp(System.currentTimeMillis()));
+                prepareStatement1.setTimestamp(38, new Timestamp(System.currentTimeMillis()));
+                prepareStatement1.setTimestamp(39, new Timestamp(System.currentTimeMillis()));
+                int sql1InsertCount = prepareStatement1.executeUpdate();
+                if (sql1InsertCount != 1 && sql1InsertCount != 2) {
+                    Assert.fail();
+                }
+            }
+        }
     }
 
     @Test
