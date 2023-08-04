@@ -19,12 +19,7 @@ package com.jd.jdbc.vitess;
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.addDefaultProperties;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCell;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkCredentials;
 import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkSchema;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkServerTimezone;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.replaceLegacyPropertyValues;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -73,11 +68,12 @@ public class VitessJdbcUrlParser {
             }
         }
 
-        checkCell(parsedProperties);
-        checkCredentials(path, parsedProperties);
-        checkServerTimezone(parsedProperties);
-        addDefaultProperties(parsedProperties);
-        replaceLegacyPropertyValues(parsedProperties);
+        VitessJdbcProperyUtil.checkCell(parsedProperties);
+        VitessJdbcProperyUtil.checkCredentials(path, parsedProperties);
+        VitessJdbcProperyUtil.checkServerTimezone(parsedProperties);
+        VitessJdbcProperyUtil.addDefaultProperties(parsedProperties);
+        VitessJdbcProperyUtil.replaceLegacyPropertyValues(parsedProperties);
+        VitessJdbcProperyUtil.checkCharacterEncoding(parsedProperties);
 
         Integer socketTimeout = null;
         if (parsedProperties.containsKey(VitessPropertyKey.SOCKET_TIMEOUT.getKeyName())) {
