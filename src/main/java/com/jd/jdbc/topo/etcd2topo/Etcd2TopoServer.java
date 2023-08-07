@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.topo.etcd2topo;
 
+import com.jd.jdbc.common.util.MapUtil;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
@@ -32,16 +33,14 @@ import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.kv.GetResponse;
 import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.options.WatchOption;
-import io.etcd.jetcd.watch.WatchEvent;
-import io.vitess.proto.Vtrpc;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -53,6 +52,10 @@ public class Etcd2TopoServer implements TopoConnection {
     private static final String SEPARATOR_DUAL = "//";
 
     private static final String END_TAG_OF_RANGE_SEARCH = "1";
+
+    private static final int DEFALUT_TIMEOUT = 3;
+
+    private static final ConcurrentMap<String, Watch.Watcher> WATCHER_MAP = new ConcurrentHashMap<>(16);
 
     private Client client;
 
@@ -83,8 +86,9 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
         GetResponse response;
         try {
-            response = future.get();
-        } catch (InterruptedException | ExecutionException e) {
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
         }
         if (response.getKvs().isEmpty()) {
@@ -173,28 +177,8 @@ public class Etcd2TopoServer implements TopoConnection {
         });
     }
 
-    /**
-     * @param ctx
-     * @param filePath
-     * @param contents
-     * @return
-     * @throws TopoException
-     */
     @Override
     public Version create(IContext ctx, String filePath, byte[] contents) throws TopoException {
-        return null;
-    }
-
-    /**
-     * @param ctx
-     * @param filePath
-     * @param contents
-     * @param version
-     * @return
-     * @throws TopoException
-     */
-    @Override
-    public Version update(IContext ctx, String filePath, byte[] contents, Version version) throws TopoException {
         return null;
     }
 
@@ -212,7 +196,7 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(sequence, option);
         GetResponse response;
         try {
-            response = future.get(10, TimeUnit.SECONDS);
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
@@ -240,8 +224,8 @@ public class Etcd2TopoServer implements TopoConnection {
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(beginSequence, option);
         GetResponse response;
         try {
-            response = future.get();
-        } catch (InterruptedException | ExecutionException e) {
+            response = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error(e.getMessage(), e);
             throw TopoException.wrap(e.getMessage());
         }
@@ -273,113 +257,33 @@ public class Etcd2TopoServer implements TopoConnection {
         });
     }
 
-    /**
-     * @param ctx
-     * @param filePath
-     * @param version
-     * @throws TopoException
-     */
     @Override
-    public void delete(IContext ctx, String filePath, Version version) throws TopoException {
+    public void watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException {
+        String nodePath = this.root + SEPARATOR + Topo.pathForSrvKeyspaceFile(keyspace);
+        if (WATCHER_MAP.containsKey(nodePath)) {
+            return;
+        }
 
-    }
-
-    /**
-     * @param ctx
-     * @param dirPath
-     * @param contents
-     * @return
-     * @throws TopoException
-     */
-    @Override
-    public LockDescriptor lock(IContext ctx, String dirPath, String contents) throws TopoException {
-        return null;
-    }
-
-    /**
-     * @param ctx
-     * @param filePath
-     * @return
-     */
-    @Override
-    public Topo.WatchDataResponse watch(IContext ctx, String filePath) throws TopoException {
-        String nodePath = this.root + SEPARATOR + filePath;
+        // get revision
         ByteSequence key = ByteSequence.from(nodePath, StandardCharsets.UTF_8);
-        GetOption option = GetOption.newBuilder().withSerializable(true).build();
+        GetOption option = GetOption.newBuilder().build();
         CompletableFuture<GetResponse> future = this.client.getKVClient().get(key, option);
         GetResponse initial;
         try {
-            initial = future.get();
-        } catch (InterruptedException | ExecutionException e) {
+            initial = future.get(DEFALUT_TIMEOUT, TimeUnit.SECONDS);
+        } catch (TimeoutException | InterruptedException | ExecutionException e) {
             throw TopoException.wrap(e.getMessage());
         }
-        if (initial.getKvs().size() != 1) {
-            throw TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath);
-        }
-        Topo.WatchData watchData = new Topo.WatchData();
-        watchData.setContents(initial.getKvs().get(0).getValue().getBytes());
-        watchData.setVersion(new Etcd2Version(initial.getKvs().get(0).getModRevision()));
-
-        BlockingQueue<Topo.WatchData> notification = new LinkedBlockingQueue<>(1);
-
         long revision = initial.getHeader().getRevision();
-        WatchOption watchOption = WatchOption.newBuilder().withRevision(revision).build();
-        Watch.Watcher watcher = this.client.getWatchClient().watch(key, watchOption, Watch.listener(
-            watchResponse -> {
-                cancel:
-                for (WatchEvent event : watchResponse.getEvents()) {
-                    switch (event.getEventType()) {
-                        case PUT:
-                            byte[] bytes = event.getKeyValue().getValue().getBytes();
-                            Etcd2Version etcd2Version = new Etcd2Version(event.getKeyValue().getVersion());
-                            try {
-                                notification.put(new Topo.WatchData(bytes, etcd2Version));
-                            } catch (InterruptedException e) {
-                                logger.error(e.getMessage(), e);
-                                break cancel;
-                            }
-                            break;
-                        case DELETE:
-                            try {
-                                notification.put(new Topo.WatchData(TopoException.wrap(TopoExceptionCode.NO_NODE, nodePath)));
-                            } catch (InterruptedException e) {
-                                logger.error(e.getMessage(), e);
-                            }
-                            break;
-                        default:
-                            try {
-                                notification.put(new Topo.WatchData(TopoException.wrap(Vtrpc.Code.INTERNAL,
-                                    String.format("unexpected event received: %s", event))));
-                            } catch (InterruptedException e) {
-                                logger.error(e.getMessage(), e);
-                            }
-                            break;
-                    }
-                }
-            }, throwable -> {
-                try {
-                    notification.put(new Topo.WatchData(TopoException.wrap(throwable.getMessage())));
-                } catch (InterruptedException e) {
-                    logger.error(e.getMessage(), e);
-                }
-            }));
 
-        Topo.WatchDataResponse watchDataResponse = new Topo.WatchDataResponse();
-        watchDataResponse.setCurrent(watchData);
-        watchDataResponse.setChange(notification);
-        watchDataResponse.setWatcher(watcher);
-        return watchDataResponse;
+        // watch SrvKeyspace
+        WatchOption watchOption = WatchOption.newBuilder().withRevision(revision).build();
+        SrvKeyspaceListener listener = new SrvKeyspaceListener(cell, keyspace);
+        MapUtil.computeIfAbsent(WATCHER_MAP, nodePath, watch -> client.getWatchClient().watch(buildByteSequenceKey(nodePath), watchOption, listener));
     }
 
-    /**
-     * @param id
-     * @param name
-     * @return
-     * @throws TopoException
-     */
-    @Override
-    public MasterParticipation newMasterParticipation(String id, String name) throws TopoException {
-        return null;
+    private ByteSequence buildByteSequenceKey(String key) {
+        return ByteSequence.from(key, StandardCharsets.UTF_8);
     }
 
     @Override

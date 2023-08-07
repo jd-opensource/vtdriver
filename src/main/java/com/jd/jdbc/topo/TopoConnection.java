@@ -46,16 +46,6 @@ public interface TopoConnection extends Resource {
     /**
      * @param ctx
      * @param filePath
-     * @param contents
-     * @param version
-     * @return
-     * @throws TopoException
-     */
-    Version update(IContext ctx, String filePath, byte[] contents, Version version) throws TopoException;
-
-    /**
-     * @param ctx
-     * @param filePath
      * @param ignoreNoNode
      * @return
      * @throws TopoException
@@ -66,47 +56,11 @@ public interface TopoConnection extends Resource {
         return get(ctx, filePath, false);
     }
 
-    CompletableFuture<ConnGetResponse> getFuture(IContext ctx, String filePath);
-
     List<ConnGetResponse> getTabletsByCell(IContext ctx, String filePath) throws TopoException;
 
-    /**
-     * @param ctx
-     * @param filePath
-     * @param version
-     * @throws TopoException
-     */
-    void delete(IContext ctx, String filePath, Version version) throws TopoException;
+    CompletableFuture<ConnGetResponse> getFuture(IContext ctx, String filePath);
 
-    /**
-     * @param ctx
-     * @param dirPath
-     * @param contents
-     * @return
-     * @throws TopoException
-     */
-    LockDescriptor lock(IContext ctx, String dirPath, String contents) throws TopoException;
-
-    /**
-     * @param ctx
-     * @param filePath
-     * @return
-     */
-    Topo.WatchDataResponse watch(IContext ctx, String filePath) throws TopoException;
-
-    /**
-     * @param id
-     * @param name
-     * @return
-     * @throws TopoException
-     */
-    MasterParticipation newMasterParticipation(String id, String name) throws TopoException;
-
-    /**
-     *
-     */
-    @Override
-    void close();
+    void watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException;
 
     enum DirEntryType {
 
@@ -135,38 +89,6 @@ public interface TopoConnection extends Resource {
          * @return
          */
         String string();
-    }
-
-    interface LockDescriptor {
-        /**
-         * @throws TopoException
-         */
-        void check() throws TopoException;
-
-        /**
-         * @throws TopoException
-         */
-        void unlock() throws TopoException;
-    }
-
-    interface MasterParticipation {
-        /**
-         * @return
-         * @throws TopoException
-         */
-        IContext waitForMastership() throws TopoException;
-
-        /**
-         *
-         */
-        void stop();
-
-        /**
-         * @param ctx
-         * @return
-         * @throws TopoException
-         */
-        String getCurrentMasterId(IContext ctx) throws TopoException;
     }
 
     class DirEntry {

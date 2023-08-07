@@ -31,7 +31,6 @@ import com.jd.jdbc.topo.MemoryTopoFactory;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
 import io.grpc.ManagedChannel;
@@ -77,7 +76,6 @@ public class HealthCheckTest extends TestSuite {
         TabletDialerAgent.clearTabletCache();
         TopologyWatcherManager.INSTANCE.close();
 
-        VtDaemonExecutorService.initialize(null, null, null);
         VtHealthCheckExecutorService.initialize(null, null, null, null);
         VtQueryExecutorService.initialize(null, null, null, null);
     }

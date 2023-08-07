@@ -16,7 +16,6 @@ limitations under the License.
 
 package com.jd.jdbc.engine;
 
-import com.jd.jdbc.sqlparser.parser.SQLExprParser;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.Date;
@@ -37,9 +36,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import testsuite.TestSuite;
 import testsuite.internal.TestSuiteShardSpec;
-import testsuite.internal.testcase.TestSuiteCase;
-
 import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
+import testsuite.internal.testcase.TestSuiteCase;
 
 public class InsertEngineTest extends TestSuite {
 

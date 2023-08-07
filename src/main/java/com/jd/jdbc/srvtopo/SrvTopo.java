@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SrvTopo {
     private static final Log log = LogFactory.getLog(SrvTopo.class);
@@ -62,11 +61,7 @@ public class SrvTopo {
                 return resilientServer_global.get(base);
             }
 
-            ResilientServer resilientServer = new ResilientServer(base,
-                SRV_TOPO_CACHE_TTL,
-                SRV_TOPO_CACHE_REFRESH,
-                new ConcurrentHashMap<>(16),
-                new ConcurrentHashMap<>(16));
+            ResilientServer resilientServer = new ResilientServer(base);
 
             resilientServer_global.put(base, resilientServer);
             return resilientServer;

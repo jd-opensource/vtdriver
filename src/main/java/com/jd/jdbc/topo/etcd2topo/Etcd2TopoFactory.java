@@ -21,9 +21,11 @@ package com.jd.jdbc.topo.etcd2topo;
 import com.jd.jdbc.topo.TopoConnection;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoFactory;
+import com.jd.jdbc.util.threadpool.impl.TabletNettyExecutorService;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.Util;
 import java.net.URI;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -87,7 +89,11 @@ public class Etcd2TopoFactory implements TopoFactory {
             }
         }
         List<URI> endpoints = Util.toURIs(Arrays.asList(result));
-        Client client = Client.builder().endpoints(endpoints).build();
+        Client client = Client.builder().endpoints(endpoints)
+            .keepaliveTimeout(Duration.ofSeconds(10L))
+            .keepaliveTime(Duration.ofSeconds(10L))
+            .keepaliveWithoutCalls(true)
+            .executorService(TabletNettyExecutorService.getNettyExecutorService()).build();
 
         Etcd2TopoServer etcd2TopoServer = new Etcd2TopoServer();
         etcd2TopoServer.setClient(client);

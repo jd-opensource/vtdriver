@@ -18,19 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.topo;
 
-import com.jd.jdbc.topo.etcd2topo.Etcd2TopoFactory;
-import io.etcd.jetcd.Watch;
-import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtrpc;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_IMPLEMENTATION;
-import static com.jd.jdbc.topo.TopoServer.CELLS_ALIASES_PATH;
-import static com.jd.jdbc.topo.TopoServer.CELLS_ALIAS_FILE;
 import static com.jd.jdbc.topo.TopoServer.CELLS_PATH;
 import static com.jd.jdbc.topo.TopoServer.CELL_INFO_FILE;
 import static com.jd.jdbc.topo.TopoServer.GLOBAL_CELL;
@@ -40,6 +28,12 @@ import static com.jd.jdbc.topo.TopoServer.SRV_KEYSPACE_FILE;
 import static com.jd.jdbc.topo.TopoServer.TABLETS_PATH;
 import static com.jd.jdbc.topo.TopoServer.TABLET_FILE;
 import static com.jd.jdbc.topo.TopoServer.VSCHEMA_FILE;
+import com.jd.jdbc.topo.etcd2topo.Etcd2TopoFactory;
+import io.vitess.proto.Vtrpc;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Topo {
 
@@ -146,14 +140,6 @@ public class Topo {
      * @param alias
      * @return
      */
-    static String pathForCellAlias(String alias) {
-        return CELLS_ALIASES_PATH + separator + alias + separator + CELLS_ALIAS_FILE;
-    }
-
-    /**
-     * @param alias
-     * @return
-     */
     static String pathForTabletAlias(String alias) {
         return TABLETS_PATH + separator + alias + separator + TABLET_FILE;
     }
@@ -162,7 +148,7 @@ public class Topo {
      * @param keyspace
      * @return
      */
-    static String pathForSrvKeyspaceFile(String keyspace) {
+    public static String pathForSrvKeyspaceFile(String keyspace) {
         return KEYSPACES_PATH + separator + keyspace + separator + SRV_KEYSPACE_FILE;
     }
 
@@ -191,188 +177,6 @@ public class Topo {
 
         TopoServerImplementType(String name) {
             this.topoImplementationName = name;
-        }
-    }
-
-    /**
-     *
-     */
-    public static class WatchData {
-        private byte[] contents;
-
-        private TopoConnection.Version version;
-
-        private TopoException topoException;
-
-        public WatchData() {
-        }
-
-        public WatchData(byte[] contents, TopoConnection.Version version) {
-            this.contents = contents;
-            this.version = version;
-        }
-
-        public WatchData(TopoException topoException) {
-            this.topoException = topoException;
-        }
-
-        public byte[] getContents() {
-            return contents;
-        }
-
-        public void setContents(byte[] contents) {
-            this.contents = contents;
-        }
-
-        public TopoConnection.Version getVersion() {
-            return version;
-        }
-
-        public void setVersion(TopoConnection.Version version) {
-            this.version = version;
-        }
-
-        public TopoException getTopoException() {
-            return topoException;
-        }
-
-        public void setTopoException(TopoException topoException) {
-            this.topoException = topoException;
-        }
-    }
-
-    /**
-     *
-     */
-    public static class WatchDataResponse {
-        private Topo.WatchData current;
-
-        private BlockingQueue<WatchData> change;
-
-        private Watch.Watcher watcher;
-
-        public Topo.WatchData getCurrent() {
-            return current;
-        }
-
-        public void setCurrent(Topo.WatchData current) {
-            this.current = current;
-        }
-
-        public BlockingQueue<Topo.WatchData> getChange() {
-            return change;
-        }
-
-        public void setChange(BlockingQueue<Topo.WatchData> change) {
-            this.change = change;
-        }
-
-        public Watch.Watcher getWatcher() {
-            return watcher;
-        }
-
-        public void setWatcher(Watch.Watcher watcher) {
-            this.watcher = watcher;
-        }
-    }
-
-    /**
-     *
-     */
-    public static class WatchSrvKeyspaceData {
-        private Topodata.SrvKeyspace value;
-
-        private TopoException topoException;
-
-        public WatchSrvKeyspaceData(Topodata.SrvKeyspace value) {
-            this.value = value;
-        }
-
-        public WatchSrvKeyspaceData(TopoException topoException) {
-            this.topoException = topoException;
-        }
-
-        public Topodata.SrvKeyspace getValue() {
-            return value;
-        }
-
-        public void setValue(Topodata.SrvKeyspace value) {
-            this.value = value;
-        }
-
-        public TopoException getTopoException() {
-            return topoException;
-        }
-
-        public void setTopoException(TopoException topoException) {
-            this.topoException = topoException;
-        }
-    }
-
-    /**
-     *
-     */
-    public static class WatchSrvKeyspaceResponse {
-        private Topo.WatchSrvKeyspaceData current;
-
-        private BlockingQueue<Topo.WatchSrvKeyspaceData> change;
-
-        private Watch.Watcher watcher;
-
-        public WatchSrvKeyspaceResponse(WatchSrvKeyspaceData current) {
-            this.current = current;
-        }
-
-        public WatchSrvKeyspaceResponse(WatchSrvKeyspaceData current, BlockingQueue<WatchSrvKeyspaceData> change, Watch.Watcher watcher) {
-            this.current = current;
-            this.change = change;
-            this.watcher = watcher;
-        }
-
-        public WatchSrvKeyspaceData getCurrent() {
-            return current;
-        }
-
-        public void setCurrent(WatchSrvKeyspaceData current) {
-            this.current = current;
-        }
-
-        public BlockingQueue<WatchSrvKeyspaceData> getChange() {
-            return change;
-        }
-
-        public void setChange(BlockingQueue<WatchSrvKeyspaceData> change) {
-            this.change = change;
-        }
-
-        public Watch.Watcher getWatcher() {
-            return watcher;
-        }
-
-        public void setWatcher(Watch.Watcher watcher) {
-            this.watcher = watcher;
-        }
-    }
-
-    /**
-     *
-     */
-    public static class GetSrvKeyspaceNamesResponse {
-        private final List<String> keyspaceNames;
-
-        private final Exception exception;
-
-        public GetSrvKeyspaceNamesResponse(List<String> keyspaceNames, Exception exception) {
-            this.keyspaceNames = keyspaceNames;
-            this.exception = exception;
-        }
-
-        public List<String> getKeyspaceNames() {
-            return keyspaceNames;
-        }
-
-        public Exception getException() {
-            return exception;
         }
     }
 }

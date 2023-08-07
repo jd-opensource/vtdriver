@@ -17,16 +17,20 @@ limitations under the License.
 package com.jd.jdbc.monitor;
 
 import com.google.common.collect.Lists;
+import com.jd.jdbc.common.util.Crc32Utill;
 import com.jd.jdbc.srvtopo.ResilientServer;
+import com.jd.jdbc.topo.TopoServer;
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
 import io.prometheus.client.GaugeMetricFamily;
+import io.vitess.proto.Topodata;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public final class SrvKeyspaceCollector extends Collector {
-    private static final List<String> LABEL_NAMES = Lists.newArrayList("Cell", "Keyspace", "MD5");
+    private static final List<String> LABEL_NAMES = Lists.newArrayList("Keyspace");
 
     private static final String COLLECT_NAME = "SrvKeyspaceCollector";
 
@@ -56,6 +60,12 @@ public final class SrvKeyspaceCollector extends Collector {
         .help("SrvKeyspaceTask error counter info")
         .register(MonitorServer.getCollectorRegistry());
 
+    private static final Counter SRV_KEYSPACE_TASK_UPDATE_COUNTER = Counter.build()
+        .name("SrvKeyspaceTask_update_counter_total")
+        .labelNames("Keyspace", "Cell")
+        .help("SrvKeyspaceTask update counter")
+        .register(MonitorServer.getCollectorRegistry());
+
     private static final SrvKeyspaceCollector srvKeyspaceCollector = new SrvKeyspaceCollector();
 
     private final List<ResilientServer> resilientServerList = new ArrayList<>();
@@ -83,34 +93,33 @@ public final class SrvKeyspaceCollector extends Collector {
         return SRV_KEYSPACE_TASK_ERROR_COUNTER;
     }
 
+    public static Counter getSrvKeyspaceTaskUpdateCounter() {
+        return SRV_KEYSPACE_TASK_UPDATE_COUNTER;
+    }
+
     @Override
     public List<MetricFamilySamples> collect() {
+        Map<String, Topodata.SrvKeyspace> srvkeyspaceMapCopy = TopoServer.getSrvkeyspaceMapCopy();
+        if (srvkeyspaceMapCopy.isEmpty()) {
+            return null;
+        }
         GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, LABEL_NAMES);
-        for (ResilientServer resilientServer : resilientServerList) {
-            List<Info> infoList = resilientServer.getSrvKeyspaceCollectorInfo();
-            for (Info info : infoList) {
-                List<String> labelValues = Lists.newArrayList(info.cell, info.keyspace, info.md5);
-                labeledGauge.addMetric(labelValues, Math.abs(info.md5.hashCode()));
+        for (Map.Entry<String, Topodata.SrvKeyspace> entry : srvkeyspaceMapCopy.entrySet()) {
+            String keyspace = entry.getKey();
+            Topodata.SrvKeyspace srvKeyspace = entry.getValue();
+            long crc32;
+            if (srvKeyspace == null) {
+                crc32 = 0L;
+            } else {
+                crc32 = Crc32Utill.checksumByCrc32(srvKeyspace.toString().getBytes());
             }
+            List<String> labelValues = Collections.singletonList(keyspace);
+            labeledGauge.addMetric(labelValues, (double) crc32);
         }
         return Collections.singletonList(labeledGauge);
     }
 
     public void add(final ResilientServer resilientServer) {
         resilientServerList.add(resilientServer);
-    }
-
-    public static class Info {
-        private final String md5;
-
-        private final String cell;
-
-        private final String keyspace;
-
-        public Info(final String md5, final String cell, final String keyspace) {
-            this.md5 = md5;
-            this.cell = cell;
-            this.keyspace = keyspace;
-        }
     }
 }

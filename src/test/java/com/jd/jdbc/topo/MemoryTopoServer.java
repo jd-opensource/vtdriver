@@ -19,20 +19,15 @@ limitations under the License.
 package com.jd.jdbc.topo;
 
 import com.jd.jdbc.context.IContext;
-import io.etcd.jetcd.Watch;
+import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-
-import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 @AllArgsConstructor
 public class MemoryTopoServer implements TopoConnection {
@@ -133,11 +128,6 @@ public class MemoryTopoServer implements TopoConnection {
     }
 
     @Override
-    public Version update(IContext ctx, String filePath, byte[] contents, Version version) throws TopoException {
-        return null;
-    }
-
-    @Override
     public ConnGetResponse get(IContext ctx, String filePath, boolean ignoreNoNode) throws TopoException {
         Node node = this.factory.nodeByPath(cell, filePath);
         if (node == null) {
@@ -186,55 +176,8 @@ public class MemoryTopoServer implements TopoConnection {
     }
 
     @Override
-    public void delete(IContext ctx, String filePath, Version version) throws TopoException {
+    public void watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException {
 
-    }
-
-    @Override
-    public LockDescriptor lock(IContext ctx, String dirPath, String contents) throws TopoException {
-        return null;
-    }
-
-    @Override
-    public Topo.WatchDataResponse watch(IContext ctx, String filePath) throws TopoException {
-        Node node = this.factory.nodeByPath(cell, filePath);
-        if (node == null) {
-            throw TopoException.wrap("cannot watch directory " + filePath + " in cell " + cell);
-        }
-        if (node.getContents() == null) {
-            throw TopoException.wrap("cannot watch directory " + filePath + " in cell " + cell);
-        }
-        Topo.WatchData current = new Topo.WatchData(node.getContents(), node);
-
-        int index = node.getNextIndex().incrementAndGet();
-        BlockingQueue<Topo.WatchData> notification = new LinkedBlockingQueue<>(1);
-        node.getWatches().put(index, notification);
-        Watch.Watcher watcher = new Watch.Watcher() {
-            @Override
-            public void close() {
-                if (node.getWatches().containsKey(index)) {
-                    BlockingQueue<Topo.WatchData> notification = node.getWatches().get(index);
-                    notification.clear();
-                    node.getWatches().remove(index);
-                }
-            }
-
-            @Override
-            public void requestProgress() {
-
-            }
-        };
-
-        Topo.WatchDataResponse watchDataResponse = new Topo.WatchDataResponse();
-        watchDataResponse.setCurrent(current);
-        watchDataResponse.setChange(notification);
-        watchDataResponse.setWatcher(watcher);
-        return watchDataResponse;
-    }
-
-    @Override
-    public MasterParticipation newMasterParticipation(String id, String name) throws TopoException {
-        return null;
     }
 
     @Override
@@ -244,7 +187,7 @@ public class MemoryTopoServer implements TopoConnection {
 
     @AllArgsConstructor
     @Getter
-    public static class Node implements Version, LockDescriptor {
+    public static class Node implements Version {
 
         private final String name;
 
@@ -258,23 +201,11 @@ public class MemoryTopoServer implements TopoConnection {
 
         private boolean isLocked;
 
-        private final Map<Integer, BlockingQueue<Topo.WatchData>> watches = new ConcurrentHashMap<>();
-
         private final AtomicInteger nextIndex = new AtomicInteger(0);
 
         @Override
         public String string() {
             return Long.toString(this.version);
-        }
-
-        @Override
-        public void check() throws TopoException {
-            this.isLocked = true;
-        }
-
-        @Override
-        public void unlock() throws TopoException {
-            this.isLocked = false;
         }
 
         public boolean isDirectory() {

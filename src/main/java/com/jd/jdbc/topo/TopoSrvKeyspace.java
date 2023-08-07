@@ -32,18 +32,5 @@ public interface TopoSrvKeyspace {
      */
     Topodata.SrvKeyspace getSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException;
 
-    /**
-     * @param ctx
-     * @param cell
-     * @param keyspace
-     * @return
-     */
-    Topo.WatchSrvKeyspaceResponse watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException;
-
-    /**
-     * @param ctx
-     * @param cell
-     * @return
-     */
-    Topo.GetSrvKeyspaceNamesResponse getSrvKeyspaceNames(IContext ctx, String cell);
+    Topodata.SrvKeyspace getAndWatchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException;
 }

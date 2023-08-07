@@ -44,11 +44,6 @@ public class TopoStatsConnection implements TopoConnection {
 
     @Override
     public Version create(IContext ctx, String filePath, byte[] contents) throws TopoException {
-        return this.topoConnection.create(ctx, filePath, contents);
-    }
-
-    @Override
-    public Version update(IContext ctx, String filePath, byte[] contents, Version version) throws TopoException {
         return null;
     }
 
@@ -68,23 +63,8 @@ public class TopoStatsConnection implements TopoConnection {
     }
 
     @Override
-    public void delete(IContext ctx, String filePath, Version version) throws TopoException {
-
-    }
-
-    @Override
-    public LockDescriptor lock(IContext ctx, String dirPath, String contents) throws TopoException {
-        return null;
-    }
-
-    @Override
-    public Topo.WatchDataResponse watch(IContext ctx, String filePath) throws TopoException {
-        return this.topoConnection.watch(ctx, filePath);
-    }
-
-    @Override
-    public MasterParticipation newMasterParticipation(String id, String name) throws TopoException {
-        return null;
+    public void watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException {
+        this.topoConnection.watchSrvKeyspace(ctx, cell, keyspace);
     }
 
     @Override
