@@ -20,16 +20,7 @@ package com.jd.jdbc.topo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.jd.jdbc.context.IContext;
-import com.jd.jdbc.monitor.SrvKeyspaceCollector;
-import com.jd.jdbc.sqlparser.support.logging.Log;
-import com.jd.jdbc.sqlparser.support.logging.LogFactory;
-import static com.jd.jdbc.topo.Topo.GetSrvKeyspaceNamesResponse;
-import static com.jd.jdbc.topo.Topo.WatchData;
-import static com.jd.jdbc.topo.Topo.WatchDataResponse;
-import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceData;
-import static com.jd.jdbc.topo.Topo.WatchSrvKeyspaceResponse;
-import static com.jd.jdbc.topo.Topo.dirEntriesToStringArray;
-import static com.jd.jdbc.topo.Topo.pathForCellAlias;
+import com.jd.jdbc.key.CurrentShard;
 import static com.jd.jdbc.topo.Topo.pathForCellInfo;
 import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
 import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
@@ -38,29 +29,25 @@ import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
-import com.jd.jdbc.util.JsonUtil;
-import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import io.vitess.proto.Topodata;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import vschema.Vschema;
 
-public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, TopoSrvKeyspace, TopoSrvVschema, TopoTablet, TopoVschema {
+public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, TopoTablet, TopoVschema {
 
     static final String GLOBAL_CELL = "global";
 
     static final String GLOBAL_READ_ONLY_CELL = "global-read-only";
 
     static final String CELL_INFO_FILE = "CellInfo";
-
-    static final String CELLS_ALIAS_FILE = "CellsAlias";
 
     static final String VSCHEMA_FILE = "VSchema";
 
@@ -70,13 +57,11 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
 
     static final String CELLS_PATH = "cells";
 
-    static final String CELLS_ALIASES_PATH = "cells_aliases";
-
     static final String KEYSPACES_PATH = "keyspaces";
 
     static final String TABLETS_PATH = "tablets";
 
-    private final TopoCellsToAliasesMap cellsAliases;
+    private static final Map<String, Topodata.SrvKeyspace> SRVKEYSPACE_MAP = new ConcurrentHashMap<>();
 
     TopoConnection globalCell;
 
@@ -93,7 +78,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
      */
     TopoServer() {
         lock = new ReentrantLock(true);
-        cellsAliases = new TopoCellsToAliasesMap(new HashMap<>(16));
     }
 
     /**
@@ -143,39 +127,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
     }
 
     /**
-     * @param ctx
-     * @param topoServer
-     * @param cell
-     * @return
-     */
-    public String getAliasByCell(IContext ctx, TopoServer topoServer, String cell) {
-        cellsAliases.lock.lock();
-        try {
-            if (cellsAliases.cellsToAliases.containsKey(cell)) {
-                return cellsAliases.cellsToAliases.get(cell);
-            }
-            if (topoServer != null) {
-                Map<String, Topodata.CellsAlias> cellsAliasMap = topoServer.getCellsAliases(ctx, false);
-                for (Map.Entry<String, Topodata.CellsAlias> entry : cellsAliasMap.entrySet()) {
-                    String alias = entry.getKey();
-                    Topodata.CellsAlias cellsAlias = entry.getValue();
-                    for (String cellAlias : cellsAlias.getCellsList()) {
-                        if (cellAlias.equalsIgnoreCase(cell)) {
-                            cellsAliases.cellsToAliases.put(cell, alias);
-                            return alias;
-                        }
-                    }
-                }
-            }
-        } catch (TopoException e) {
-            return cell;
-        } finally {
-            cellsAliases.lock.unlock();
-        }
-        return cell;
-    }
-
-    /**
      *
      */
     @Override
@@ -192,18 +143,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             this.cells = new HashMap<>(16);
         } finally {
             lock.unlock();
-        }
-    }
-
-    /**
-     *
-     */
-    private void clearCellAliasesCache() {
-        cellsAliases.lock.lock();
-        try {
-            cellsAliases.cellsToAliases = new HashMap<>(16);
-        } finally {
-            cellsAliases.lock.unlock();
         }
     }
 
@@ -231,37 +170,17 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
         return cellInfo;
     }
 
-    /**
-     * @param ctx
-     * @param strongRead
-     * @return
-     * @throws TopoException
-     */
-    @Override
-    public Map<String, Topodata.CellsAlias> getCellsAliases(IContext ctx, Boolean strongRead) throws TopoException {
-        TopoConnection conn = this.globalCell;
-        if (!strongRead) {
-            conn = this.globalReadOnlyCell;
-        }
+    public static void updateSrvKeyspaceCache(String keyspace, Topodata.SrvKeyspace srvKeyspace) {
+        SRVKEYSPACE_MAP.put(keyspace, srvKeyspace);
+        CurrentShard.setShardReferences(keyspace, srvKeyspace);
+    }
 
-        try {
-            List<DirEntry> dirEntryList = this.globalCell.listDir(ctx, CELLS_ALIASES_PATH, false, false);
-            List<String> aliasList = dirEntriesToStringArray(dirEntryList);
-            Map<String, Topodata.CellsAlias> ret = new HashMap<>(aliasList.size());
-            for (String alias : aliasList) {
-                String aliasPath = pathForCellAlias(alias);
-                ConnGetResponse connGetResponse = conn.get(ctx, aliasPath);
-                Topodata.CellsAlias cellsAlias = JsonUtil.parseObject(connGetResponse.getContents(), Topodata.CellsAlias.class);
-                ret.put(alias, cellsAlias);
-            }
-            return ret;
-        } catch (java.lang.Exception e) {
-            if (TopoException.isErrType(e, NO_NODE)) {
-                return null;
-            } else {
-                throw e;
-            }
-        }
+    public static Topodata.SrvKeyspace getSrvKeyspaceFromCache(String keyspace) {
+        return SRVKEYSPACE_MAP.get(keyspace);
+    }
+
+    public static Map<String, Topodata.SrvKeyspace> getSrvkeyspaceMapCopy() {
+        return new HashMap<>(SRVKEYSPACE_MAP);
     }
 
     /**
@@ -282,65 +201,32 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
         } catch (InvalidProtocolBufferException e) {
             throw TopoException.wrap(e.getMessage());
         }
+        if (Objects.equals(srvKeyspace, Topodata.SrvKeyspace.getDefaultInstance())) {
+            throw TopoException.wrap("SrvKeyspace Information missing");
+        }
         return srvKeyspace;
     }
 
-    /**
-     * @param ctx
-     * @param cell
-     * @param keyspace
-     * @return
-     * @throws TopoException
-     */
     @Override
-    public WatchSrvKeyspaceResponse watchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException {
-        TopoConnection topoConnection = this.connForCell(ctx, cell);
-
-        String filePath = pathForSrvKeyspaceFile(keyspace);
-        WatchDataResponse watchDataResponse = topoConnection.watch(ctx, filePath);
-        TopoException topoException = watchDataResponse.getCurrent().getTopoException();
-        if (topoException != null) {
-            return new WatchSrvKeyspaceResponse(new WatchSrvKeyspaceData(topoException));
+    public Topodata.SrvKeyspace getAndWatchSrvKeyspace(IContext ctx, String cell, String keyspace) throws TopoException {
+        Topodata.SrvKeyspace srvKeyspace = getSrvKeyspaceFromCache(keyspace);
+        if (srvKeyspace != null) {
+            return srvKeyspace;
         }
-
-        Topodata.SrvKeyspace value;
+        this.lock.lock();
         try {
-            value = Topodata.SrvKeyspace.parseFrom(watchDataResponse.getCurrent().getContents());
-        } catch (InvalidProtocolBufferException e) {
-            watchDataResponse.getWatcher().close();
-            return new WatchSrvKeyspaceResponse(new WatchSrvKeyspaceData(
-                TopoException.wrap(String.format("%s, error unpacking initial SrvKeyspace object", e.getMessage()))));
-        }
-
-        BlockingQueue<WatchSrvKeyspaceData> change = new LinkedBlockingQueue<>(1);
-        VtDaemonExecutorService.execute(new WatchSrvKeyspaceTask(watchDataResponse, change, cell, keyspace));
-
-        return new WatchSrvKeyspaceResponse(new WatchSrvKeyspaceData(value), change, watchDataResponse.getWatcher());
-    }
-
-    /**
-     * @param ctx
-     * @param cell
-     * @return
-     */
-    @Override
-    public GetSrvKeyspaceNamesResponse getSrvKeyspaceNames(IContext ctx, String cell) {
-        TopoConnection topoConnection;
-        try {
-            topoConnection = this.connForCell(ctx, cell);
-        } catch (TopoException e) {
-            return new GetSrvKeyspaceNamesResponse(null, e);
-        }
-
-        try {
-            List<DirEntry> dirEntryList = topoConnection.listDir(ctx, KEYSPACES_PATH, false, false);
-            return new GetSrvKeyspaceNamesResponse(dirEntriesToStringArray(dirEntryList), null);
-        } catch (TopoException e) {
-            if (TopoException.isErrType(e, NO_NODE)) {
-                return new GetSrvKeyspaceNamesResponse(null, null);
+            srvKeyspace = getSrvKeyspaceFromCache(keyspace);
+            if (srvKeyspace != null) {
+                return srvKeyspace;
             }
-            return new GetSrvKeyspaceNamesResponse(null, e);
+            srvKeyspace = getSrvKeyspace(ctx, cell, keyspace);
+            updateSrvKeyspaceCache(keyspace, srvKeyspace);
+        } finally {
+            this.lock.unlock();
         }
+        TopoConnection topoConnection = this.connForCell(ctx, cell);
+        topoConnection.watchSrvKeyspace(ctx, cell, keyspace);
+        return srvKeyspace;
     }
 
     /**
@@ -465,87 +351,5 @@ public class TopoServer implements Resource, TopoCellInfo, TopoCellsAliases, Top
             throw TopoException.wrap(e.getMessage());
         }
         return keyspace;
-    }
-}
-
-class TopoCellsToAliasesMap {
-    ReentrantLock lock;
-
-    /**
-     * cellsToAliases contains all cell->alias mappings
-     */
-    Map<String, String> cellsToAliases;
-
-    public TopoCellsToAliasesMap(Map<String, String> cellsToAliases) {
-        this.lock = new ReentrantLock(true);
-        this.cellsToAliases = cellsToAliases;
-    }
-}
-
-class WatchSrvKeyspaceTask implements Runnable {
-    private static final Log logger = LogFactory.getLog(WatchSrvKeyspaceTask.class);
-
-    private final WatchDataResponse watchDataResponse;
-
-    private final BlockingQueue<WatchSrvKeyspaceData> change;
-
-    private final String cell;
-
-    private final String keyspace;
-
-    public WatchSrvKeyspaceTask(WatchDataResponse watchDataResponse, BlockingQueue<WatchSrvKeyspaceData> change, String cell, String keyspace) {
-        this.watchDataResponse = watchDataResponse;
-        this.change = change;
-        this.cell = cell;
-        this.keyspace = keyspace;
-    }
-
-    @Override
-    public void run() {
-        while (true) {
-            WatchData changeData;
-            try {
-                changeData = watchDataResponse.getChange().take();
-            } catch (InterruptedException e) {
-                logger.error(e.getMessage(), e);
-                SrvKeyspaceCollector.getErrorCounter().labels(keyspace, cell).inc();
-                break;
-            }
-
-            TopoException topoEx = changeData.getTopoException();
-            if (topoEx != null) {
-                try {
-                    this.change.put(new WatchSrvKeyspaceData(topoEx));
-                } catch (InterruptedException e) {
-                    logger.error(e.getMessage(), e);
-                }
-                SrvKeyspaceCollector.getErrorCounter().labels(keyspace, cell).inc();
-                break;
-            }
-
-            Topodata.SrvKeyspace srvKeyspace;
-            try {
-                srvKeyspace = Topodata.SrvKeyspace.parseFrom(changeData.getContents());
-                SrvKeyspaceCollector.getCounter().labels(keyspace, cell).inc();
-            } catch (InvalidProtocolBufferException e) {
-                watchDataResponse.getWatcher().close();
-                try {
-                    this.change.put(new WatchSrvKeyspaceData(TopoException.wrap(
-                        String.format("%s, error unpacking SrvKeyspace object", e.getMessage()))));
-                } catch (InterruptedException ex) {
-                    logger.error(ex.getMessage(), ex);
-                }
-                SrvKeyspaceCollector.getErrorCounter().labels(keyspace, cell).inc();
-                break;
-            }
-
-            try {
-                this.change.put(new WatchSrvKeyspaceData(srvKeyspace));
-            } catch (InterruptedException e) {
-                logger.error(e.getMessage(), e);
-                SrvKeyspaceCollector.getErrorCounter().labels(keyspace, cell).inc();
-                break;
-            }
-        }
     }
 }

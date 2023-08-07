@@ -18,6 +18,8 @@ limitations under the License.
 
 package com.jd.jdbc.topo.etcd2topo;
 
+import com.google.common.collect.Lists;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.srvtopo.ResilientServer;
 import com.jd.jdbc.srvtopo.SrvTopo;
@@ -26,7 +28,6 @@ import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KeyValue;
@@ -40,16 +41,18 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import testsuite.TestSuite;
 import vschema.Vschema;
 
-public class ServerTest {
+public class ServerTest extends TestSuite {
     private static final String TOPO_IMPLEMENTATION_K8S = "k8s";
 
     //The ip address needs to be modified to the ip address of the machine where etcd is located
@@ -72,6 +75,15 @@ public class ServerTest {
 
     //The ip address needs to be modified to the ip address of the machine where etcd is located
     public static String TOPO_GLOBAL_SERVER_ADDRESS = "http://127.0.0.1:2379";
+
+    private static ExecutorService executorService = getThreadPool(10, 10);
+
+    @AfterClass
+    public static void afterClass() {
+        if (executorService != null) {
+            executorService.shutdownNow();
+        }
+    }
 
     /**
      * @return
@@ -137,30 +149,9 @@ public class ServerTest {
     }
 
     @Test
-    public void case04_testWatch() throws TopoException {
-        TopoServer topoServer = open();
-        Assert.assertNotNull(topoServer);
-
-        VtDaemonExecutorService.initialize(null, null, null);
-        Topo.WatchSrvKeyspaceResponse watchSrvKeyspaceResponse = topoServer.watchSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, TOPO_KEYSPACE);
-        while (true) {
-            BlockingQueue<Topo.WatchSrvKeyspaceData> change = watchSrvKeyspaceResponse.getChange();
-            try {
-                Topo.WatchSrvKeyspaceData watchSrvKeyspaceData = change.take();
-                Topodata.SrvKeyspace srvKeyspace = watchSrvKeyspaceData.getValue();
-                Assert.assertNotNull(srvKeyspace);
-            } catch (InterruptedException e) {
-                Assert.assertNull(e);
-                break;
-            }
-        }
-    }
-
-    @Test
     public void case05_testGetSrvKeyspace() throws SrvTopoException, TopoException {
         TopoServer topoServer = open();
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
-        VtDaemonExecutorService.initialize(null, null, null);
 
         // Ask for a not-yet-created keyspace
         ResilientServer.GetSrvKeyspaceResponse srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), "test_cell", "test_ks");
@@ -175,10 +166,9 @@ public class ServerTest {
     public void case051_testGetSrvKeyspaces() throws Exception {
         TopoServer topoServer = open();
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
-        VtDaemonExecutorService.initialize(null, null, null);
 
         for (int i = 0; i < 5; i++) {
-            VtDaemonExecutorService.execute(() -> {
+            executorService.execute(() -> {
                 ResilientServer.GetSrvKeyspaceResponse srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, TOPO_KEYSPACE);
                 Assert.assertNotNull(srvKeyspace);
                 System.out.println(new Date() + "---" + srvKeyspace.getSrvKeyspace());
@@ -191,13 +181,12 @@ public class ServerTest {
     public void case052_testGetSrvKeyspaces() throws Exception {
         TopoServer topoServer = open();
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
-        VtDaemonExecutorService.initialize(null, null, null);
 
-        String[] keyspaces = new String[] {TOPO_KEYSPACE, "vtdriver1", "jtm_tr"};
+        String[] keyspaces = new String[] {TOPO_KEYSPACE, "commerce"};
 
         for (String keyspace : keyspaces) {
             for (int i = 0; i < 2; i++) {
-                VtDaemonExecutorService.execute(() -> {
+                executorService.execute(() -> {
                     ResilientServer.GetSrvKeyspaceResponse srvKeyspace = resilientServer.getSrvKeyspace(VtContext.withCancel(VtContext.background()), TOPO_CELL, keyspace);
                     Assert.assertNotNull(srvKeyspace);
                     System.out.println(new Date() + "---" + srvKeyspace.getSrvKeyspace());
@@ -208,21 +197,9 @@ public class ServerTest {
     }
 
     @Test
-    public void case06_testGetSrvKeyspaceNames() throws TopoException, SrvTopoException {
-        TopoServer topoServer = open();
-        ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
-        VtDaemonExecutorService.initialize(null, null, null);
-
-        ResilientServer.GetSrvKeyspaceNamesResponse response = resilientServer.getSrvKeyspaceNames(VtContext.withCancel(VtContext.background()), TOPO_CELL, false);
-        Assert.assertNotNull(response.getKeyspaceNameList());
-        Assert.assertNull(response.getException());
-    }
-
-    @Test
     public void case07_testFindAllTargets() throws Exception {
         TopoServer topoServer = open();
         ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
-        VtDaemonExecutorService.initialize(null, null, null);
 
         List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, TOPO_KEYSPACE, new ArrayList<Topodata.TabletType>() {{
             add(Topodata.TabletType.MASTER);
@@ -230,6 +207,22 @@ public class ServerTest {
             add(Topodata.TabletType.RDONLY);
         }});
         Assert.assertEquals(6, targetList.size());
+    }
+
+    @Test
+    public void case071_concurrentFindAllTargets() throws Exception {
+        TopoServer topoServer = open();
+        ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "");
+
+        List<String> otherKeyspaceList = Lists.newArrayList("commerce", "customer");
+        for (String keyspace : otherKeyspaceList) {
+            List<Query.Target> targetList = SrvTopo.findAllTargets(VtContext.withCancel(VtContext.background()), resilientServer, TOPO_CELL, keyspace, new ArrayList<Topodata.TabletType>() {{
+                add(Topodata.TabletType.MASTER);
+                add(Topodata.TabletType.REPLICA);
+                add(Topodata.TabletType.RDONLY);
+            }});
+            Assert.assertTrue("targetList should not empty", CollectionUtils.isNotEmpty(targetList));
+        }
     }
 
     @Test

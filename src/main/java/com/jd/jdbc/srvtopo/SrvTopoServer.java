@@ -33,15 +33,6 @@ public interface SrvTopoServer {
     /**
      * @param ctx
      * @param cell
-     * @param staleOk
-     * @return
-     * @throws SrvTopoException
-     */
-    ResilientServer.GetSrvKeyspaceNamesResponse getSrvKeyspaceNames(IContext ctx, String cell, Boolean staleOk);
-
-    /**
-     * @param ctx
-     * @param cell
      * @param keyspace
      * @return
      */

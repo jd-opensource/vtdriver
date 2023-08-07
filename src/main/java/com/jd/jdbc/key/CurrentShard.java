@@ -24,14 +24,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CurrentShard implements Shard {
-    private static final Map<String, List<Topodata.ShardReference>> map = new ConcurrentHashMap<>();
+    private static final Map<String, List<Topodata.ShardReference>> SHARDREFERENCE_MAP = new ConcurrentHashMap<>();
 
     public static void setShardReferences(final String keyspace, final List<Topodata.ShardReference> shardReferences) {
-        map.put(keyspace, shardReferences);
+        SHARDREFERENCE_MAP.put(keyspace, shardReferences);
+    }
+
+    public static void setShardReferences(final String keyspace, final Topodata.SrvKeyspace srvKeyspace) {
+        List<Topodata.SrvKeyspace.KeyspacePartition> partitionsList = srvKeyspace.getPartitionsList();
+        List<Topodata.ShardReference> shardReferencesList = null;
+        for (Topodata.SrvKeyspace.KeyspacePartition keyspacePartition : partitionsList) {
+            if (!Topodata.TabletType.MASTER.equals(keyspacePartition.getServedType())) {
+                continue;
+            }
+            shardReferencesList = keyspacePartition.getShardReferencesList();
+        }
+        SHARDREFERENCE_MAP.put(keyspace, shardReferencesList);
     }
 
     @Override
     public List<Topodata.ShardReference> getShardReferences(final String keyspace, final int shardNumber) {
-        return map.get(keyspace);
+        return SHARDREFERENCE_MAP.get(keyspace);
     }
 }

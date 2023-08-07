@@ -43,7 +43,6 @@ import com.jd.jdbc.srvtopo.TxConn;
 import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
-import com.jd.jdbc.util.threadpool.impl.VtDaemonExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
@@ -224,11 +223,6 @@ public class VitessDriver implements java.sql.Driver {
         if (this.inited) {
             return;
         }
-
-        Integer daemonCorePoolSize = Utils.getInteger(prop, "daemonCoreSize");
-        Integer daemonMaximumPoolSize = Utils.getInteger(prop, "daemonMaximumSize");
-        Long daemonRejectedExecutionTimeoutMillis = Utils.getLong(prop, "daemonRejectedTimeout");
-        VtDaemonExecutorService.initialize(daemonCorePoolSize, daemonMaximumPoolSize, daemonRejectedExecutionTimeoutMillis);
 
         Integer queryCorePoolSize = Utils.getInteger(prop, "queryCoreSize");
         Integer queryMaximumPoolSize = Utils.getInteger(prop, "queryMaximumSize");

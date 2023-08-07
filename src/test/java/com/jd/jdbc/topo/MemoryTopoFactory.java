@@ -44,8 +44,10 @@ public class MemoryTopoFactory implements TopoFactory{
         MemoryTopoFactory factory = new MemoryTopoFactory();
         factory.getCells().put(GLOBAL_CELL, factory.newDirectory(GLOBAL_CELL, null));
         TopoServer topoServer = Topo.newWithFactory(factory, "", "");
+
         for (String cell : cells) {
-            topoServer.globalCell.create(new VtBackgroundContext(), Topo.pathForCellInfo(cell), null);
+            TopoConnection globalCell = topoServer.globalCell;
+            globalCell.create(new VtBackgroundContext(), Topo.pathForCellInfo(cell), null);
             factory.getCells().put(cell, factory.newDirectory(cell, null));
         }
         return new ServerWithFactory(topoServer, factory);
