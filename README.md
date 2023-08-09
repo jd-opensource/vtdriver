@@ -139,7 +139,7 @@ VtDriver在开发中借鉴了许多开源的程序、框架的方法和意见，
 * [mysql-connector](https://github.com/mysql/mysql-connector-j)
 * [prometheus](https://prometheus.io/)
 * [HikariCp](https://github.com/brettwooldridge/HikariCP)
-* [ShardingSphsere](https://shardingsphere.apache.org/)
+* [ShardingSphere](https://shardingsphere.apache.org/)
 
 Note: 以上特别感谢Vitess，Vitess给我们节省大量研发成本，感谢[PlanetScale CTO Sugu Sougoumarane](https://github.com/sougou) 对我们团队的支持。
 
