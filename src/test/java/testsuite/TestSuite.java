@@ -82,7 +82,7 @@ public abstract class TestSuite extends TestSuitePrinter {
 
     protected static ExecutorService getThreadPool(int num, int max) {
         ExecutorService pool = new ThreadPoolExecutor(num, max,
-            0L, TimeUnit.MILLISECONDS,
+            60, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
             new ThreadFactory() {
                 private final AtomicInteger threadNumber = new AtomicInteger(1);

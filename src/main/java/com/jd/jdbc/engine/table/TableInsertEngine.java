@@ -108,8 +108,6 @@ public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
      */
     private Boolean multiShardAutocommit;
 
-    private long insertId;
-
     private InsertEngine insertEngine;
 
     public TableInsertEngine(final Engine.InsertOpcode insertOpcode, final VKeyspace keyspace, final LogicTable table) {
@@ -138,14 +136,17 @@ public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
         if (RoleUtils.notMaster(ctx)) {
             throw new SQLException("insert is not allowed for read only connection");
         }
+        long insertId;
         PrimitiveEngine primitiveEngine;
         switch (this.insertOpcode) {
             case InsertByDestination:
             case InsertUnsharded:
+                insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
                 primitiveEngine = getInsertUnshardedEngine(ctx, vcursor, bindVariableMap);
                 break;
             case InsertSharded:
             case InsertShardedIgnore:
+                insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
                 primitiveEngine = getInsertShardedEngine(ctx, vcursor, bindVariableMap);
                 break;
             default:
@@ -163,7 +164,6 @@ public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
     }
 
     private PrimitiveEngine getInsertUnshardedEngine(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         List<List<Query.Value>> indexesPerTable = new ArrayList<>();
         buildActualTables(bindVariableMap, actualTables, indexesPerTable);
@@ -173,7 +173,6 @@ public class TableInsertEngine implements PrimitiveEngine, TableShardQuery {
     }
 
     private PrimitiveEngine getInsertShardedEngine(final IContext ctx, final Vcursor vcursor, final Map<String, BindVariable> bindVariableMap) throws SQLException {
-        insertId = Generate.processGenerate(vcursor, generate, bindVariableMap);
         List<ActualTable> actualTables = new ArrayList<>();
         List<List<Query.Value>> indexesPerTable = new ArrayList<>();
         buildActualTables(bindVariableMap, actualTables, indexesPerTable);
