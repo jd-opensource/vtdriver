@@ -42,33 +42,43 @@ import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import testsuite.TestSuite;
 
 public class HealthCheckTest extends TestSuite {
     private static final IContext globalContext = VtContext.withCancel(VtContext.background());
 
-    private final Map<String, Integer> portMap = new HashMap<>();
-
-    private int defaultMysqlPort = 3358;
+    private static final ExecutorService executorService = getThreadPool(10, 10);
 
     @Rule
     public GrpcCleanupRule grpcCleanup;
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    private final Map<String, Integer> portMap = new HashMap<>();
+
+    private int defaultMysqlPort = 3358;
 
     @BeforeClass
     public static void initPool() {
@@ -78,6 +88,11 @@ public class HealthCheckTest extends TestSuite {
 
         VtHealthCheckExecutorService.initialize(null, null, null, null);
         VtQueryExecutorService.initialize(null, null, null, null);
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        executorService.shutdownNow();
     }
 
     @Before
@@ -386,16 +401,14 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
 
         // remove tablet and send a onNext message parallel
-        ExecutorService pool = getThreadPool(1, 1);
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.2, 2);
-        pool.execute(() -> hc.removeTablet(mockTablet.getTablet()));
+        executorService.execute(() -> hc.removeTablet(mockTablet.getTablet()));
 
         Thread.sleep(200);
         // healthcheck shouldn't response onNext message
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
         closeQueryService(mockTablet);
-        pool.shutdown();
         printOk();
     }
 
@@ -423,8 +436,7 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
 
         // remove tablet and send a onNext message parallel
-        ExecutorService pool = getThreadPool(1, 1);
-        pool.execute(() -> hc.removeTablet(mockTablet.getTablet()));
+        executorService.execute(() -> hc.removeTablet(mockTablet.getTablet()));
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.2, 2);
 
         Thread.sleep(200);
@@ -432,7 +444,6 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
         closeQueryService(mockTablet);
-        pool.shutdown();
         printOk();
     }
 
@@ -896,7 +907,6 @@ public class HealthCheckTest extends TestSuite {
         Topodata.Tablet tablet2 = buildTablet("cella", 8, "1.1.1.8", "k", "s", portMap, Topodata.TabletType.REPLICA);
         Query.Target target = Query.Target.newBuilder().setKeyspace(tablet1.getKeyspace()).setShard(tablet1.getShard()).setTabletType(tablet1.getType()).build();
 
-
         Map<String, List<TabletHealthCheck>> healthy1 = hc.getHealthyCopy();
         List<TabletHealthCheck> healthyMap1 = new ArrayList<>();
 
@@ -951,6 +961,108 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong HealthyChecksum", firstCrc32, secondCrc32);
 
         closeQueryService(mockTablet1, mockTablet2);
+    }
+
+    @Test
+    public void testConcurrentModificationException() throws InterruptedException {
+        thrown.expect(ConcurrentModificationException.class);
+
+        List<TabletHealthCheck> tabletHealthCheckList = new ArrayList<>();
+        String keyspace = "k";
+        String shard = "s";
+        Topodata.TabletType type = Topodata.TabletType.REPLICA;
+        Query.Target target = Query.Target.newBuilder().setKeyspace(keyspace).setShard(keyspace).setTabletType(type).build();
+        Topodata.Tablet tablet1 = buildTablet("cell1", 1, "a", keyspace, shard, portMap, type);
+        Topodata.Tablet tablet2 = buildTablet("cell1", 100, "a", keyspace, shard, portMap, type);
+        Topodata.Tablet tablet3 = buildTablet("cell1", 10, "a", keyspace, shard, portMap, type);
+        TabletHealthCheck tabletHealthCheck1 = new TabletHealthCheck(HealthCheck.INSTANCE, tablet1, target);
+        TabletHealthCheck tabletHealthCheck2 = new TabletHealthCheck(HealthCheck.INSTANCE, tablet2, target);
+        TabletHealthCheck tabletHealthCheck3 = new TabletHealthCheck(HealthCheck.INSTANCE, tablet3, target);
+        tabletHealthCheckList.add(tabletHealthCheck1);
+        tabletHealthCheckList.add(tabletHealthCheck2);
+        tabletHealthCheckList.add(tabletHealthCheck3);
+        Map<String, List<TabletHealthCheck>> healthy = new ConcurrentHashMap<>(16);
+        healthy.put(HealthCheck.keyFromTarget(target), tabletHealthCheckList);
+
+        Map<String, List<TabletHealthCheck>> treeMap = new TreeMap<>(healthy);
+
+        int count = 1000000;
+        executorService.execute(() -> {
+            for (int i = 0; i < count; i++) {
+                HealthyCollector.stateHealthyChecksum(treeMap);
+            }
+        });
+        for (int i = 0; i < count; i++) {
+            mockGetHealthyTabletStats(healthy, target);
+        }
+
+        Thread.sleep(2000);
+    }
+
+    @Test
+    public void testHealthyConcurrentModificationException() throws InterruptedException, IOException {
+        HealthCheck hc = getHealthCheck();
+
+        String keyspace = "k";
+        String shard = "s";
+        // add replica tablet
+        MockTablet mockTablet0 = buildMockTablet("cell", 1, "a", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet0.getTablet());
+        // add replica tablet
+        MockTablet mockTablet1 = buildMockTablet("cell", 100, "b", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet1.getTablet());
+        // add replica tablet
+        MockTablet mockTablet2 = buildMockTablet("cell", 10, "c", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        hc.addTablet(mockTablet2.getTablet());
+
+        Thread.sleep(200);
+        Assert.assertEquals("Wrong Tablet data", 3, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
+
+        printComment("c. Modify the status of Tablet to serving");
+        sendOnNextMessage(mockTablet0, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
+        sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
+        sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
+
+        Thread.sleep(200);
+
+        Assert.assertEquals("Wrong Tablet data", 3, hc.getHealthByAliasCopy().size());
+        Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
+        List<TabletHealthCheck> healthyTabletStats = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
+        Assert.assertNotNull(healthyTabletStats);
+        Assert.assertEquals("Wrong Tablet data", 3, healthyTabletStats.size());
+
+        int count = 1000000;
+        Map<String, List<TabletHealthCheck>> healthy = hc.getHealthyCopy();
+        executorService.execute(() -> {
+            for (int i = 0; i < count; i++) {
+                HealthyCollector.stateHealthyChecksum(healthy);
+            }
+        });
+        for (int i = 0; i < count; i++) {
+            healthyTabletStats = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
+            Assert.assertNotNull(healthyTabletStats);
+            Assert.assertEquals("Wrong Tablet data", 3, healthyTabletStats.size());
+        }
+
+        Thread.sleep(2000);
+    }
+
+    private List<TabletHealthCheck> mockGetHealthyTabletStats(Map<String, List<TabletHealthCheck>> healthy, Query.Target target) {
+        List<TabletHealthCheck> list = healthy.get(HealthCheck.keyFromTarget(target));
+        if (null == list || list.isEmpty()) {
+            return null;
+        }
+        if (target.getTabletType() == Topodata.TabletType.MASTER) {
+            return list;
+        }
+        List<TabletHealthCheck> servlist = new ArrayList<>(list.size());
+        list.forEach(entry -> {
+            if (entry.getServing().get()) {
+                servlist.add(entry);
+            }
+        });
+        return servlist;
     }
 
     private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {

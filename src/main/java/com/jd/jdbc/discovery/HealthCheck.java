@@ -133,7 +133,12 @@ public enum HealthCheck {
     }
 
     public Map<String, List<TabletHealthCheck>> getHealthyCopy() {
-        return new TreeMap<>(healthy);
+        Map<String, List<TabletHealthCheck>> treeMap = new TreeMap<>();
+        for (Map.Entry<String, List<TabletHealthCheck>> entry : healthy.entrySet()) {
+            List<TabletHealthCheck> tabletHealthChecks = entry.getValue();
+            treeMap.put(entry.getKey(), new ArrayList<>(tabletHealthChecks));
+        }
+        return treeMap;
     }
 
     public IQueryService tabletConnection(Topodata.TabletAlias alias) {
@@ -416,7 +421,6 @@ public enum HealthCheck {
             this.lock.unlock();
             if (targetChanged) {
                 Topodata.Tablet tablet = th.getTablet().toBuilder().setType(th.getTarget().getTabletType()).setKeyspace(th.getTarget().getKeyspace()).setShard(th.getTarget().getShard()).build();
-
                 th.getQueryService().setTablet(tablet);
                 th.closeNativeQueryService();
             }
@@ -455,11 +459,11 @@ public enum HealthCheck {
     private void doWatchTabletHealthCheckStream(final long currentTimeMillis) {
         healthByAlias.forEach((alias, thc) -> {
             if (thc.healthCheckCtxIsCanceled()) {
-                thc.finalizeConn();
+                thc.shutdown();
                 return;
             }
 
-            if (thc.getLastResponseTimestamp() > 0 && currentTimeMillis - thc.getLastResponseTimestamp() > (thc.getHealthCheckTimeout() * 1000)) {
+            if (thc.getLastResponseTimestamp() > 0 && currentTimeMillis - thc.getLastResponseTimestamp() > thc.getHealthCheckTimeout()) {
                 thc.getServing().set(false);
                 thc.getRetrying().set(true);
                 thc.getLastError().set("health check timed out latest " + thc.getLastResponseTimestamp());
@@ -468,24 +472,29 @@ public enum HealthCheck {
             }
 
             TabletHealthCheck.TabletStreamHealthDetailStatus tabletStreamHealthDetailStatus = thc.getTabletStreamHealthDetailStatus().get();
-            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE) {
+            if (tabletStreamHealthDetailStatus.getStatus() == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE) {
                 return;
             }
 
-            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET) {
+            if (tabletStreamHealthDetailStatus.getStatus() == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET) {
                 return;
             }
 
-            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR) {
+            if (tabletStreamHealthDetailStatus.getStatus() == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR) {
                 thc.getServing().set(false);
                 thc.getRetrying().set(true);
-                thc.getLastError().set("health check error :" + tabletStreamHealthDetailStatus.message);
+                thc.getLastError().set("health check error :" + tabletStreamHealthDetailStatus.getMessage());
                 thc.startHealthCheckStream();
                 return;
             }
 
-            if (tabletStreamHealthDetailStatus.status == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE) {
-                // tabletHealthCheck is added to healthByAlias just recently, no healthCheck signal has been received.
+            if (tabletStreamHealthDetailStatus.getStatus() == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE) {
+                return;
+            }
+            if (tabletStreamHealthDetailStatus.getStatus() == TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_MISMATCH) {
+                thc.getServing().set(false);
+                thc.getLastError().set("health check error :" + tabletStreamHealthDetailStatus.getMessage());
+                this.removeTablet(thc.getTablet());
                 return;
             }
 

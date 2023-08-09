@@ -85,12 +85,7 @@ public final class HealthyCollector extends Collector {
         StringBuilder sb = new StringBuilder();
 
         for (List<TabletHealthCheck> tabletHealthCheckList : healthy.values()) {
-            tabletHealthCheckList.sort(new Comparator<TabletHealthCheck>() {
-                @Override
-                public int compare(TabletHealthCheck o1, TabletHealthCheck o2) {
-                    return Long.compare(o1.getTablet().getAlias().getUid(), o2.getTablet().getAlias().getUid());
-                }
-            });
+            tabletHealthCheckList.sort(Comparator.comparingLong(o -> o.getTablet().getAlias().getUid()));
 
             for (TabletHealthCheck tabletHealthCheck : tabletHealthCheckList) {
                 if (!tabletHealthCheck.getServing().get()) {

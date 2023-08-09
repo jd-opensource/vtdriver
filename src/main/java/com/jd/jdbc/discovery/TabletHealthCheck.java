@@ -18,18 +18,13 @@ limitations under the License.
 
 package com.jd.jdbc.discovery;
 
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED;
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR;
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET;
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_MISMATCH;
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE;
-import static com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE;
 import com.jd.jdbc.queryservice.IHealthCheckQueryService;
 import com.jd.jdbc.queryservice.IParentQueryService;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.queryservice.TabletDialer;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -38,23 +33,24 @@ import io.grpc.stub.ClientResponseObserver;
 import io.vitess.proto.Query;
 import io.vitess.proto.Query.StreamHealthResponse;
 import io.vitess.proto.Topodata;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
-@Data
 public class TabletHealthCheck {
     private static final Log log = LogFactory.getLog(TabletHealthCheck.class);
 
-    private static final String CTX_RESPONSE = "health check response ok";
+    private static final String STOP_HEALTH_CHECK_STREAM = "stopHealthCheckStream";
 
-    private static final String CTX_TABLET_STATUS_MISMATCH = "health check response stats mismatch";
-
-    private final long healthCheckTimeout = 60;  //second
+    /**
+     * 60s
+     */
+    @Getter
+    private final long healthCheckTimeout = 60000;
 
     @Getter
     private final AtomicBoolean serving;
@@ -63,15 +59,15 @@ public class TabletHealthCheck {
     @Setter
     private AtomicBoolean retrying;
 
-    //    ITabletQueryService tabletQueryService;
     private IParentQueryService queryService;
 
     private ReentrantLock lock = new ReentrantLock();
 
     @Getter
     private AtomicReference<TabletStreamHealthDetailStatus> tabletStreamHealthDetailStatus =
-        new AtomicReference<>(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_NONE, ""));
+        new AtomicReference<>(new TabletStreamHealthDetailStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE, null));
 
+    @Getter
     private Query.Target target;
 
     private HealthCheck healthCheck;
@@ -79,16 +75,20 @@ public class TabletHealthCheck {
     @Getter
     private Topodata.Tablet tablet;
 
+    @Getter
     private Long masterTermStartTime;
 
     private ClientResponseObserver<Query.StreamHealthRequest, StreamHealthResponse> responseObserver;
 
     private ClientCallStreamObserver<Query.StreamHealthRequest> savedClientCallStreamObserver;
 
+    @Getter
     private long lastResponseTimestamp;
 
+    @Getter
     private Query.RealtimeStats stats;
 
+    @Getter
     private AtomicReference<String> lastError;
 
     public TabletHealthCheck(HealthCheck healthCheck, Topodata.Tablet tablet, Query.Target target) {
@@ -113,7 +113,7 @@ public class TabletHealthCheck {
         }
     }
 
-    public IHealthCheckQueryService getHealthCheckQueryService() {
+    private IHealthCheckQueryService getHealthCheckQueryService() {
         this.lock.lock();
         try {
             return (IHealthCheckQueryService) getTabletQueryServiceLocked();
@@ -125,36 +125,11 @@ public class TabletHealthCheck {
     private IParentQueryService getTabletQueryServiceLocked() {
         if (this.queryService == null) {
             this.queryService = TabletDialer.dial(this.tablet);
-            log.info("create tablet query service: " + TopoProto.tabletToHumanString(tablet));
+            if (log.isDebugEnabled()) {
+                log.debug("create tablet query service: " + TopoProto.tabletToHumanString(tablet));
+            }
         }
         return this.queryService;
-    }
-
-    public void closeTabletQueryService(String err) {
-        this.lastError.set(err);
-        log.info("close tablet query service: " + TopoProto.tabletToHumanString(tablet) + ", due to error: " + err);
-        finalizeConn();
-    }
-
-    public void finalizeConn() {
-        this.lock.lock();
-        try {
-            this.serving.set(false);
-            log.info("final close tablet query service: " + TopoProto.tabletToHumanString(tablet));
-
-            if (savedClientCallStreamObserver != null) {
-                savedClientCallStreamObserver.cancel("cancel stream health", null);
-                savedClientCallStreamObserver = null;
-            }
-
-            // this.lastError todo set during checkConn
-            if (this.queryService != null) {
-                this.queryService.close();
-                this.queryService = null;
-            }
-        } finally {
-            this.lock.unlock();
-        }
     }
 
     //topo 线程调用
@@ -182,7 +157,6 @@ public class TabletHealthCheck {
             }
         };
 
-
         try {
             getHealthCheckQueryService().streamHealth(this, responseObserver);
         } catch (Throwable e) {
@@ -191,7 +165,7 @@ public class TabletHealthCheck {
                 savedClientCallStreamObserver.cancel("streamHealth Exception", e);
                 savedClientCallStreamObserver = null;
             }
-            this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_ERROR, "init stream health error, need restart stream health"));
+            this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR, "init stream health error, need restart stream health");
         } finally {
             this.lock.unlock();
         }
@@ -201,7 +175,7 @@ public class TabletHealthCheck {
         this.lock.lock();
         try {
             if (savedClientCallStreamObserver != null) {
-                this.savedClientCallStreamObserver.cancel("stopHealthCheckStream", null);
+                this.savedClientCallStreamObserver.cancel(STOP_HEALTH_CHECK_STREAM, null);
                 savedClientCallStreamObserver = null;
             }
 
@@ -212,50 +186,50 @@ public class TabletHealthCheck {
                     savedClientCallStreamObserver.cancel("streamHealth Exception", e);
                     savedClientCallStreamObserver = null;
                 }
-                this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_ERROR, "start stream health error, need restart stream health"));
+                this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR, "start stream health error, need restart stream health");
             }
         } finally {
             this.lock.unlock();
         }
     }
 
-    public void handleStreamHealthResponse(StreamHealthResponse response) {
-        lock.lock();
+    private void handleStreamHealthResponse(StreamHealthResponse response) {
+        this.lock.lock();
         try {
             if (this.healthCheckCtxIsCanceled()) {
                 return;
             }
-            if (response == null || response.getTarget() == null || response.getRealtimeStats() == null) {
-                this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET, "health stats is not valid " + response.toString()));
+            if (response == null) {
+                this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET, "health stats is not valid ");
                 return;
             }
-            this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_RESPONSE, ""));
+            if (Objects.equals(Query.Target.getDefaultInstance(), response.getTarget())) {
+                this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET, "health stats is not valid " + response);
+                return;
+            }
+            this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_RESPONSE, null);
 
             String healthError = null;
             boolean serving = response.getServing();
 
-            if (!isEmptyStr(response.getRealtimeStats().getHealthError())) {
+            if (StringUtils.isNotEmpty(response.getRealtimeStats().getHealthError())) {
                 healthError = "vttablet error: " + response.getRealtimeStats().getHealthError();
                 serving = false;
             }
 
-            if (response.getTabletAlias() != null && !TopoProto.tabletAliasEqual(response.getTabletAlias(), this.tablet.getAlias())) {
-                this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_MISMATCH,
-                    "health stats mismatch, tablet " + this.tablet.getAlias() + " alias does not match response alias " + response.getTabletAlias()));
+            if (!TopoProto.tabletAliasEqual(response.getTabletAlias(), this.tablet.getAlias())) {
+                this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_MISMATCH,
+                    "health stats mismatch, tablet " + this.tablet.getAlias() + " alias does not match response alias " + response.getTabletAlias());
                 //delete this :handleStreamHealthError already check this error
-                //this.healthCheck.removeTablet(this.getTablet());
+                this.serving.set(false);
                 return;
             }
 
             Query.Target prevTarget = this.target;
 
-            boolean trivialUpdate = isEmptyStr(this.lastError.get()) &&
-                this.serving.get() &&
-                isEmptyStr(response.getRealtimeStats().getHealthError()) &&
-                response.getServing() &&
-                prevTarget.getTabletType() != Topodata.TabletType.MASTER &&
-                prevTarget.getTabletType() == response.getTarget().getTabletType() &&
-                this.isTrivialReplagChange(response.getRealtimeStats());
+            boolean trivialUpdate = StringUtils.isEmpty(this.lastError.get()) && this.serving.get() && StringUtils.isEmpty(response.getRealtimeStats().getHealthError()) && response.getServing()
+                && prevTarget.getTabletType() != Topodata.TabletType.MASTER && prevTarget.getTabletType() == response.getTarget().getTabletType()
+                && this.isTrivialReplagChange(response.getRealtimeStats());
             this.lastResponseTimestamp = System.currentTimeMillis();
             this.target = response.getTarget();
             this.masterTermStartTime = response.getTabletExternallyReparentedTimestamp();
@@ -274,24 +248,23 @@ public class TabletHealthCheck {
         }
     }
 
-    public void handleStreamHealthError(Throwable t) {
+    private void handleStreamHealthError(Throwable t) {
         this.serving.set(false);
         log.error("tablet " + TopoProto.tabletToHumanString(tablet) + " handleStreamHealthError error msg : " + t.getMessage());
         if (t.getMessage().toLowerCase().contains("health stats mismatch")) {
-            //removeTablet 方法会调用 cancelHealthCheckCtx
             this.healthCheck.removeTablet(this.tablet);
             return;
-        } else if (t.getMessage().contains("stopHealthCheckStream")) {
+        } else if (t.getMessage().contains(STOP_HEALTH_CHECK_STREAM)) {
             return;
         } else {
             boolean logFlag = false;
             if (t instanceof StatusRuntimeException) {
                 StatusRuntimeException statusRuntimeException = (StatusRuntimeException) t;
                 Status status = statusRuntimeException.getStatus();
-                logFlag = "channel closed".equals(status.getDescription()) ||
-                    "io exception".equals(status.getDescription()) ||
-                    "Keepalive failed. The connection is likely gone".equals(status.getDescription()) ||
-                    "Network closed for unknown reason".equals(status.getDescription());
+                logFlag = "channel closed".equals(status.getDescription())
+                    || "io exception".equals(status.getDescription())
+                    || "Keepalive failed. The connection is likely gone".equals(status.getDescription())
+                    || "Network closed for unknown reason".equals(status.getDescription());
             }
             if (!logFlag) {
                 log.error("tablet " + TopoProto.tabletToHumanString(tablet) + " handleStreamHealthError error msg : ", t);
@@ -305,10 +278,7 @@ public class TabletHealthCheck {
         if (t.getMessage().contains("cancel stream health")) {
             log.info("tablet " + TopoProto.tabletToHumanString(tablet) + "cancel stream health " + this.tablet.getHostname());
         }
-        if (healthCheckCtxIsCanceled()) {
-            return;
-        }
-        this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_ERROR, t.getMessage()));
+        this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_ERROR, t.getMessage());
     }
 
     //release the underlying connection resources.
@@ -317,7 +287,7 @@ public class TabletHealthCheck {
         this.lock.lock();
         try {
             if (savedClientCallStreamObserver != null) {
-                this.savedClientCallStreamObserver.cancel("stopHealthCheckStream", null);
+                this.savedClientCallStreamObserver.cancel(STOP_HEALTH_CHECK_STREAM, null);
                 savedClientCallStreamObserver = null;
             }
             if (this.queryService != null) {
@@ -336,22 +306,18 @@ public class TabletHealthCheck {
     }
 
     public void cancelHealthCheckCtx() {
-        this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_CANCELED, ""));
+        this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED, null);
     }
 
     public boolean healthCheckCtxIsCanceled() {
-        return this.tabletStreamHealthDetailStatus.get().status == TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED;
+        return Objects.equals(this.tabletStreamHealthDetailStatus.get().getStatus(), TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED);
     }
 
-    public void handleStreamHealthComplete() {
-        this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(TABLET_STREAM_HEALTH_STATUS_CANCELED, ""));
+    private void handleStreamHealthComplete() {
+        this.setStatus(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED, null);
     }
 
-    public boolean isEmptyStr(String str) {
-        return null == str || str.isEmpty();
-    }
-
-    public boolean isTrivialReplagChange(Query.RealtimeStats stats) {
+    private boolean isTrivialReplagChange(Query.RealtimeStats stats) {
         if (this.stats == null) {
             return false;
         }
@@ -375,11 +341,26 @@ public class TabletHealthCheck {
         TABLET_STREAM_HEALTH_STATUS_ERROR_PACKET
     }
 
-    @Data
-    @AllArgsConstructor
-    public class TabletStreamHealthDetailStatus {
-        TabletStreamHealthStatus status;
+    private void setStatus(TabletStreamHealthStatus status, String message) {
+        TabletStreamHealthStatus preStatus = this.tabletStreamHealthDetailStatus.get().getStatus();
+        if (Objects.equals(preStatus, TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_CANCELED)) {
+            log.error("setStatus error preStatus=" + preStatus + " targetStatus=" + status);
+            return;
+        }
+        if (Objects.equals(preStatus, status)) {
+            return;
+        }
+        if (Objects.equals(status, TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_NONE)) {
+            return;
+        }
+        this.tabletStreamHealthDetailStatus.set(new TabletStreamHealthDetailStatus(status, message));
+    }
 
-        String message;
+    @AllArgsConstructor
+    @Getter
+    public static class TabletStreamHealthDetailStatus {
+        private final TabletStreamHealthStatus status;
+
+        private final String message;
     }
 }
