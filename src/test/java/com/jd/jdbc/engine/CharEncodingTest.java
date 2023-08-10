@@ -107,7 +107,7 @@ public class CharEncodingTest extends TestSuite {
 
     @Test
     public void testGBK2() throws SQLException {
-        thrown.expect(IllegalArgumentException.class);
+        thrown.expect(SQLException.class);
         thrown.expectMessage("Only supports utf8 encoding, please check characterEncoding in jdbcurl and file.encoding in environment variable,characterEncoding = GBK, file.encoding=UTF-8");
         init("GBK");
     }
