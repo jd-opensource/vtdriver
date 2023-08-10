@@ -60,9 +60,9 @@ public class VtVschemaRefreshHandler extends VtHttpHandler {
                     if (vSchemaManagerMap.containsKey(ks)) {
                         vSchemaManagerMap.get(ks).refreshVschema(ks);
                         refreshFlag = true;
-                        resMessage.append(ks).append(" cuccess,");
+                        resMessage.append(ks).append(" success.");
                     } else {
-                        resMessage.append(ks).append(" not found,");
+                        resMessage.append(ks).append(" not found.");
                     }
                 }
             }

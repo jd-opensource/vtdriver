@@ -16,7 +16,6 @@ limitations under the License.
 
 package com.jd.jdbc.api;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.vitess.VitessConnection;
 import java.io.BufferedReader;
@@ -24,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 import lombok.Data;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -59,13 +57,14 @@ public class VtApiServerTest extends TestSuite {
         try (Connection conn = getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS))) {
             Assert.assertNotNull(conn);
             Thread.sleep(2000);
-            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002"
-                + VtApiServer.rootPrefix + "/status"});
+            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002" + VtApiServer.rootPrefix + "/status"});
             StatusResponse statusResponse = JsonUtil.parseObject(response, StatusResponse.class);
 
             Assert.assertNotNull(statusResponse);
-            Assert.assertEquals(statusResponse.status, "OK");
-            Assert.assertFalse(statusResponse.apis.isEmpty());
+            Assert.assertEquals("OK", statusResponse.status);
+            Assert.assertFalse(statusResponse.statusUrl.isEmpty());
+            Assert.assertFalse(statusResponse.refreshVschemaUrl.isEmpty());
+            Assert.assertEquals(conn.getCatalog(), statusResponse.keyspaces);
         }
     }
 
@@ -74,8 +73,7 @@ public class VtApiServerTest extends TestSuite {
         try (Connection conn = getConnection(Driver.of(TestSuiteShardSpec.TWO_SHARDS))) {
             Assert.assertNotNull(conn);
             Thread.sleep(2000);
-            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002"
-                + VtApiServer.rootPrefix + "/vschema/?target=" + ((VitessConnection) conn).getDefaultKeyspace()});
+            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002" + VtApiServer.rootPrefix + "/vschema/?target=" + ((VitessConnection) conn).getDefaultKeyspace()});
             Assert.assertNotNull(response);
             Assert.assertEquals(VtApiServerResponse.SUCCESS.getMessage(), response.trim());
         }
@@ -88,8 +86,7 @@ public class VtApiServerTest extends TestSuite {
             Assert.assertNotNull(conn2);
             Assert.assertNotNull(conn16);
             Thread.sleep(2000);
-            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002"
-                + VtApiServer.rootPrefix + "/vschema/?target=" + ((VitessConnection) conn2).getDefaultKeyspace()});
+            String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002" + VtApiServer.rootPrefix + "/vschema/?target=" + ((VitessConnection) conn2).getDefaultKeyspace()});
             Assert.assertNotNull(response);
             Assert.assertEquals(VtApiServerResponse.SUCCESS.getMessage(), response.trim());
 
@@ -98,8 +95,7 @@ public class VtApiServerTest extends TestSuite {
             Assert.assertNotNull(response);
             Assert.assertEquals(VtApiServerResponse.SUCCESS.getMessage(), response.trim());
 
-            response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002"
-                + VtApiServer.rootPrefix + "/vschema/?target=all"});
+            response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:15002" + VtApiServer.rootPrefix + "/vschema/?target=all"});
             Assert.assertNotNull(response);
             Assert.assertEquals(VtApiServerResponse.SUCCESS.getMessage(), response.trim());
         }
@@ -116,20 +112,21 @@ public class VtApiServerTest extends TestSuite {
             String response = execCurl(new String[] {"curl", "-XGET", "http://127.0.0.1:" + 15006 + VtApiServer.rootPrefix + "/status"});
             StatusResponse statusResponse = JsonUtil.parseObject(response, StatusResponse.class);
             Assert.assertNotNull(statusResponse);
-            Assert.assertEquals(statusResponse.status, "OK");
-            Assert.assertFalse(statusResponse.apis.isEmpty());
+            Assert.assertEquals("OK", statusResponse.status);
+            Assert.assertFalse(statusResponse.statusUrl.isEmpty());
+            Assert.assertFalse(statusResponse.refreshVschemaUrl.isEmpty());
+            Assert.assertEquals(conn.getCatalog(), statusResponse.keyspaces);
         }
     }
 
     @Data
     protected static class StatusResponse {
-        @JsonProperty("Status")
-        protected String status;
+        private String status;
 
-        @JsonProperty("Path Prefix")
-        protected String pathPrefix;
+        private String statusUrl;
 
-        @JsonProperty("APIs")
-        protected List<VtApi> apis;
+        private String refreshVschemaUrl;
+
+        private String keyspaces;
     }
 }

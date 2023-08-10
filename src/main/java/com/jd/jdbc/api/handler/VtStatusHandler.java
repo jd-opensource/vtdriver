@@ -17,15 +17,12 @@ limitations under the License.
 package com.jd.jdbc.api.handler;
 
 import com.jd.jdbc.VSchemaManager;
-import com.jd.jdbc.api.VtApi;
 import com.jd.jdbc.api.VtApiServer;
+import com.jd.jdbc.api.VtApiStatusResponse;
 import com.jd.jdbc.api.VtHttpHandler;
-import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.util.NetUtil;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 public class VtStatusHandler extends VtHttpHandler {
@@ -33,30 +30,16 @@ public class VtStatusHandler extends VtHttpHandler {
 
     private final Map<String, VSchemaManager> vSchemaManagerMap;
 
-    private final Map<String, Object> responseMap;
-
     public VtStatusHandler(String rootPrefix, Map<String, VSchemaManager> vSchemaManagerMap) {
         this.rootPrefix = rootPrefix;
         this.vSchemaManagerMap = vSchemaManagerMap;
-        responseMap = new HashMap<String, Object>(16, 1) {{
-            put("Status", "OK");
-        }};
     }
 
     @Override
     public void handle(HttpExchange httpExchange) throws IOException {
         String pathPrefix = "http://" + NetUtil.getLocalAdder() + ":" + VtApiServer.port + rootPrefix;
-        responseMap.put("Path Prefix", pathPrefix);
-        responseMap.put("APIs", new ArrayList<VtApi>() {{
-            add(new VtApi("Status And Info", pathPrefix + "/status"));
-            add(new VtApi("Refresh VSchema(Specify one with parameter: target=keyspace, use all to refresh all keyspaces)", pathPrefix + "/vschema/refresh"));
-        }});
-
-        ArrayList<String> targets = new ArrayList<>(vSchemaManagerMap.size());
-        vSchemaManagerMap.forEach((key, value) -> {
-            targets.add(key);
-        });
-        responseMap.put("Registered Target", targets.toString());
-        super.success(httpExchange, JsonUtil.toJSONString(responseMap, true));
+        String keyspaces = String.join(", ", vSchemaManagerMap.keySet());
+        VtApiStatusResponse vtApiStatusResponse = new VtApiStatusResponse("OK", pathPrefix + "/status", pathPrefix + "/vschema/refresh", keyspaces);
+        super.success(httpExchange, vtApiStatusResponse.toString());
     }
 }
