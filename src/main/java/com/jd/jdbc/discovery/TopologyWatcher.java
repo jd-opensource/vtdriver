@@ -42,6 +42,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -90,6 +91,9 @@ public class TopologyWatcher {
 
     private void connectTablets(Map<String, Topodata.Tablet> newTablets) {
         if (CollectionUtils.isEmpty(newTablets)) {
+            for (Map.Entry<String, Topodata.Tablet> entry : currentTablets.entrySet()) {
+                hc.removeTablet(entry.getValue());
+            }
             return;
         }
         this.lock.lock();
@@ -119,24 +123,11 @@ public class TopologyWatcher {
         }
     }
 
-    private Map<String, Topodata.Tablet> getTopoTabletInfoMap(IContext ctx) {
+    private Map<String, Topodata.Tablet> getTopoTabletInfoMap(IContext ctx) throws TopoException, InterruptedException {
         Map<String, Topodata.Tablet> newTablets;
         if (firstLoadTabletsFlag) {
-            List<Topodata.Tablet> tabletList;
-            try {
-                tabletList = ts.getTabletsByRange(ctx, cell);
-            } catch (TopoException e) {
-                if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
-                    log.warn("getTabletsByRange error,cause by" + e.getMessage());
-                    return null;
-                }
-                log.error("get topoTabletInfo fail", e);
-                // Exception will be thrown when tablet does not exist, so ignore and continue.
-                // Avoid network abnormalities that cause a large amount of Tablet metadata to be deleted from memory
-                TopologyCollector.getErrorCounter().labels(cell).inc();
-                return null;
-            }
-            newTablets = new HashMap<>();
+            List<Topodata.Tablet> tabletList = ts.getTabletsByRange(ctx, cell);
+            newTablets = new HashMap<>(16);
             for (Topodata.Tablet tablet : tabletList) {
                 if (StringUtils.isEmpty(tablet.getKeyspace())) {
                     continue;
@@ -151,18 +142,7 @@ public class TopologyWatcher {
             return newTablets;
         }
 
-        List<Topodata.TabletAlias> tablets;
-        try {
-            tablets = ts.getTabletAliasByCell(ctx, cell);
-        } catch (TopoException e) {
-            if (TopoException.isErrType(e, TopoExceptionCode.NO_NODE)) {
-                log.warn("getTabletAliasByCell error,cause by" + e.getMessage());
-                return null;
-            }
-            log.error("Build Tablets fail,current ksSet=" + ksSet, e);
-            TopologyCollector.getErrorCounter().labels(cell).inc();
-            return null;
-        }
+        List<Topodata.TabletAlias> tablets = ts.getTabletAliasByCell(ctx, cell);
         if (CollectionUtils.isEmpty(tablets)) {
             return null;
         }
@@ -211,13 +191,7 @@ public class TopologyWatcher {
                 }
             });
         }
-        try {
-            countDownLatch.await();
-        } catch (InterruptedException e) {
-            log.error(e.getMessage(), e);
-            TopologyCollector.getErrorCounter().labels(cell).inc();
-        }
-
+        countDownLatch.await(10, TimeUnit.SECONDS);
         return newTablets;
     }
 

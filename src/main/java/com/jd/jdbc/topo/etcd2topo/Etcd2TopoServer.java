@@ -53,7 +53,7 @@ public class Etcd2TopoServer implements TopoConnection {
 
     private static final String END_TAG_OF_RANGE_SEARCH = "1";
 
-    private static final int DEFALUT_TIMEOUT = 3;
+    private static final long DEFALUT_TIMEOUT = 10L;
 
     private static final ConcurrentMap<String, Watch.Watcher> WATCHER_MAP = new ConcurrentHashMap<>(16);
 
