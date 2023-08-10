@@ -39,7 +39,7 @@ public class TimezoneConfigureTest extends TestSuite {
 
     @Test
     public void testNoServerTimezone() throws SQLException {
-        thrown.expect(IllegalArgumentException.class);
+        thrown.expect(SQLException.class);
         thrown.expectMessage("serverTimezone is not found in jdbc url");
         String url = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         url = url.replaceAll("&serverTimezone=[^&]*", "");
@@ -49,7 +49,7 @@ public class TimezoneConfigureTest extends TestSuite {
 
     @Test
     public void testParameterNoValue() throws SQLException {
-        thrown.expect(IllegalArgumentException.class);
+        thrown.expect(SQLException.class);
         thrown.expectMessage("serverTimezone is not found in jdbc url");
         String url = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         url = url.replaceAll("&serverTimezone=[^&]*", "&serverTimezone=");
@@ -59,7 +59,7 @@ public class TimezoneConfigureTest extends TestSuite {
 
     @Test
     public void testInvalidServerTimezone() throws SQLException {
-        thrown.expect(IllegalArgumentException.class);
+        thrown.expect(SQLException.class);
         thrown.expectMessage("invalid serverTimezone in jdbc url");
         String url = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         url = url.replaceAll("&serverTimezone=[^&]*", "&serverTimezone=ST");

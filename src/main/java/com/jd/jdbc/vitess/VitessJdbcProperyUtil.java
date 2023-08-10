@@ -17,10 +17,11 @@ limitations under the License.
 package com.jd.jdbc.vitess;
 
 import com.jd.jdbc.common.Constant;
-import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
+import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Topodata;
 import java.nio.charset.Charset;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -57,42 +58,45 @@ public class VitessJdbcProperyUtil {
         }
     }
 
-    public static void checkCredentials(String path, Properties info) {
+    public static void checkCredentials(String path, Properties info) throws SQLException {
         if (!info.containsKey(VitessPropertyKey.USER.getKeyName()) || !info.containsKey(VitessPropertyKey.PASSWORD.getKeyName())) {
-            throw new IllegalArgumentException("no user or password: '" + path + "'");
+            throw new SQLException("no user or password: '" + path + "'");
         }
     }
 
-    public static void checkCell(Properties info) throws IllegalArgumentException {
+    public static void checkCell(Properties info) throws SQLException {
         if (info.getProperty("cell") == null) {
-            throw new IllegalArgumentException("no cell found in jdbc url");
+            throw new SQLException("no cell found in jdbc url");
         }
         String[] cells = info.getProperty("cell").split(",");
         if (cells.length < 1) {
-            throw new IllegalArgumentException("no cell found in jdbc url");
+            throw new SQLException("no cell found in jdbc url");
         }
     }
 
-    public static void checkSchema(String path) {
+    public static void checkSchema(String path) throws SQLException {
         if (path == null || !path.startsWith("/")) {
-            throw new IllegalArgumentException("wrong database name path: '" + path + "'");
+            throw new SQLException("wrong database name path: '" + path + "'");
+        }
+        if (path.equals("/")) {
+            throw new SQLException(" database name can not null");
         }
     }
 
-    public static void checkServerTimezone(Properties info) {
+    public static void checkServerTimezone(Properties info) throws SQLException {
         String canonicalTimezone = info.getProperty(VitessPropertyKey.SERVER_TIMEZONE.getKeyName());
         if (canonicalTimezone == null) {
-            throw new IllegalArgumentException("serverTimezone is not found in jdbc url");
+            throw new SQLException("serverTimezone is not found in jdbc url");
         }
         if (!"GMT".equalsIgnoreCase(canonicalTimezone) && "GMT".equals(TimeZone.getTimeZone(canonicalTimezone).getID())) {
-            throw new IllegalArgumentException("invalid serverTimezone in jdbc url");
+            throw new SQLException("invalid serverTimezone in jdbc url");
         }
     }
 
-    public static void checkCharacterEncoding(Properties properties) {
+    public static void checkCharacterEncoding(Properties properties) throws SQLException {
         String characterEncoding = properties.getProperty(VitessPropertyKey.characterEncoding.getKeyName());
         if (StringUtils.isEmpty(characterEncoding)) {
-            throw new IllegalArgumentException("characterEncoding is not found in jdbc url");
+            throw new SQLException("characterEncoding is not found in jdbc url");
         }
         String csn = Charset.defaultCharset().name();
         boolean characterEncodingFlag = "UTF-8".equalsIgnoreCase(characterEncoding) || "UTF8".equalsIgnoreCase(characterEncoding);
@@ -100,7 +104,7 @@ public class VitessJdbcProperyUtil {
         if (characterEncodingFlag && csnFlag) {
             return;
         }
-        throw new IllegalArgumentException("Only supports utf8 encoding, please check characterEncoding in jdbcurl and file.encoding in environment variable,characterEncoding = " + characterEncoding + ", file.encoding=" + csn);
+        throw new SQLException("Only supports utf8 encoding, please check characterEncoding in jdbcurl and file.encoding in environment variable,characterEncoding = " + characterEncoding + ", file.encoding=" + csn);
     }
 
     public static String getDefaultKeyspace(Properties props) {
@@ -108,8 +112,8 @@ public class VitessJdbcProperyUtil {
         return keySpaces.get(0);
     }
 
-    public static Topodata.TabletType getTabletType(Properties props) {
-        String role = getRole(props);
+    public static Topodata.TabletType getTabletType(Properties props) throws SQLException {
+        String role = props.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
         switch (role.toLowerCase()) {
             case Constant.DRIVER_PROPERTY_ROLE_RW:
                 return Topodata.TabletType.MASTER;
@@ -118,7 +122,7 @@ public class VitessJdbcProperyUtil {
             case Constant.DRIVER_PROPERTY_ROLE_RO:
                 return Topodata.TabletType.RDONLY;
             default:
-                throw new IllegalArgumentException("'role=" + role + "' " + "error in jdbc url");
+                throw new SQLException("'role=" + role + "' " + "error in jdbc url");
         }
     }
 

@@ -19,10 +19,10 @@ package com.jd.jdbc.vitess;
 import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.Utils;
-import static com.jd.jdbc.vitess.VitessJdbcProperyUtil.checkSchema;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.SQLException;
 import java.util.Properties;
 
 public class VitessJdbcUrlParser {
@@ -31,8 +31,8 @@ public class VitessJdbcUrlParser {
 
     public static final String JDBC_VITESS_PREFIX = JDBC_PREFIX + "vitess:";
 
-    public static Properties parse(String url, Properties info) {
-        if (!url.startsWith(JDBC_VITESS_PREFIX)) {
+    public static Properties parse(String url, Properties info) throws SQLException {
+        if (!acceptsUrl(url)) {
             throw new IllegalArgumentException("'" + JDBC_VITESS_PREFIX + "' prefix is mandatory");
         }
 
@@ -54,7 +54,7 @@ public class VitessJdbcUrlParser {
         parsedProperties.setProperty("port", String.valueOf(uri.getPort()));
 
         String path = uri.getPath();
-        checkSchema(path);
+        VitessJdbcProperyUtil.checkSchema(path);
 
         parsedProperties.setProperty(Constant.DRIVER_PROPERTY_SCHEMA, path.substring(1));
 

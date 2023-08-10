@@ -36,6 +36,7 @@ import io.prometheus.client.Collector;
 import io.vitess.proto.Topodata;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,7 @@ public class EtcdTopoServerTest extends TestSuite {
     }
 
     @Before
-    public void init() throws TopoException {
+    public void init() throws TopoException, SQLException {
         String connectionUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         Properties prop = VitessJdbcUrlParser.parse(connectionUrl, null);
         keyspace = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
