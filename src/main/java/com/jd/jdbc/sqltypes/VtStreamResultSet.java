@@ -21,6 +21,7 @@ package com.jd.jdbc.sqltypes;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.vitess.VitessStatement;
 import io.vitess.proto.Query;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -69,8 +70,8 @@ public class VtStreamResultSet implements VtRowList {
     }
 
     @Override
-    public long getInsertID() {
-        return 0;
+    public BigInteger getInsertID() {
+        return BigInteger.valueOf(0);
     }
 
     @Override

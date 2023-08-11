@@ -36,6 +36,7 @@ import io.vitess.proto.Topodata;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Date;
@@ -312,6 +313,10 @@ public class VitessPreparedStatement extends AbstractVitessPreparedStatement {
         }
         if (x instanceof Integer) {
             setInt(parameterIndex, (Integer) x);
+            return;
+        }
+        if (x instanceof BigInteger) {
+            setBigDecimal(parameterIndex, new BigDecimal((BigInteger) x));
             return;
         }
         if (x instanceof Long) {
