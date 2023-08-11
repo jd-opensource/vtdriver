@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
@@ -1144,7 +1145,7 @@ public class HealthCheckTest extends TestSuite {
 
     private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {
         for (String cell : cells) {
-            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName);
+            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName, TimeUnit.SECONDS);
         }
     }
 

@@ -60,14 +60,14 @@ public enum TopologyWatcherManager {
         scheduledExecutor.setRemoveOnCancelPolicy(true);
     }
 
-    public void startWatch(IContext ctx, TopoServer topoServer, String cell, String tabletKeyspace) {
+    public void startWatch(IContext ctx, TopoServer topoServer, String cell, String tabletKeyspace, TimeUnit timeUnit) {
         lock.lock();
         try {
             String serverAddress = topoServer.getServerAddress();
             if (!globalKeyspacesMap.containsKey(serverAddress)) {
                 globalKeyspacesMap.put(serverAddress, new HashSet<>());
 
-                startTickerReloadCell(ctx, topoServer, TimeUnit.MINUTES);
+                startTickerReloadCell(ctx, topoServer, timeUnit);
             }
             globalKeyspacesMap.get(serverAddress).add(tabletKeyspace);
 
