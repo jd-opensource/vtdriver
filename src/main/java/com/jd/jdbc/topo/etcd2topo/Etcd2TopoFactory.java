@@ -93,6 +93,8 @@ public class Etcd2TopoFactory implements TopoFactory {
             .keepaliveTimeout(Duration.ofSeconds(10L))
             .keepaliveTime(Duration.ofSeconds(10L))
             .keepaliveWithoutCalls(true)
+            .connectTimeout(Duration.ofSeconds(5))
+            .waitForReady(false)
             .executorService(TabletNettyExecutorService.getNettyExecutorService()).build();
 
         Etcd2TopoServer etcd2TopoServer = new Etcd2TopoServer();
