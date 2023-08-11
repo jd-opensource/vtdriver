@@ -119,4 +119,34 @@ public class LastInsertIdTest extends TestSuite {
             lastInsertId(stmt, expectedValue, 1, true);
         }
     }
+
+    @Test
+    @Ignore
+    public void testInsertDuplicateKeyValuesBigInteger() throws SQLException {
+        BigInteger expectedValue = new BigInteger("17000098931012360000");
+        String insertSql = "insert into t_bigint_id (id,pin,val) values(17000098931012360000, 123, '11')";
+        String insertDuplicateSql = "insert into t_bigint_id(id,pin) values(17000098931012360000, 123) on duplicate key update val='222'";
+        String selectSql = "select pin,val from t_bigint_id where id=17000098931012360000";
+        // init data
+        try (Statement stmt = driverConnection.createStatement()) {
+            stmt.executeUpdate("delete from t_bigint_id");
+            stmt.executeUpdate(insertSql);
+        }
+
+        try (Statement stmt = driverConnection.createStatement()) {
+            effectRows = stmt.executeUpdate(insertDuplicateSql, Statement.RETURN_GENERATED_KEYS);
+            ResultSet generatedKey = stmt.getGeneratedKeys();
+            while (generatedKey.next()) {
+                Assert.assertEquals(expectedValue, generatedKey.getObject(1));
+            }
+
+            lastInsertId(stmt, expectedValue, 2, true);
+
+            ResultSet resultSet = stmt.executeQuery(selectSql);
+            while (resultSet.next()) {
+                Assert.assertEquals(123, resultSet.getObject(1));
+                Assert.assertEquals("222", resultSet.getString(2));
+            }
+        }
+    }
 }
