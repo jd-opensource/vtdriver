@@ -72,7 +72,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -122,6 +121,8 @@ public class VitessStatement extends AbstractVitessStatement {
 
     protected boolean retrieveGeneratedKeys = false;
 
+    protected boolean lastQueryIsOnDupKeyUpdate = false;
+
     protected BigInteger lastInsertId = BigInteger.valueOf(-1);
 
     protected List<VtResultSet> batchedGeneratedKeys = null;
@@ -157,6 +158,16 @@ public class VitessStatement extends AbstractVitessStatement {
 
     public void setRetrieveGeneratedKeys(boolean flag) {
         this.retrieveGeneratedKeys = flag;
+    }
+
+    public void setLastQueryIsOnDupKeyUpdate(SQLStatement parseResult, boolean returnGeneratedKeys) {
+        if (returnGeneratedKeys && parseResult instanceof MySqlInsertReplaceStatement) {
+            MySqlInsertReplaceStatement insertStatement = (MySqlInsertReplaceStatement) parseResult;
+            List<SQLExpr> duplicateKeyUpdateList = insertStatement.getDuplicateKeyUpdate();
+            if (duplicateKeyUpdateList != null && !duplicateKeyUpdateList.isEmpty()) {
+                this.lastQueryIsOnDupKeyUpdate = true;
+            }
+        }
     }
 
     public ParseResult parseStatements(String sql) throws SQLException {
@@ -246,6 +257,7 @@ public class VitessStatement extends AbstractVitessStatement {
     }
 
     public void cleanResultSets() throws SQLException {
+        this.lastQueryIsOnDupKeyUpdate = false;
         SQLException exp = null;
         for (VtRowList result : this.resultSets) {
             try {
@@ -415,6 +427,7 @@ public class VitessStatement extends AbstractVitessStatement {
             this.resultSets.add(result);
             return;
         }
+        setLastQueryIsOnDupKeyUpdate(parseResult.getStatement(), returnGeneratedKeys);
 
         this.startSummary(parseResult.getStatement());
 
@@ -462,6 +475,8 @@ public class VitessStatement extends AbstractVitessStatement {
         }
 
         ParseResult parseResult = parseStatements(sql);
+        setLastQueryIsOnDupKeyUpdate(parseResult.getStatement(), returnGeneratedKeys);
+
         this.startSummary(parseResult.getStatement());
 
         try {
@@ -586,9 +601,9 @@ public class VitessStatement extends AbstractVitessStatement {
         List<List<VtResultValue>> rows = new ArrayList<>();
         VtResultSet vtStaticResultSet = new VtResultSet(getGeneratedKeyField(), rows);
         if (!this.resultSets.isEmpty()) {
-            if ((lastInsertId.compareTo(BigInteger.ZERO) != 0) && (numKeys > 0)) {
+            if ((lastInsertId.compareTo(BigInteger.ZERO) > 0) && (numKeys > 0)) {
                 List<VtResultValue> row = new ArrayList<>();
-                row.add(VtResultValue.newVtResultValue(Query.Type.INT64, lastInsertId));
+                row.add(VtResultValue.newVtResultValue(Query.Type.UINT64, lastInsertId));
                 rows.add(row);
             }
         }
@@ -883,6 +898,9 @@ public class VitessStatement extends AbstractVitessStatement {
             }
 
             if (this.batchedGeneratedKeys == null || this.batchedGeneratedKeys.isEmpty()) {
+                if (this.lastQueryIsOnDupKeyUpdate) {
+                    return new VitessResultSet(getGeneratedKeysInternal(1), this.connection);
+                }
                 return new VitessResultSet(getGeneratedKeysInternal(), this.connection);
             }
 
