@@ -63,6 +63,9 @@ public class VtReplaceVariantRefExprVisitor extends MySqlASTVisitorAdapter {
 
     @Override
     public boolean visit(final SQLSelectGroupByClause x) {
+        if (x.getHaving() != null) {
+            x.getHaving().accept(this);
+        }
         return false;
     }
 
