@@ -16,6 +16,7 @@
 
 package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
+import com.jd.jdbc.common.Hex;
 import com.jd.jdbc.sqlparser.SqlParser;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLBooleanExpr;
@@ -43,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.codec.binary.Hex;
 
 
 public class VtRestoreVisitor extends MySqlOutputVisitor {

@@ -19,8 +19,6 @@ limitations under the License.
 package com.jd.jdbc.key;
 
 import com.google.common.primitives.UnsignedLong;
-import com.hierynomus.protocol.commons.buffer.Buffer;
-import com.hierynomus.protocol.commons.buffer.Endian;
 import java.math.BigInteger;
 
 /**
@@ -36,7 +34,7 @@ public final class Uint64key {
     }
 
     // Bytes returns the keyspace id (as bytes) associated with a Uint64Key.
-    public static byte[] bytes(BigInteger i) throws Buffer.BufferException {
+    public static byte[] bytes(BigInteger i) {
         byte[] aa = new byte[8];
         aa[0] = i.shiftRight(56).byteValue();
         aa[1] = i.shiftRight(48).byteValue();
@@ -46,15 +44,6 @@ public final class Uint64key {
         aa[5] = i.shiftRight(16).byteValue();
         aa[6] = i.shiftRight(8).byteValue();
         aa[7] = i.byteValue();
-        return aa;
-    }
-
-    public static byte[] bytes(BigInteger i, Endian endiannes) throws Buffer.BufferException {
-        byte[] aa = new byte[8];
-        Buffer.PlainBuffer plainBuffer = new Buffer.PlainBuffer(8, endiannes);
-        plainBuffer.putRawBytes(new byte[] {((byte) i.shiftRight(56).intValue()), ((byte) i.shiftRight(48).intValue()), ((byte) i.shiftRight(40).intValue()), ((byte) i.shiftRight(32).intValue()),
-            ((byte) i.shiftRight(24).intValue()), ((byte) i.shiftRight(16).intValue()), ((byte) i.shiftRight(8).intValue()), ((byte) i.intValue())});
-        plainBuffer.readRawBytes(aa);
         return aa;
     }
 
