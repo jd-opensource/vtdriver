@@ -18,6 +18,7 @@ package com.jd.jdbc.vitess;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -26,12 +27,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -52,7 +55,7 @@ public class VitessDriverReadWriteSplit extends TestSuite {
 
     protected Connection roConnection;
 
-    protected Connection rtConnection;
+    protected Connection rrmConnection;
 
     @Before
     public void init() throws Exception {
@@ -61,16 +64,12 @@ public class VitessDriverReadWriteSplit extends TestSuite {
         rrConnection = DriverManager.getConnection(baseUrl + "&role=rr");
         rwConnection = DriverManager.getConnection(baseUrl + "&role=rw");
         roConnection = DriverManager.getConnection(baseUrl + "&role=ro");
+        rrmConnection = DriverManager.getConnection(baseUrl + "&role=rrm");
     }
 
     @After
     public void close() throws SQLException {
-        if (rrConnection != null) {
-            rrConnection.close();
-        }
-        if (rwConnection != null) {
-            rwConnection.close();
-        }
+        closeConnection(rrConnection, rwConnection, roConnection, rrmConnection);
     }
 
     @Test
@@ -188,17 +187,57 @@ public class VitessDriverReadWriteSplit extends TestSuite {
     public void test13() throws SQLException {
         thrown.expect(SQLException.class);
         thrown.expectMessage("error in jdbc url");
-        rtConnection = DriverManager.getConnection(baseUrl + "&role=rt");
+        DriverManager.getConnection(baseUrl + "&role=rt");
+    }
+
+    @Test
+    public void test14() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = rrmConnection.createStatement()) {
+            stmt.executeUpdate("delete from test");
+        }
+    }
+
+    @Test
+    public void test15() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = rrmConnection.createStatement()) {
+            stmt.executeUpdate("insert into test (f_tinyint,f_int) values(1,2)");
+        }
+    }
+
+    @Test
+    public void test16() throws SQLException {
+        thrown.expect(SQLException.class);
+        thrown.expectMessage("is not allowed for read only connection");
+        try (Statement stmt = rrmConnection.createStatement()) {
+            stmt.executeUpdate("update test  set f_int = 100 where f_tinyint = 1");
+        }
+    }
+
+    @Test
+    public void test17() throws SQLException {
+        sleep(10);
+        try (Statement stmt = rrmConnection.createStatement()) {
+            ResultSet resultSet;
+            resultSet = stmt.executeQuery("select f_tinyint,f_int from test where f_tinyint = 1");
+            while (resultSet.next()) {
+                Assert.assertEquals(100, resultSet.getInt(2));
+            }
+        }
     }
 
     @Test
     public void concurrencyTest() throws InterruptedException {
         // 交替使用不同账户执行sql
-        final Connection[] conns = new Connection[] {rwConnection, rrConnection, roConnection};
+        final Connection[] conns = new Connection[] {rwConnection, rrConnection, roConnection, rrmConnection};
         final String[] sqls = new String[] {
             "insert into user (id, name) values (null, '%s')",
             "select id, name from user limit 1",
             "select id, name from user limit 2",
+            "select id, name from user limit 3",
         };
         final int numThreads = 4;
         final int count = 200;
@@ -207,12 +246,13 @@ public class VitessDriverReadWriteSplit extends TestSuite {
             0L, TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>());
 
+        AtomicBoolean flag = new AtomicBoolean(true);
         CountDownLatch latch = new CountDownLatch(numThreads);
         for (int i = 0; i < numThreads; i++) {
             final int fi = i;
             service.execute(() -> {
                 for (int k = 0; k < count; k++) {
-                    int randInteger = RandomUtils.nextInt(0, 3);
+                    int randInteger = RandomUtils.nextInt(0, conns.length);
                     String randString = RandomStringUtils.random(10, true, true);
                     Connection conn = conns[randInteger];
                     String sql = sqls[randInteger];
@@ -224,6 +264,7 @@ public class VitessDriverReadWriteSplit extends TestSuite {
                         printInfo("thread" + fi + ", sql" + k + ": " + sql);
                         stmt.execute(sql);
                     } catch (SQLException e) {
+                        flag.set(false);
                         System.out.println(printFail("concurrencyTest: error"));
                         e.printStackTrace();
                     }
@@ -233,6 +274,24 @@ public class VitessDriverReadWriteSplit extends TestSuite {
         }
 
         latch.await(180, TimeUnit.SECONDS);
+        Assert.assertTrue(flag.get());
         printOk("[OK]");
+    }
+
+    @Test
+    @Ignore
+    public void multiKeyspaceTest() throws SQLException, InterruptedException {
+        String sql11 = "select * from plan_test limit 10";
+        PreparedStatement ps11 = rrmConnection.prepareStatement(sql11);
+
+        for (int i = 0; i < 100000000; i++) {
+            try {
+                ResultSet resultSet = ps11.executeQuery();
+                printResult(resultSet);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        TimeUnit.SECONDS.sleep(4000);
     }
 }

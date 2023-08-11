@@ -21,6 +21,7 @@ package com.jd.jdbc.queryservice;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.discovery.TabletHealthCheck;
+import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqltypes.BatchVtResultSet;
@@ -42,7 +43,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public class RetryTabletQueryService implements IQueryService, IHealthCheckQueryService {
@@ -78,7 +78,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).responses;
+        }, RoleUtils.getRoleType(context)).responses;
     }
 
     @Override
@@ -97,7 +97,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).responses;
+        }, RoleUtils.getRoleType(context)).responses;
     }
 
     @Override
@@ -107,7 +107,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
             log.debug("beginExecute --> " + sql);
         }
 
-        boolean inDedicatedConn = reservedID != 0;
+        boolean inDedicatedConn = (reservedID != 0);
         return (BeginVtResultSet) retry(inDedicatedConn, target, (IQueryService qs) -> {
             try {
                 BeginVtResultSet beginVtResultSet = qs.beginExecute(context, target, preQuries, sql, bindVariables, reservedID, options);
@@ -123,7 +123,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).resultSetMessage;
+        }, RoleUtils.getRoleType(context)).resultSetMessage;
     }
 
     @Override
@@ -132,7 +132,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         if (log.isDebugEnabled()) {
             log.debug("execute [" + transactionID + "] --> " + sql);
         }
-        boolean inDedicatedConn = reservedID != 0 || transactionID != 0;
+        boolean inDedicatedConn = (reservedID != 0 || transactionID != 0);
         return (VtResultSet) retry(inDedicatedConn, target, (IQueryService qs) -> {
             try {
                 VtResultSet ret = qs.execute(context, target, sql, bindVariables, transactionID, reservedID, options);
@@ -148,7 +148,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).resultSetMessage;
+        }, RoleUtils.getRoleType(context)).resultSetMessage;
     }
 
     @Override
@@ -185,7 +185,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).resultSetMessage;
+        }, RoleUtils.getRoleType(context)).resultSetMessage;
     }
 
     @Override
@@ -202,7 +202,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                     throw e;
                 }
             }
-        }).resultSetMessage;
+        }, RoleUtils.getRoleType(context)).resultSetMessage;
     }
 
     @Override
@@ -230,7 +230,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         return (Query.ReleaseResponse) retry(inDedicatedConn, target, (IQueryService qs) -> {
             Query.ReleaseResponse ret = qs.release(context, target, transactionID, reservedID);
             return new IInner.InnerResult(false, ret);
-        }).responses;
+        }, RoleUtils.getRoleType(context)).responses;
     }
 
     @Override
@@ -242,7 +242,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         return !context.isDone() && (e instanceof SQLRecoverableException);
     }
 
-    private IInner.InnerResult retry(boolean inTransaction, Query.Target target, IInner inner) throws SQLException {
+    private IInner.InnerResult retry(boolean inTransaction, Query.Target target, IInner inner, RoleType roleType) throws SQLException {
 
         if (inTransaction && target.getTabletType() != Topodata.TabletType.MASTER) {
             throw new SQLException("gateway's query service can only be used for non-transactional queries on replica and rdonly");
@@ -251,7 +251,7 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         Set<String> invalidTablets = new HashSet<>();
 
         for (int i = 0; i < RETRY_COUNT + 1; i++) {
-            List<TabletHealthCheck> typeTablets = getTabletHealthChecks(target);
+            List<TabletHealthCheck> typeTablets = ((TabletGateway) gateway).getHc().getTabletHealthChecks(target, roleType);
 
             if (typeTablets == null || typeTablets.size() == 0) {
                 throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". no valid tablet");
@@ -272,10 +272,12 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
                 }
             }
 
+            // not used for replica till now, so use a simple shuffle().
             TabletHealthCheck tablet = getRandomTablet(tablets);
             if (tablet == null) {
                 throw new SQLException("no available connection");
             }
+
             if (tablet.getQueryService() == null) {
                 invalidTablets.add(TopoProto.tabletAliasString(tablet.getTablet().getAlias()));
                 continue;
@@ -296,28 +298,10 @@ public class RetryTabletQueryService implements IQueryService, IHealthCheckQuery
         throw new SQLException("target: " + HealthCheck.keyFromTarget(target) + ". all tablets are tried, no available connection");
     }
 
-    private List<TabletHealthCheck> getTabletHealthChecks(Query.Target target) {
-        if (target.getShard().isEmpty()) {
-            target = target.toBuilder().setShard("0").build();
-        }
-        List<TabletHealthCheck> typeTablets;
-        if (Objects.equals(Topodata.TabletType.REPLICA, target.getTabletType())) {
-            typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target);
-            if (typeTablets == null || typeTablets.isEmpty()) {
-                typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target.toBuilder().setTabletType(Topodata.TabletType.RDONLY).build());
-            }
-        } else {
-            typeTablets = ((TabletGateway) gateway).getHc().getHealthyTabletStats(target);
-        }
-        return typeTablets;
-    }
-
     private TabletHealthCheck getRandomTablet(List<TabletHealthCheck> tablets) {
-        TabletHealthCheck tablet;
         if (tablets.size() > 1) {
             Collections.shuffle(tablets);
         }
-        tablet = tablets.get(0);
-        return tablet;
+        return tablets.get(0);
     }
 }
