@@ -32,7 +32,7 @@
     "Query": "select col from user where name = 5 order by aa asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -54,7 +54,7 @@
     "Query": "select col from user where name = 1 order by 1 asc",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -224,7 +224,7 @@
     "Query": "select * from user where name = 5 order by col asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -246,7 +246,7 @@
     "Query": "select user.* from user where name = 5 order by user.col asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -268,7 +268,7 @@
     "Query": "select * from user where name = 5 order by user.col asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -302,7 +302,7 @@
     "Query": "select * from user where name = 5 order by user.col collate utf8_general_ci asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -324,7 +324,7 @@
     "Query": "select * from user where name = 5 order by -col1 asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -346,7 +346,7 @@
     "Query": "select * from user where name = 5 order by concat(col, col1) collate utf8_general_ci desc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -368,7 +368,7 @@
     "Query": "select * from user where name = 5 order by name + col collate utf8_general_ci desc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -390,7 +390,7 @@
     "Query": "select col1 from user where name = 1 limit 1",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -544,7 +544,7 @@
         "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1 order by null",
         "Table": "user",
         "Values": [
-          1
+          "INT64(1)"
         ],
         "Vindex": "hash"
       },
@@ -585,7 +585,7 @@
         "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1 order by a asc",
         "Table": "user",
         "Values": [
-          1
+          "INT64(1)"
         ],
         "Vindex": "hash"
       },
@@ -626,7 +626,7 @@
         "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1 order by a asc",
         "Table": "user",
         "Values": [
-          1
+          "INT64(1)"
         ],
         "Vindex": "hash"
       },
@@ -667,7 +667,7 @@
         "Query": "select user.col1 as a, user.col2, user.name from user where user.name = 1 order by RAND()",
         "Table": "user",
         "Values": [
-          1
+          "INT64(1)"
         ],
         "Vindex": "hash"
       },
@@ -935,7 +935,7 @@
     "Query": "select * from user as u join ( select user_id from user_extra where user_id = 5 ) eu on u.name = eu.user_id where u.name = 5 order by eu.user_id asc",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }

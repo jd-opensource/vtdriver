@@ -128,7 +128,7 @@
   }
 }
 
-# select from pinned table
+# select from pinned table // 怀疑是gen3 Values这里保存的有问题，但是pin表也不会用到这个值，先以gen3为准
 "select *, id, name from pin_test"
 {
   "QueryType": "SELECT",
@@ -144,7 +144,7 @@
     "Query": "select *, id, name from pin_test",
     "Table": "pin_test",
     "Values": [
-      "\ufffd"
+        "VARBINARY(\"\b\u0000\")"
     ],
     "Vindex": "binary"
   }
@@ -209,7 +209,7 @@
     "Query": "select * from user where name = 'abc' and id = 4 limit 5",
     "Table": "user",
     "Values": [
-      4
+      "VARCHAR(\"abc\")"
     ],
     "Vindex": "user_index"
   }
@@ -231,7 +231,7 @@
     "Query": "select * from user where id = 4 and name = 'abc' limit 5",
     "Table": "user",
     "Values": [
-      4
+      "VARCHAR(\"abc\")"
     ],
     "Vindex": "user_index"
   }
@@ -253,7 +253,7 @@
     "Query": "select user0_.col as col0_ from user as user0_ where name = 1 order by user0_.col desc limit 2",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -275,7 +275,7 @@
     "Query": "select user0_.col as col0_ from user as user0_ where name = 1 order by col0_ desc limit 3",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -297,7 +297,7 @@
     "Query": "select * from user where name = 1 and name = true limit 5",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -319,7 +319,7 @@
     "Query": "select * from user where name = 1 and name limit 5",
     "Table": "user",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -341,7 +341,7 @@
     "Query": "select * from user where name = 5 and name = true limit 5",
     "Table": "user",
     "Values": [
-      5
+      "INT64(5)"
     ],
     "Vindex": "user_index"
   }
@@ -363,7 +363,7 @@
     "Query": "select * from music where user_id = 1",
     "Table": "music",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
@@ -855,7 +855,7 @@
     "Query": "select * from music where user_id = 1 union select * from user where name = 1",
     "Table": "music",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }

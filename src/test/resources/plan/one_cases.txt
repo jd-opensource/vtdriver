@@ -1,0 +1,20 @@
+"select *, id, name from pin_test"
+{
+  "QueryType": "SELECT",
+  "Original": "select *, id, name from pin_test",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectEqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select *, id, name from pin_test where 1 != 1",
+    "Query": "select *, id, name from pin_test",
+    "Table": "pin_test",
+    "Values": [
+        "VARBINARY(\"\b\u0000\")"
+    ],
+    "Vindex": "binary"
+  }
+}

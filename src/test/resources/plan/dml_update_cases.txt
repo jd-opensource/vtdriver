@@ -37,7 +37,7 @@
     "Query": "update user set val = 1 where name = 'foo'",
     "TableName": "user",
     "Values": [
-      1
+      "VARCHAR(\"foo\")"
     ],
     "Vindex": "user_index"
   }
@@ -60,7 +60,7 @@
     "Query": "update user as user_alias set val = 1 where user_alias.name = 'foo'",
     "TableName": "user",
     "Values": [
-      1
+      "VARCHAR(\"foo\")"
     ],
     "Vindex": "user_index"
   }
@@ -83,7 +83,7 @@
     "Query": "update user set val = 1 where name = 'foo'",
     "TableName": "user",
     "Values": [
-      1
+      "VARCHAR(\"foo\")"
     ],
     "Vindex": "user_index"
   }
@@ -178,7 +178,7 @@
     "Query": "update user set val = 1 where name = 'foo' and id = 1",
     "TableName": "user",
     "Values": [
-      1
+      "VARCHAR(\"foo\")"
     ],
     "Vindex": "user_index"
   }
@@ -201,7 +201,7 @@
     "Query": "update user set val = 1 where name = 'foo' and name = '1'",
     "TableName": "user",
     "Values": [
-      1
+      "VARCHAR(\"foo\")"
     ],
     "Vindex": "user_index"
   }
@@ -299,10 +299,7 @@
     "Query": "update user_extra set val = 1 where user_id in (1, 2)",
     "TableName": "user_extra",
     "Values": [
-      [
-        1,
-        2
-      ]
+      "(INT64(1), INT64(2))"
     ],
     "Vindex": "user_index"
   }
