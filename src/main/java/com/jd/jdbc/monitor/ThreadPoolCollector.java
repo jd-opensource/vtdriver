@@ -16,6 +16,9 @@ limitations under the License.
 
 package com.jd.jdbc.monitor;
 
+
+import com.jd.jdbc.util.threadpool.VtRejectedExecutionHandler;
+
 import io.prometheus.client.Collector;
 import io.prometheus.client.GaugeMetricFamily;
 import java.util.Arrays;
@@ -49,8 +52,15 @@ public final class ThreadPoolCollector extends Collector {
             createGauge("thread_pool_max_size", "thread.pool.max.size", ThreadPoolExecutor::getMaximumPoolSize),
             createGauge("thread_pool_active_size", "thread.pool.active.size", ThreadPoolExecutor::getActiveCount),
             createGauge("thread_pool_thread_count", "thread.pool.thread.count", ThreadPoolExecutor::getPoolSize),
-            createGauge("thread_pool_queue_size", "thread.pool.queue.size", e -> e.getQueue().size())
-        );
+            createGauge("thread_pool_queue_size", "thread.pool.queue.size", e -> e.getQueue().size()),
+            createGauge("thread_pool_queue_remainingCapacity", "thread.pool.queue.remainingCapacity", e -> e.getQueue().remainingCapacity()),
+            createGauge("thread_pool_vtrejected_handler_timeout", "thread.pool.vtrejected.handler.timeout", e -> {
+                if (!(e.getRejectedExecutionHandler() instanceof VtRejectedExecutionHandler)) {
+                    return 0;
+                }
+                Long timeout = ((VtRejectedExecutionHandler) e.getRejectedExecutionHandler()).getTimeout();
+                return Math.toIntExact(timeout);
+            }));
     }
 
     public void add(final String name, final ThreadPoolExecutor executor) {
