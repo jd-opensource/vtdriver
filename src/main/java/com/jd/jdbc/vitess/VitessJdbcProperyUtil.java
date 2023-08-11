@@ -118,6 +118,7 @@ public class VitessJdbcProperyUtil {
             case Constant.DRIVER_PROPERTY_ROLE_RW:
                 return Topodata.TabletType.MASTER;
             case Constant.DRIVER_PROPERTY_ROLE_RR:
+            case Constant.DRIVER_PROPERTY_ROLE_RRM:
                 return Topodata.TabletType.REPLICA;
             case Constant.DRIVER_PROPERTY_ROLE_RO:
                 return Topodata.TabletType.RDONLY;

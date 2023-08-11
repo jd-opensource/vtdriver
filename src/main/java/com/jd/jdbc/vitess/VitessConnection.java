@@ -26,9 +26,11 @@ import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.IParentQueryService;
+import com.jd.jdbc.queryservice.RoleType;
 import com.jd.jdbc.queryservice.TabletDialer;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
+import com.jd.jdbc.session.VitessSession;
 import com.jd.jdbc.sqlparser.ast.statement.SQLCommitStatement;
 import com.jd.jdbc.sqlparser.ast.statement.SQLRollbackStatement;
 import com.jd.jdbc.sqlparser.support.logging.Log;
@@ -102,6 +104,10 @@ public class VitessConnection extends AbstractVitessConnection {
     private Vtgate.Session session;
 
     @Getter
+    @Setter
+    private VitessSession sessionNew;
+
+    @Getter
     private String defaultKeyspace;
 
     public VitessConnection(String url, Properties prop, TopoServer topoServer, Resolver resolver, VSchemaManager vSchemaManager, String defaultKeyspace) throws SQLException {
@@ -112,7 +118,7 @@ public class VitessConnection extends AbstractVitessConnection {
         this.executor = com.jd.jdbc.Executor.getInstance(Utils.getInteger(prop, "vtPlanCacheCapacity"));
         this.vm = vSchemaManager;
         this.ctx = VtContext.withCancel(VtContext.background());
-        this.ctx.setContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY, VitessJdbcProperyUtil.getTabletType(prop));
+        this.ctx.setContextValue(Constant.DRIVER_PROPERTY_ROLE_KEY, getRoleType(prop));
         this.ctx.setContextValue(ContextKey.CTX_TOPOSERVER, topoServer);
         this.ctx.setContextValue(ContextKey.CTX_SCATTER_CONN, resolver.getScatterConn());
         this.ctx.setContextValue(ContextKey.CTX_TX_CONN, resolver.getScatterConn().getTxConn());
@@ -127,6 +133,7 @@ public class VitessConnection extends AbstractVitessConnection {
             .setAutocommit(true)
             .build();
         buildServerSessionPropertiesMap();
+        this.sessionNew = new VitessSession();
         if (log.isDebugEnabled()) {
             log.debug("create VitessConnection");
         }
@@ -487,6 +494,11 @@ public class VitessConnection extends AbstractVitessConnection {
             actualTables.add(actualTable.getActualTableName());
         }
         return actualTables;
+    }
+
+    private RoleType getRoleType(Properties prop) throws SQLException {
+        String role = prop.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
+        return RoleUtils.buildRoleType(role);
     }
 
     public enum ContextKey {

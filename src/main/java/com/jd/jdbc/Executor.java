@@ -33,6 +33,7 @@ import com.jd.jdbc.queryservice.ShardQueryService;
 import com.jd.jdbc.queryservice.StreamIterator;
 import com.jd.jdbc.queryservice.util.RoleUtils;
 import com.jd.jdbc.session.SafeSession;
+import com.jd.jdbc.session.VitessSession;
 import com.jd.jdbc.sqlparser.Comment;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.SqlParser;
@@ -66,6 +67,7 @@ import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
 import io.vitess.proto.Vtgate;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
@@ -404,9 +406,11 @@ public class Executor implements IExecute {
         if (e != null) {
             return;
         }
+
+        VitessSession sessionNew = safeSession.getVitessConnection().getSessionNew();
         Vtgate.Session.Builder sessionBuilder = safeSession.getVitessConnection().getSession().toBuilder().setFoundRows(resultSet.getRowsAffected());
-        if (resultSet.getInsertID() > 0) {
-            sessionBuilder.setLastInsertId(resultSet.getInsertID());
+        if (resultSet.getInsertID().compareTo(BigInteger.ZERO) > 0) {
+            sessionNew.setLastInsertId(resultSet.getInsertID());
         }
         switch (stmtType) {
             case StmtInsert:
@@ -425,6 +429,7 @@ public class Executor implements IExecute {
             default:
                 break;
         }
+        safeSession.getVitessConnection().setSessionNew(sessionNew);
         safeSession.getVitessConnection().setSession(sessionBuilder.build());
     }
 

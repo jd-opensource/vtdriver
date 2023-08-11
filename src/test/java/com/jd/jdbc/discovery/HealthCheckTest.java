@@ -85,7 +85,6 @@ public class HealthCheckTest extends TestSuite {
         HealthCheck.resetHealthCheck();
         TabletDialerAgent.clearTabletCache();
         TopologyWatcherManager.INSTANCE.close();
-
         VtHealthCheckExecutorService.initialize(null, null, null, null);
         VtQueryExecutorService.initialize(null, null, null, null);
     }
@@ -116,7 +115,7 @@ public class HealthCheckTest extends TestSuite {
      */
 
     @Test
-    public void testHealthCheck() throws InterruptedException, IOException {
+    public void testHealthCheck() throws InterruptedException {
 
         printComment("1. HealthCheck Test");
         printComment("a. Get Health");
@@ -155,7 +154,7 @@ public class HealthCheckTest extends TestSuite {
      * 3. testing if tablet can be remove from healthy when receive error message from tablet server
      */
     @Test
-    public void testHealthCheckStreamError() throws IOException, InterruptedException {
+    public void testHealthCheckStreamError() throws InterruptedException {
         printComment("2. HealthCheck Test for Error Stream Message");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -196,7 +195,7 @@ public class HealthCheckTest extends TestSuite {
      * 3. testing if changing the type of tablet to primary;
      */
     @Test
-    public void testHealthCheckExternalReparent() throws IOException, InterruptedException {
+    public void testHealthCheckExternalReparent() throws InterruptedException {
         printComment("3. HealthCheck Test one tablet External Reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -242,7 +241,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckTwoExternalReparent() throws IOException, InterruptedException {
+    public void testHealthCheckTwoExternalReparent() throws InterruptedException {
         printComment("4. HealthCheck Test two tablets External Reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -296,7 +295,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckVerifiesTabletAlias() throws IOException, InterruptedException {
+    public void testHealthCheckVerifiesTabletAlias() throws InterruptedException {
         printComment("5. HealthCheck Test receive a mismatch tablet info");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -325,7 +324,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckRemoveTabletAfterReparent() throws IOException, InterruptedException {
+    public void testHealthCheckRemoveTabletAfterReparent() throws InterruptedException {
         printComment("6. HealthCheck Test remove tablet after reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -378,7 +377,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckOnNextBeforeRemove() throws IOException, InterruptedException {
+    public void testHealthCheckOnNextBeforeRemove() throws InterruptedException {
         printComment("6a. HealthCheck Test onNext before remove tablet");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -413,7 +412,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckOnNextAfterRemove() throws IOException, InterruptedException {
+    public void testHealthCheckOnNextAfterRemove() throws InterruptedException {
         printComment("6b. HealthCheck Test onNext after remove tablet");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -448,7 +447,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthCheckTimeout() throws IOException, InterruptedException {
+    public void testHealthCheckTimeout() throws InterruptedException {
         printComment("7. HealthCheck Test when health check timeout");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -495,7 +494,7 @@ public class HealthCheckTest extends TestSuite {
      * @throws InterruptedException
      */
     @Test
-    public void testGetHealthyTablet() throws IOException, InterruptedException {
+    public void testGetHealthyTablet() throws InterruptedException {
         printComment("9. HealthCheck Test the functionality of getHealthyTabletStats");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -628,7 +627,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testPrimaryInOtherCell() throws TopoException, IOException, InterruptedException {
+    public void testPrimaryInOtherCell() throws TopoException, InterruptedException {
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
 
@@ -655,7 +654,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testReplicaInOtherCell() throws TopoException, IOException, InterruptedException {
+    public void testReplicaInOtherCell() throws TopoException, InterruptedException {
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
 
@@ -696,7 +695,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testGetStandbyTablet() throws IOException, InterruptedException {
+    public void testGetStandbyTablet() throws InterruptedException {
         printComment("12. HealthCheck Test get healthy tablet maybe standby");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -749,7 +748,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testUnhealthyReplicaAsSecondsBehind() throws IOException, InterruptedException {
+    public void testUnhealthyReplicaAsSecondsBehind() throws InterruptedException {
         printComment("13. HealthCheck Test get healthy tablet maybe standby");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -780,7 +779,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testMysqlPort0to3358() throws IOException, InterruptedException {
+    public void testMysqlPort0to3358() throws InterruptedException {
         printComment("14. HealthCheck Test in Tablet MySQL port changed from 0 to 3358");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -815,7 +814,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testMysqlPort3358to0() throws IOException, InterruptedException {
+    public void testMysqlPort3358to0() throws InterruptedException {
         printComment("15. HealthCheck Test in Tablet MySQL port changed from 3358 to 0");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -852,7 +851,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testDoubleMaster() throws IOException, InterruptedException {
+    public void testDoubleMaster() throws InterruptedException {
         printComment("16. double master one no serving");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -884,7 +883,7 @@ public class HealthCheckTest extends TestSuite {
         Thread.sleep(200);
 
         printComment("e. Modify old master Tablet to no serving");
-        sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, false, 0, 0.5, 0);
+        sendOnErrorMessage(mockTablet);
         Thread.sleep(200);
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
@@ -931,7 +930,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthyChecksumSetBehindMaster() throws IOException, InterruptedException {
+    public void testHealthyChecksumSetBehindMaster() throws InterruptedException {
         HealthCheck hc = getHealthCheck();
         // add tablet
         String keyInHealthy = "k.s.replica";
@@ -1000,7 +999,7 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthyConcurrentModificationException() throws InterruptedException, IOException {
+    public void testHealthyConcurrentModificationException() throws InterruptedException {
         HealthCheck hc = getHealthCheck();
 
         String keyspace = "k";
@@ -1078,7 +1077,7 @@ public class HealthCheckTest extends TestSuite {
         }
     }
 
-    private HealthCheck getHealthCheck() {
+    protected HealthCheck getHealthCheck() {
         HealthCheck hc = HealthCheck.INSTANCE;
         Assert.assertEquals(0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals(0, hc.getHealthyCopy().size());
@@ -1096,11 +1095,16 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong realtime stats", expectStats, actualTabletHealthCheck.getStats());
     }
 
-    private MockTablet buildMockTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type) throws IOException {
+    protected MockTablet buildMockTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type) {
         String serverName = InProcessServerBuilder.generateName();
         BlockingQueue<MockQueryServer.HealthCheckMessage> healthMessage = new ArrayBlockingQueue<>(2);
         MockQueryServer queryServer = new MockQueryServer(healthMessage);
-        Server server = InProcessServerBuilder.forName(serverName).directExecutor().addService(queryServer).build().start();
+        Server server = null;
+        try {
+            server = InProcessServerBuilder.forName(serverName).directExecutor().addService(queryServer).build().start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         grpcCleanup.register(server);
 
@@ -1142,16 +1146,24 @@ public class HealthCheckTest extends TestSuite {
         return Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(type).build();
     }
 
-    private void sendOnNextMessage(MockTablet mockTablet, Topodata.TabletType type, boolean isServing, int reparentedTimestamp, double cpuUsage, int secondsBehindMaster) throws InterruptedException {
+    protected void sendOnNextMessage(MockTablet mockTablet, Topodata.TabletType type, boolean isServing, int reparentedTimestamp, double cpuUsage, int secondsBehindMaster) {
         Query.Target target = createTarget(type);
         Query.StreamHealthResponse streamHealthResponse = createStreamHealthResponse(mockTablet.getTablet().getAlias(), target, isServing, reparentedTimestamp, cpuUsage, secondsBehindMaster);
         MockQueryServer.HealthCheckMessage message = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Next, streamHealthResponse);
-        mockTablet.getHealthMessage().put(message);
+        try {
+            mockTablet.getHealthMessage().put(message);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private void sendOnErrorMessage(MockTablet mockTablet) throws InterruptedException {
+    protected void sendOnErrorMessage(MockTablet mockTablet) {
         MockQueryServer.HealthCheckMessage error = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Error, null);
-        mockTablet.getHealthMessage().put(error);
+        try {
+            mockTablet.getHealthMessage().put(error);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @AllArgsConstructor

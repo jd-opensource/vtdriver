@@ -24,6 +24,7 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.monitor.HealthCheckCollector;
 import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.IQueryService;
+import com.jd.jdbc.queryservice.RoleType;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
@@ -165,6 +166,25 @@ public enum HealthCheck {
             return getHealthyTabletStats(target.toBuilder().setTabletType(Topodata.TabletType.REPLICA).build());
         }
         return healthyTabletStats;
+    }
+
+    public List<TabletHealthCheck> getTabletHealthChecks(final Query.Target target, final RoleType roleType) {
+        Query.Target queryTarget = target;
+        if (target.getShard().isEmpty()) {
+            queryTarget = target.toBuilder().setShard("0").build();
+        }
+        List<TabletHealthCheck> tablets = this.getHealthyTabletStats(queryTarget);
+        if (CollectionUtils.isEmpty(tablets) && Objects.equals(Topodata.TabletType.REPLICA, queryTarget.getTabletType())) {
+            Topodata.TabletType[] tabletTypes = roleType.getTabletTypes();
+            int i = 1;
+            while (CollectionUtils.isEmpty(tablets) && i < tabletTypes.length) {
+                Topodata.TabletType tabletType = tabletTypes[i];
+                queryTarget = queryTarget.toBuilder().setTabletType(tabletType).build();
+                tablets = this.getHealthyTabletStats(queryTarget);
+                i++;
+            }
+        }
+        return tablets;
     }
 
     public List<TabletHealthCheck> getHealthyTabletStats(Query.Target target) {

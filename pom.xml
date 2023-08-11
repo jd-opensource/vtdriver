@@ -59,6 +59,7 @@
         <cglib.version>3.2.10</cglib.version>
         <grpc.testing.version>1.45.1</grpc.testing.version>
         <grpc.mockserver.version>1.97.1</grpc.mockserver.version>
+        <commons-collections.version>3.2.2</commons-collections.version>
     </properties>
 
     <dependencies>
@@ -226,6 +227,12 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>${commons-collections.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

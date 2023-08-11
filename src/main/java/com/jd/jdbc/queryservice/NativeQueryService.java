@@ -43,6 +43,7 @@ import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.prometheus.client.Histogram;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
+import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -490,7 +491,7 @@ public class NativeQueryService implements IQueryService {
             ret.setRowsAffected(statement.getUpdateCount());
             ResultSet resultSet = statement.getGeneratedKeys();
             if (resultSet.next()) {
-                ret.setInsertID(resultSet.getLong(1));
+                ret.setInsertID(resultSet.getObject(1, BigInteger.class));
             }
         }
         return ret;

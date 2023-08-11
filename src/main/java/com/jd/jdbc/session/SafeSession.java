@@ -64,6 +64,7 @@ public class SafeSession {
         }
         SafeSession safeSession = new SafeSession();
         safeSession.setVitessConnection(new VitessConnection(vitessConnection.getResolver(), sessn));
+        safeSession.vitessConnection.setSessionNew(vitessConnection.getSessionNew());
         return safeSession;
     }
 
@@ -85,6 +86,7 @@ public class SafeSession {
     public void resetTx() {
         this.lock.lock();
         try {
+            VitessSession currentSessionNew = this.vitessConnection.getSessionNew();
             Vtgate.Session.Builder resetTxSessionBuilder = this.vitessConnection.getSession().toBuilder();
             this.mustRollback = false;
             this.autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
@@ -97,6 +99,7 @@ public class SafeSession {
                 resetTxSessionBuilder.clearPostSessions();
             }
             this.vitessConnection.setSession(resetTxSessionBuilder.build());
+            this.vitessConnection.setSessionNew(currentSessionNew);
         } finally {
             this.lock.unlock();
         }
@@ -108,6 +111,7 @@ public class SafeSession {
     public void reset() {
         this.lock.lock();
         try {
+            VitessSession currentSessionNew = this.vitessConnection.getSessionNew();
             Vtgate.Session.Builder resetSessionBuilder = this.vitessConnection.getSession().toBuilder();
             this.mustRollback = false;
             this.autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
@@ -118,6 +122,7 @@ public class SafeSession {
             resetSessionBuilder.clearPreSessions();
             resetSessionBuilder.clearPostSessions();
             this.vitessConnection.setSession(resetSessionBuilder.build());
+            this.vitessConnection.setSessionNew(currentSessionNew);
         } finally {
             this.lock.unlock();
         }
@@ -267,6 +272,7 @@ public class SafeSession {
                 case NORMAL:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getShardSessionsList());
                     this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearShardSessions().addAllShardSessions(shardSessionList).build());
+                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
 
                     // isSingle is enforced only for normmal commit order operations.
                     if (this.isSingleDb(txMode) && this.vitessConnection.getSession().getShardSessionsCount() > 1) {
@@ -277,10 +283,12 @@ public class SafeSession {
                 case PRE:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getPreSessionsList());
                     this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearPreSessions().addAllPreSessions(shardSessionList).build());
+                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
                     break;
                 case POST:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getPostSessionsList());
                     this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearPostSessions().addAllPostSessions(shardSessionList).build());
+                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
                     break;
                 default:
                     throw new SQLException("BUG: SafeSession.AppendOrUpdate: unexpected commitOrder");

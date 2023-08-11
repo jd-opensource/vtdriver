@@ -142,6 +142,14 @@ public abstract class TestSuite extends TestSuitePrinter {
         return env.getKeyspace();
     }
 
+    public void sleepMillisSeconds(long second) {
+        try {
+            TimeUnit.MILLISECONDS.sleep(second);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     protected String getUser(TestSuiteEnv env) {
         return env.getUser();
     }

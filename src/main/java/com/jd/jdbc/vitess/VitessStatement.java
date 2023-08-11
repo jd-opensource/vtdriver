@@ -122,7 +122,7 @@ public class VitessStatement extends AbstractVitessStatement {
 
     protected boolean retrieveGeneratedKeys = false;
 
-    protected long lastInsertId = -1;
+    protected BigInteger lastInsertId = BigInteger.valueOf(-1);
 
     protected List<VtResultSet> batchedGeneratedKeys = null;
 
@@ -309,12 +309,12 @@ public class VitessStatement extends AbstractVitessStatement {
             if (result != null) {
                 this.lastInsertId = result.getInsertID();
             } else {
-                this.lastInsertId = 0;
+                this.lastInsertId = BigInteger.ZERO;
             }
             return new VitessResultSet(result, this.connection);
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             errorCount(sql, bindVariableMap, e);
             throw e;
         } finally {
@@ -337,7 +337,7 @@ public class VitessStatement extends AbstractVitessStatement {
             return new VitessResultSet(resultSets.get(0), this.connection);
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             throw e;
         }
     }
@@ -364,12 +364,12 @@ public class VitessStatement extends AbstractVitessStatement {
                 this.lastInsertId = resultSets.get(0).getInsertID();
                 return (int) resultSets.get(0).getRowsAffected();
             } else {
-                this.lastInsertId = 0;
+                this.lastInsertId = BigInteger.ZERO;
                 return 0;
             }
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             throw e;
         }
     }
@@ -390,12 +390,12 @@ public class VitessStatement extends AbstractVitessStatement {
                 return new VitessResultSet(this.resultSets.get(0), this.connection);
             }
             this.resultSets.add(executor.streamExecute(ctx, "", SafeSession.newSafeSession(this.connection), parseResult.schema, parseResult.statement, bindVariableMap));
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
 
             return new VitessResultSet(this.resultSets.get(0), this.connection);
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             errorCount(sql, bindVariableMap, e);
             throw e;
         } finally {
@@ -431,12 +431,12 @@ public class VitessStatement extends AbstractVitessStatement {
             if (!this.resultSets.isEmpty()) {
                 this.lastInsertId = resultSets.get(resultSets.size() - 1).getInsertID();
             } else {
-                this.lastInsertId = 0;
+                this.lastInsertId = BigInteger.ZERO;
             }
             return;
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             errorCount(sql, bindVariableMap, e);
             throw e;
         } finally {
@@ -474,12 +474,12 @@ public class VitessStatement extends AbstractVitessStatement {
                 this.lastInsertId = result.getInsertID();
                 return (int) result.getRowsAffected();
             } else {
-                this.lastInsertId = 0;
+                this.lastInsertId = BigInteger.ZERO;
                 return 0;
             }
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             errorCount(sql, bindVariableMap, e);
             throw e;
         } finally {
@@ -527,12 +527,12 @@ public class VitessStatement extends AbstractVitessStatement {
                 }
                 return updateCounts;
             } else {
-                this.lastInsertId = 0;
+                this.lastInsertId = BigInteger.ZERO;
                 return new int[0];
             }
         } catch (SQLException e) {
             cleanResultSets();
-            this.lastInsertId = 0;
+            this.lastInsertId = BigInteger.ZERO;
             throw e;
         } finally {
             clearBatchInternal();
@@ -582,15 +582,13 @@ public class VitessStatement extends AbstractVitessStatement {
         if (numKeys > 1) {
             throw new SQLException("does not support insert multiple rows in one sql statement");
         }
-        long generatedKey = lastInsertId;
+
         List<List<VtResultValue>> rows = new ArrayList<>();
         VtResultSet vtStaticResultSet = new VtResultSet(getGeneratedKeyField(), rows);
         if (!this.resultSets.isEmpty()) {
-            if (generatedKey < 0) {
-                throw new SQLException("generatedKey error");
-            }
-            if (generatedKey != 0 && (numKeys > 0)) {
-                List<VtResultValue> row = Collections.singletonList(VtResultValue.newVtResultValue(Query.Type.UINT64, BigInteger.valueOf(generatedKey)));
+            if ((lastInsertId.compareTo(BigInteger.ZERO) != 0) && (numKeys > 0)) {
+                List<VtResultValue> row = new ArrayList<>();
+                row.add(VtResultValue.newVtResultValue(Query.Type.INT64, lastInsertId));
                 rows.add(row);
             }
         }
@@ -1073,7 +1071,7 @@ public class VitessStatement extends AbstractVitessStatement {
         String alias = selectItem.getAlias();
 
         String methodName = "";
-        long lastInsertId = -1L;
+        BigInteger lastInsertId = BigInteger.valueOf(-1);
         if (expr instanceof SQLMethodInvokeExpr) {
             methodName = ((SQLMethodInvokeExpr) expr).getMethodName();
             if (SQLUtils.nameEquals(methodName, FUNCATION_LAST_INSERT_ID)) {
@@ -1082,17 +1080,17 @@ public class VitessStatement extends AbstractVitessStatement {
                     return Boolean.FALSE;
                 }
                 methodName += "()";
-                lastInsertId = this.connection.getSession().getLastInsertId();
+                lastInsertId = this.connection.getSessionNew().getLastInsertId();
             }
         } else if (expr instanceof SQLVariantRefExpr) {
             String name = ((SQLVariantRefExpr) expr).getName();
             if (SQLUtils.nameEquals(name, FUNCATION_IDENTITY)) {
                 methodName = name;
-                lastInsertId = this.connection.getSession().getLastInsertId();
+                lastInsertId = this.connection.getSessionNew().getLastInsertId();
             }
         }
 
-        if (!StringUtil.isNullOrEmpty(methodName) && lastInsertId != -1L) {
+        if (!StringUtil.isNullOrEmpty(methodName) && !BigInteger.valueOf(-1).equals(lastInsertId)) {
             List<List<VtResultValue>> rows = new ArrayList<>();
             List<VtResultValue> valueList = new ArrayList<>();
             valueList.add(VtResultValue.newVtResultValue(Query.Type.UINT64, lastInsertId));

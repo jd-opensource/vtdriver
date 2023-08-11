@@ -82,9 +82,7 @@ public class MockQueryServer extends QueryGrpc.QueryImplBase {
     private void notifyAll(HealthCheckMessage message) {
         switch (message.getMessageType()) {
             case Close:
-                observers.forEach(observer -> {
-                    observer.onCompleted();
-                });
+                observers.forEach(StreamObserver::onCompleted);
                 System.out.println("server: receive an ending message, complete stream connection");
                 observers.clear();
                 break;
@@ -103,7 +101,8 @@ public class MockQueryServer extends QueryGrpc.QueryImplBase {
                         e.printStackTrace();
                     }
                 });
-                System.out.println("server: receive message: " + message.getMessage());
+                System.out.printf("server: receive message:  keyspace:%s, shard:%s, tablet_type:%s, cell:%s, uid:%s\n", message.getMessage().getTarget().getKeyspace(), message.getMessage().getTarget().getShard(),
+                    message.getMessage().getTarget().getTabletType(), message.getMessage().getTabletAlias().getCell(), message.getMessage().getTabletAlias().getUid());
         }
     }
 
