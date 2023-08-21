@@ -113,24 +113,6 @@ public abstract class TestSuite extends TestSuitePrinter {
         return testCaseList;
     }
 
-    public static void printResult(ResultSet resultSet) throws SQLException {
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
-        for (int i = 0; i < columnCount; i++) {
-            System.out.print(metaData.getColumnLabel(i + 1) + " ");
-        }
-        System.out.println();
-        int count = 0;
-        while (resultSet.next()) {
-            for (int i = 0; i < columnCount; i++) {
-                System.out.print(resultSet.getObject(i + 1) + " ");
-            }
-            count++;
-            System.out.println();
-        }
-        System.out.println("count:" + count);
-    }
-
     protected static String getConnectionUrl(TestSuiteEnv env) {
         return env.getDevConnectionUrl();
     }
