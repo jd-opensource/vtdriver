@@ -123,10 +123,15 @@ public class MockTablet {
         return tabletBuilder.build();
     }
 
-    public static void closeQueryService(MockTablet... tablets) throws InterruptedException {
+    public static void closeQueryService(MockTablet... tablets)  {
         MockQueryServer.HealthCheckMessage close = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Close, null);
         for (MockTablet tablet : tablets) {
-            tablet.getHealthMessage().put(close);
+            try {
+                tablet.getHealthMessage().put(close);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            TabletDialerAgent.close(tablet.getTablet());
         }
     }
 
