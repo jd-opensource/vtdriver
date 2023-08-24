@@ -46,9 +46,7 @@ import com.jd.jdbc.vitess.metadata.CachedDatabaseMetaData;
 import com.jd.jdbc.vitess.metadata.VitessDatabaseMetaData;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import com.mysql.cj.jdbc.JdbcConnection;
-import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -101,11 +99,7 @@ public class VitessConnection extends AbstractVitessConnection {
 
     @Getter
     @Setter
-    private Vtgate.Session session;
-
-    @Getter
-    @Setter
-    private VitessSession sessionNew;
+    private VitessSession session;
 
     @Getter
     private String defaultKeyspace;
@@ -125,21 +119,16 @@ public class VitessConnection extends AbstractVitessConnection {
         this.ctx.setContextValue(ContextKey.CTX_VSCHEMA_MANAGER, this.vm);
 
         this.defaultKeyspace = defaultKeyspace;
-
-        this.session = Vtgate.Session.newBuilder()
-            .setOptions(Query.ExecuteOptions.newBuilder()
-                .setIncludedFields(Query.ExecuteOptions.IncludedFields.ALL)
-                .setWorkload(Query.ExecuteOptions.Workload.OLTP))
-            .setAutocommit(true)
-            .build();
+        VitessSession vitessSession = new VitessSession();
+        vitessSession.setAutocommit(true);
+        this.session = vitessSession;
         buildServerSessionPropertiesMap();
-        this.sessionNew = new VitessSession();
         if (log.isDebugEnabled()) {
             log.debug("create VitessConnection");
         }
     }
 
-    public VitessConnection(Resolver resolver, Vtgate.Session session) {
+    public VitessConnection(Resolver resolver, VitessSession session) {
         this.resolver = resolver;
         this.session = session;
     }
@@ -223,7 +212,7 @@ public class VitessConnection extends AbstractVitessConnection {
                     commit();
                 }
             } finally {
-                this.session = this.session.toBuilder().setAutocommit(autoCommit).build();
+                this.session.setAutocommit(autoCommit);
             }
         }
     }

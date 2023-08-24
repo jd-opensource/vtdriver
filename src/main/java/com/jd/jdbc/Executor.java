@@ -64,9 +64,7 @@ import com.jd.jdbc.util.consolidator.ConsolidatorResult;
 import com.jd.jdbc.util.consolidator.Result;
 import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
-import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -402,35 +400,14 @@ public class Executor implements IExecute {
      * @param e
      */
     private void saveSessionStats(SafeSession safeSession, VtSqlStatementType stmtType, VtRowList resultSet, Exception e) {
-        safeSession.getVitessConnection().setSession(safeSession.getVitessConnection().getSession().toBuilder().setRowCount(-1).build());
         if (e != null) {
             return;
         }
 
-        VitessSession sessionNew = safeSession.getVitessConnection().getSessionNew();
-        Vtgate.Session.Builder sessionBuilder = safeSession.getVitessConnection().getSession().toBuilder().setFoundRows(resultSet.getRowsAffected());
+        VitessSession sessionNew = safeSession.getVitessConnection().getSession();
         if (resultSet.getInsertID().compareTo(BigInteger.ZERO) > 0) {
             sessionNew.setLastInsertId(resultSet.getInsertID());
         }
-        switch (stmtType) {
-            case StmtInsert:
-            case StmtReplace:
-            case StmtUpdate:
-            case StmtDelete:
-                sessionBuilder.setRowCount(resultSet.getRowsAffected());
-                break;
-            case StmtDDL:
-            case StmtSet:
-            case StmtBegin:
-            case StmtCommit:
-            case StmtRollback:
-                sessionBuilder.setRowCount(0L);
-                break;
-            default:
-                break;
-        }
-        safeSession.getVitessConnection().setSessionNew(sessionNew);
-        safeSession.getVitessConnection().setSession(sessionBuilder.build());
     }
 
     /**
@@ -767,15 +744,7 @@ public class Executor implements IExecute {
      * @param safeSession
      * @return
      */
-    private Boolean getSkipQueryPlanCache(SafeSession safeSession) {
-        if (safeSession == null || safeSession.getVitessConnection() == null
-            || safeSession.getVitessConnection().getSession() == null) {
-            return false;
-        }
-        Query.ExecuteOptions executeOptions = safeSession.getVitessConnection().getSession().getOptions();
-        if (executeOptions.isInitialized()) {
-            return executeOptions.getSkipQueryPlanCache();
-        }
+    private boolean getSkipQueryPlanCache(SafeSession safeSession) {
         return false;
     }
 

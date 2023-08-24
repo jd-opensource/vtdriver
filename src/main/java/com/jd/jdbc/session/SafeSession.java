@@ -24,11 +24,9 @@ import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,7 +40,7 @@ public class SafeSession {
 
     private AutocommitState autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
 
-    private Vtgate.CommitOrder commitOrder = Vtgate.CommitOrder.NORMAL;
+    private CommitOrder commitOrder = CommitOrder.NORMAL;
 
     @Setter
     @Getter
@@ -58,48 +56,28 @@ public class SafeSession {
         return safeSession;
     }
 
-    public static SafeSession newSafeSession(VitessConnection vitessConnection, Vtgate.Session sessn) {
-        if (sessn == null) {
-            sessn = Vtgate.Session.newBuilder().build();
-        }
+    public static SafeSession newAutoCommitSession(VitessConnection vitessConnection) {
+        VitessSession sessn = new VitessSession();
+        sessn.setInTransaction(false);
+        sessn.setAutocommit(true);
         SafeSession safeSession = new SafeSession();
         safeSession.setVitessConnection(new VitessConnection(vitessConnection.getResolver(), sessn));
-        safeSession.vitessConnection.setSessionNew(vitessConnection.getSessionNew());
         return safeSession;
     }
 
-    public static SafeSession newAutoCommitSession(VitessConnection vitessConnection) {
-        Vtgate.Session sessn = vitessConnection.getSession();
-        Vtgate.Session.Builder newSessionBuilder = sessn.toBuilder().clone();
-        newSessionBuilder.setInTransaction(false);
-        newSessionBuilder.clearShardSessions();
-        newSessionBuilder.clearPreSessions();
-        newSessionBuilder.clearPostSessions();
-        newSessionBuilder.setAutocommit(true);
-        newSessionBuilder.clearWarnings();
-        return newSafeSession(vitessConnection, newSessionBuilder.build());
-    }
-
-    /**
-     *
-     */
     public void resetTx() {
         this.lock.lock();
         try {
-            VitessSession currentSessionNew = this.vitessConnection.getSessionNew();
-            Vtgate.Session.Builder resetTxSessionBuilder = this.vitessConnection.getSession().toBuilder();
             this.mustRollback = false;
             this.autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
-            resetTxSessionBuilder.clearInTransaction();
-            this.commitOrder = Vtgate.CommitOrder.NORMAL;
-            resetTxSessionBuilder.clearSavepoints();
+            this.commitOrder = CommitOrder.NORMAL;
+            VitessSession session = this.vitessConnection.getSession();
+            session.clearInTransaction();
             if (!this.vitessConnection.getSession().getInReservedConn()) {
-                resetTxSessionBuilder.clearShardSessions();
-                resetTxSessionBuilder.clearPreSessions();
-                resetTxSessionBuilder.clearPostSessions();
+                session.clearShardSessions();
+                session.clearPreSessions();
+                session.clearPostSessions();
             }
-            this.vitessConnection.setSession(resetTxSessionBuilder.build());
-            this.vitessConnection.setSessionNew(currentSessionNew);
         } finally {
             this.lock.unlock();
         }
@@ -111,18 +89,14 @@ public class SafeSession {
     public void reset() {
         this.lock.lock();
         try {
-            VitessSession currentSessionNew = this.vitessConnection.getSessionNew();
-            Vtgate.Session.Builder resetSessionBuilder = this.vitessConnection.getSession().toBuilder();
             this.mustRollback = false;
             this.autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
-            resetSessionBuilder.clearInTransaction();
-            this.commitOrder = Vtgate.CommitOrder.NORMAL;
-            resetSessionBuilder.clearSavepoints();
-            resetSessionBuilder.clearShardSessions();
-            resetSessionBuilder.clearPreSessions();
-            resetSessionBuilder.clearPostSessions();
-            this.vitessConnection.setSession(resetSessionBuilder.build());
-            this.vitessConnection.setSessionNew(currentSessionNew);
+            this.commitOrder = CommitOrder.NORMAL;
+            VitessSession session = this.vitessConnection.getSession();
+            session.clearInTransaction();
+            session.clearShardSessions();
+            session.clearPreSessions();
+            session.clearPostSessions();
         } finally {
             this.lock.unlock();
         }
@@ -193,24 +167,6 @@ public class SafeSession {
     }
 
     /**
-     * @return
-     */
-    public List<String> setPreQueries() {
-        this.lock.lock();
-        try {
-            List<String> result = new ArrayList<>(this.vitessConnection.getSession().getSystemVariablesCount());
-            int idx = 0;
-            for (Map.Entry<String, String> entry : vitessConnection.getSession().getSystemVariablesMap().entrySet()) {
-                result.set(idx, String.format("set @@%s = %s", entry.getKey(), entry.getValue()));
-                idx++;
-            }
-            return result;
-        } finally {
-            this.lock.unlock();
-        }
-    }
-
-    /**
      * @param keyspace
      * @param shard
      * @param tabletType
@@ -219,7 +175,7 @@ public class SafeSession {
     public FindResponse find(String keyspace, String shard, Topodata.TabletType tabletType) {
         this.lock.lock();
         try {
-            List<Vtgate.Session.ShardSession> shardSessionsList = this.vitessConnection.getSession().getShardSessionsList();
+            List<ShardSession> shardSessionsList = this.vitessConnection.getSession().getShardSessionsList();
             switch (this.commitOrder) {
                 case PRE:
                     shardSessionsList = this.vitessConnection.getSession().getPreSessionsList();
@@ -231,7 +187,7 @@ public class SafeSession {
                     break;
             }
 
-            for (Vtgate.Session.ShardSession shardSession : shardSessionsList) {
+            for (ShardSession shardSession : shardSessionsList) {
                 if (keyspace.equals(shardSession.getTarget().getKeyspace())
                     && tabletType.equals(shardSession.getTarget().getTabletType())
                     && shard.equals(shardSession.getTarget().getShard())) {
@@ -252,7 +208,7 @@ public class SafeSession {
      * @param txMode
      * @throws Exception
      */
-    public void appendOrUpdate(Vtgate.Session.ShardSession shardSession, Vtgate.TransactionMode txMode) throws SQLException {
+    public void appendOrUpdate(ShardSession shardSession, TransactionMode txMode) throws SQLException {
         this.lock.lock();
         try {
 
@@ -267,28 +223,24 @@ public class SafeSession {
             this.autocommitState = AutocommitState.NOT_AUTO_COMMITTABLE;
 
             // Always append, in order for rollback to succeed.
-            List<Vtgate.Session.ShardSession> shardSessionList;
+            List<ShardSession> shardSessionList;
             switch (this.commitOrder) {
                 case NORMAL:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getShardSessionsList());
-                    this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearShardSessions().addAllShardSessions(shardSessionList).build());
-                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
-
+                    this.vitessConnection.getSession().setShardSessions(shardSessionList);
                     // isSingle is enforced only for normmal commit order operations.
-                    if (this.isSingleDb(txMode) && this.vitessConnection.getSession().getShardSessionsCount() > 1) {
+                    if (this.isSingleDb(txMode) && this.vitessConnection.getSession().getShardSessionsList().size() > 1) {
                         this.mustRollback = true;
                         throw new SQLException(String.format("multi-db transaction attempted: %s", this.vitessConnection.getSession().getShardSessionsList()));
                     }
                     break;
                 case PRE:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getPreSessionsList());
-                    this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearPreSessions().addAllPreSessions(shardSessionList).build());
-                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
+                    this.vitessConnection.getSession().setPreSessions(shardSessionList);
                     break;
                 case POST:
                     shardSessionList = buildSession(shardSession, this.vitessConnection.getSession().getPostSessionsList());
-                    this.vitessConnection.setSession(this.vitessConnection.getSession().toBuilder().clearPostSessions().addAllPostSessions(shardSessionList).build());
-                    this.vitessConnection.setSessionNew(this.vitessConnection.getSessionNew());
+                    this.vitessConnection.getSession().setPostSessions(shardSessionList);
                     break;
                 default:
                     throw new SQLException("BUG: SafeSession.AppendOrUpdate: unexpected commitOrder");
@@ -305,7 +257,7 @@ public class SafeSession {
      * @return
      * @throws Exception
      */
-    private List<Vtgate.Session.ShardSession> buildSession(Vtgate.Session.ShardSession shardSession, List<Vtgate.Session.ShardSession> shardSessionList) throws SQLException {
+    private List<ShardSession> buildSession(ShardSession shardSession, List<ShardSession> shardSessionList) throws SQLException {
         return this.addOrUpdate(shardSession, shardSessionList);
     }
 
@@ -359,8 +311,7 @@ public class SafeSession {
             } else {
                 queryWarnings.addAll(this.vitessConnection.getSession().getWarningsList());
             }
-            Vtgate.Session session = Vtgate.Session.newBuilder(vitessConnection.getSession()).clearWarnings().addAllWarnings(queryWarnings).build();
-            this.vitessConnection.setSession(session);
+            vitessConnection.getSession().setWarnings(queryWarnings);
         } finally {
             this.lock.unlock();
         }
@@ -371,11 +322,11 @@ public class SafeSession {
      * @param sessions
      * @return
      */
-    private List<Vtgate.Session.ShardSession> addOrUpdate(Vtgate.Session.ShardSession shardSession, List<Vtgate.Session.ShardSession> sessions) throws SQLException {
+    private List<ShardSession> addOrUpdate(ShardSession shardSession, List<ShardSession> sessions) throws SQLException {
         sessions = new ArrayList<>(sessions);
         boolean appendSession = true;
         for (int i = 0; i < sessions.size(); i++) {
-            Vtgate.Session.ShardSession sess = sessions.get(i);
+            ShardSession sess = sessions.get(i);
             boolean targetedAtSameTablet = sess.getTarget().getKeyspace().equals(shardSession.getTarget().getKeyspace())
                 && sess.getTarget().getTabletType().equals(shardSession.getTarget().getTabletType())
                 && sess.getTarget().getShard().equals(shardSession.getTarget().getShard());
@@ -397,9 +348,9 @@ public class SafeSession {
         return sessions;
     }
 
-    private Boolean isSingleDb(Vtgate.TransactionMode txMode) {
-        return this.vitessConnection.getSession().getTransactionMode().equals(Vtgate.TransactionMode.SINGLE)
-            || (this.vitessConnection.getSession().getTransactionMode().equals(Vtgate.TransactionMode.UNSPECIFIED) && txMode.equals(Vtgate.TransactionMode.SINGLE));
+    private Boolean isSingleDb(TransactionMode txMode) {
+        return this.vitessConnection.getSession().getTransactionMode().equals(TransactionMode.SINGLE)
+            || (this.vitessConnection.getSession().getTransactionMode().equals(TransactionMode.UNSPECIFIED) && txMode.equals(TransactionMode.SINGLE));
     }
 
     /**

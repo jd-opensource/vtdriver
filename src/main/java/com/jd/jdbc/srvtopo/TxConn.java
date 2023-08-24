@@ -22,12 +22,14 @@ import com.jd.jdbc.concurrency.AllErrorRecorder;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.session.SafeSession;
+import com.jd.jdbc.session.ShardSession;
+import com.jd.jdbc.session.TransactionMode;
+import com.jd.jdbc.session.VitessSession;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
@@ -37,8 +39,6 @@ import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import static io.vitess.proto.Vtgate.TransactionMode.TWOPC;
-
 @AllArgsConstructor
 public class TxConn {
     private static final Log logger = LogFactory.getLog(TxConn.class);
@@ -46,7 +46,7 @@ public class TxConn {
     private final Gateway gateway;
 
     @Getter
-    private final Vtgate.TransactionMode txMode;
+    private final TransactionMode txMode;
 
     /**
      * @param ctx
@@ -57,7 +57,7 @@ public class TxConn {
         if (safeSession.getVitessConnection().getSession().getInTransaction()) {
             this.commit(ctx, safeSession);
         }
-        safeSession.getVitessConnection().setSession(safeSession.getVitessConnection().getSession().toBuilder().setInTransaction(true).build());
+        safeSession.getVitessConnection().getSession().setInTransaction(true);
     }
 
     /**
@@ -78,7 +78,7 @@ public class TxConn {
                     twopc = true;
                     break;
                 case UNSPECIFIED:
-                    twopc = this.txMode == TWOPC;
+                    twopc = this.txMode == TransactionMode.TWOPC;
                     break;
                 default:
                     break;
@@ -105,16 +105,15 @@ public class TxConn {
      * @param shardSession
      * @return
      */
-    private SQLException commitShard(IContext ctx, Vtgate.Session.ShardSession shardSession) {
+    private SQLException commitShard(IContext ctx, ShardSession shardSession) {
         if (shardSession.getTransactionId() == 0) {
             return null;
         }
         try {
             IQueryService queryService = this.queryService(shardSession.getTabletAlias());
             Query.CommitResponse commitResponse = queryService.commit(ctx, shardSession.getTarget(), shardSession.getTransactionId());
-            shardSession = shardSession.toBuilder()
-                .clearTransactionId()
-                .setReservedId(commitResponse.getReservedId()).build();
+            shardSession.clearTransactionId();
+            shardSession.setReservedId(commitResponse.getReservedId());
         } catch (SQLException e) {
             return e;
         }
@@ -134,7 +133,7 @@ public class TxConn {
         }
 
         // Retain backward compatibility on commit order for the normal session.
-        for (Vtgate.Session.ShardSession shardSession : safeSession.getVitessConnection().getSession().getShardSessionsList()) {
+        for (ShardSession shardSession : safeSession.getVitessConnection().getSession().getShardSessionsList()) {
             SQLException e = this.commitShard(ctx, shardSession);
             if (e != null) {
                 this.release(ctx, safeSession);
@@ -173,8 +172,8 @@ public class TxConn {
                 return;
             }
 
-            Vtgate.Session session = safeSession.getVitessConnection().getSession();
-            List<Vtgate.Session.ShardSession> allsessions = Stream
+            VitessSession session = safeSession.getVitessConnection().getSession();
+            List<ShardSession> allsessions = Stream
                 .of(session.getPreSessionsList(), session.getShardSessionsList(), session.getPostSessionsList())
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
@@ -186,7 +185,8 @@ public class TxConn {
                 try {
                     IQueryService queryService = this.queryService(shardSession.getTabletAlias());
                     long reservedId = queryService.rollback(ctx, shardSession.getTarget(), shardSession.getTransactionId()).getReservedId();
-                    shardSession = shardSession.toBuilder().clearTransactionId().setReservedId(reservedId).build();
+                    shardSession.clearTransactionId();
+                    shardSession.setReservedId(reservedId);
                 } catch (SQLException e) {
                     return e;
                 }
@@ -218,8 +218,8 @@ public class TxConn {
                 return null;
             }
 
-            Vtgate.Session session = safeSession.getVitessConnection().getSession();
-            List<Vtgate.Session.ShardSession> allsessions = Stream
+            VitessSession session = safeSession.getVitessConnection().getSession();
+            List<ShardSession> allsessions = Stream
                 .of(session.getPreSessionsList(), session.getShardSessionsList(), session.getPostSessionsList())
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
@@ -236,7 +236,8 @@ public class TxConn {
                 } catch (SQLException e) {
                     return e;
                 }
-                shardSession = shardSession.toBuilder().clearTransactionId().clearReservedId().build();
+                shardSession.clearTransactionId();
+                shardSession.clearReservedId();
                 return null;
             });
         } finally {
@@ -250,7 +251,7 @@ public class TxConn {
      * @param action
      * @return
      */
-    private SQLException runSessions(IContext ctx, List<Vtgate.Session.ShardSession> shardSessions, RunSessionsFunc action) {
+    private SQLException runSessions(IContext ctx, List<ShardSession> shardSessions, RunSessionsFunc action) {
         if (shardSessions == null || shardSessions.size() == 0) {
             return null;
         }
@@ -262,7 +263,7 @@ public class TxConn {
         AllErrorRecorder allErrorRecorder = new AllErrorRecorder();
         CountDownLatch countDownLatch = new CountDownLatch(shardSessions.size());
 
-        for (Vtgate.Session.ShardSession shardSession : shardSessions) {
+        for (ShardSession shardSession : shardSessions) {
             VtQueryExecutorService.execute(() -> {
                 try {
                     Exception exception = action.action(ctx, shardSession);
@@ -288,6 +289,6 @@ public class TxConn {
      */
     @FunctionalInterface
     private interface RunSessionsFunc {
-        SQLException action(IContext ctx, Vtgate.Session.ShardSession shardSession);
+        SQLException action(IContext ctx, ShardSession shardSession);
     }
 }

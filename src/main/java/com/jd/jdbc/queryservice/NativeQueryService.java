@@ -282,7 +282,7 @@ public class NativeQueryService implements IQueryService {
         this.startSummary();
         StatefulConnection conn = null;
         try {
-            conn = statefulConnectionPool.newConn(options.getWorkloadValue() != Query.ExecuteOptions.Workload.DBA_VALUE);
+            conn = statefulConnectionPool.newConn(false);
             List<String> sqlList = getMultiSql(ctx, queries);
             conn.setAutoCommitFalse();
             ExecuteResult result = conn.execute(BEGIN + sqlList.get(0));
@@ -336,7 +336,7 @@ public class NativeQueryService implements IQueryService {
             if (reservedId != 0) {
                 conn = statefulConnectionPool.getAndLock(reservedId, "start transaction on reserve conn");
             } else {
-                conn = statefulConnectionPool.newConn(options.getWorkloadValue() != Query.ExecuteOptions.Workload.DBA_VALUE);
+                conn = statefulConnectionPool.newConn(false);
             }
             conn.setAutoCommitFalse();
             ExecuteResult res = conn.execute(BEGIN + sql);
