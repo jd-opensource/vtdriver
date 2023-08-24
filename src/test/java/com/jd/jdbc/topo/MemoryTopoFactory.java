@@ -26,6 +26,8 @@ import lombok.Getter;
 import lombok.Synchronized;
 import org.apache.commons.lang3.RandomUtils;
 
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+
 @Getter
 public class MemoryTopoFactory implements TopoFactory {
 
@@ -57,7 +59,7 @@ public class MemoryTopoFactory implements TopoFactory {
         return new MemoryTopoServer.Node(name, getNextVersion(), contents, new ConcurrentHashMap<>(), parent, false);
     }
 
-    private MemoryTopoServer.Node newDirectory(String name, MemoryTopoServer.Node parent) {
+    public MemoryTopoServer.Node newDirectory(String name, MemoryTopoServer.Node parent) {
         return newFile(name, null, parent);
     }
 
@@ -87,6 +89,20 @@ public class MemoryTopoFactory implements TopoFactory {
             node = child;
         }
         return node;
+    }
+
+    public void deleteNode(String deleteCell) throws TopoException {
+        String cell = "global";
+        String filePath = "cells";
+        MemoryTopoServer.Node node = nodeByPath(cell, filePath);
+        if (node == null) {
+            throw TopoException.wrap(NO_NODE, filePath);
+        }
+
+        if (!node.isDirectory()) {
+            throw TopoException.wrap("node " + filePath + " in cell " + cell + " is not a directory");
+        }
+        node.getChildren().remove(deleteCell);
     }
 
     public MemoryTopoServer.Node getOrCreatePath(String cell, String filePath) {

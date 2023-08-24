@@ -16,8 +16,9 @@ limitations under the License.
 
 package com.jd.jdbc.util;
 
-import static com.jd.jdbc.common.Constant.DEFAULT_DATABASE_PREFIX;
 import io.netty.util.internal.StringUtil;
+
+import static com.jd.jdbc.common.Constant.DEFAULT_DATABASE_PREFIX;
 
 public class KeyspaceUtil {
     public static String getLogicSchema(String tableCat) {
@@ -36,5 +37,9 @@ public class KeyspaceUtil {
             return tableCat;
         }
         return DEFAULT_DATABASE_PREFIX + tableCat;
+    }
+
+    public static String getTabletKeyspace(String keyspace) {
+        return keyspace;
     }
 }

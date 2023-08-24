@@ -44,4 +44,8 @@ public interface TestSuiteConn {
     default String getPassword() {
         return null;
     }
+
+    default String getCell() {
+        return null;
+    }
 }

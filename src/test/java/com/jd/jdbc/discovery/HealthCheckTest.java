@@ -23,8 +23,6 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.discovery.TabletHealthCheck.TabletStreamHealthStatus;
 import com.jd.jdbc.monitor.HealthyCollector;
-import com.jd.jdbc.queryservice.CombinedQueryService;
-import com.jd.jdbc.queryservice.IParentQueryService;
 import com.jd.jdbc.queryservice.MockQueryServer;
 import com.jd.jdbc.queryservice.TabletDialerAgent;
 import com.jd.jdbc.topo.MemoryTopoFactory;
@@ -33,10 +31,6 @@ import com.jd.jdbc.topo.TopoServer;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import com.jd.jdbc.util.threadpool.impl.VtHealthCheckExecutorService;
 import com.jd.jdbc.util.threadpool.impl.VtQueryExecutorService;
-import io.grpc.ManagedChannel;
-import io.grpc.Server;
-import io.grpc.inprocess.InProcessChannelBuilder;
-import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.testing.GrpcCleanupRule;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
@@ -47,14 +41,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -66,12 +55,13 @@ import org.junit.rules.ExpectedException;
 import testsuite.TestSuite;
 
 public class HealthCheckTest extends TestSuite {
-    private static final IContext globalContext = VtContext.withCancel(VtContext.background());
-
-    private static final ExecutorService executorService = getThreadPool(10, 10);
 
     @Rule
-    public GrpcCleanupRule grpcCleanup;
+    public GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
+
+    private final IContext globalContext = VtContext.withCancel(VtContext.background());
+
+    private static final ExecutorService executorService = getThreadPool(10, 10);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -89,16 +79,15 @@ public class HealthCheckTest extends TestSuite {
         VtQueryExecutorService.initialize(null, null, null, null);
     }
 
+    @Before
+    public void init() throws IOException {
+        portMap.put("vt", 1);
+        portMap.put("grpc", 2);
+    }
+
     @AfterClass
     public static void afterClass() {
         executorService.shutdownNow();
-    }
-
-    @Before
-    public void init() throws IOException {
-        grpcCleanup = new GrpcCleanupRule();
-        portMap.put("vt", 1);
-        portMap.put("grpc", 2);
     }
 
     @After
@@ -113,38 +102,37 @@ public class HealthCheckTest extends TestSuite {
      * 2. testing if changing tablet status can be watched right;
      * 3. testing if removeTable function can work well
      */
-
     @Test
-    public void testHealthCheck() throws InterruptedException {
+    public void testHealthCheck() {
 
         printComment("1. HealthCheck Test");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
 
         hc.removeTablet(mockTablet.getTablet());
 
-        Thread.sleep(2000);
+        sleepMillisSeconds(2000);
 
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
@@ -154,38 +142,38 @@ public class HealthCheckTest extends TestSuite {
      * 3. testing if tablet can be remove from healthy when receive error message from tablet server
      */
     @Test
-    public void testHealthCheckStreamError() throws InterruptedException {
+    public void testHealthCheckStreamError() {
         printComment("2. HealthCheck Test for Error Stream Message");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
 
         sendOnErrorMessage(mockTablet);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         if (hcList != null) {
             Assert.assertEquals(0, hcList.size());
         }
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
@@ -195,24 +183,24 @@ public class HealthCheckTest extends TestSuite {
      * 3. testing if changing the type of tablet to primary;
      */
     @Test
-    public void testHealthCheckExternalReparent() throws InterruptedException {
+    public void testHealthCheckExternalReparent() {
         printComment("3. HealthCheck Test one tablet External Reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -220,7 +208,7 @@ public class HealthCheckTest extends TestSuite {
         printComment("d. Change the Tablet role to primary");
         sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 0, 0.2, 0);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Topodata.Tablet tablet = hc.getHealthyTablets("k", Topodata.TabletType.MASTER);
         Assert.assertNotNull(tablet);
@@ -235,33 +223,33 @@ public class HealthCheckTest extends TestSuite {
             new AtomicBoolean(false),
             Query.RealtimeStats.newBuilder().setCpuUsage(0.2).setSecondsBehindMaster(0).build());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
 
         printOk();
     }
 
     @Test
-    public void testHealthCheckTwoExternalReparent() throws InterruptedException {
+    public void testHealthCheckTwoExternalReparent() {
         printComment("4. HealthCheck Test two tablets External Reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add two Tablets");
-        MockTablet mockTablet1 = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet1.getTablet());
 
-        MockTablet mockTablet2 = buildMockTablet("cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet2 = MockTablet.buildMockTablet(grpcCleanup, "cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet2.getTablet());
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Change two Tablets status");
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 10);
         sendOnNextMessage(mockTablet1, Topodata.TabletType.MASTER, true, 10, 0.5, 0);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 2, hc.getHealthyCopy().size());
         List<TabletHealthCheck> healthCheckList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.MASTER).build());
@@ -276,7 +264,7 @@ public class HealthCheckTest extends TestSuite {
 
         sendOnNextMessage(mockTablet2, Topodata.TabletType.MASTER, true, 20, 0.5, 0);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
         healthCheckList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.MASTER).build());
@@ -289,7 +277,7 @@ public class HealthCheckTest extends TestSuite {
             new AtomicBoolean(false),
             Query.RealtimeStats.newBuilder().setCpuUsage(0.5).setSecondsBehindMaster(0).build());
 
-        closeQueryService(mockTablet1, mockTablet2);
+        MockTablet.closeQueryService(mockTablet1, mockTablet2);
 
         printOk();
     }
@@ -302,10 +290,10 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
@@ -315,16 +303,16 @@ public class HealthCheckTest extends TestSuite {
         MockQueryServer.HealthCheckMessage message = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Next, streamHealthResponse);
         mockTablet.getHealthMessage().put(message);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         TabletHealthCheck thc = hc.getHealthByAliasCopy().get(TopoProto.tabletAliasString(mockTablet.getTablet().getAlias()));
         Assert.assertEquals(TabletStreamHealthStatus.TABLET_STREAM_HEALTH_STATUS_MISMATCH, thc.getTabletStreamHealthDetailStatus().get().getStatus());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testHealthCheckRemoveTabletAfterReparent() throws InterruptedException {
+    public void testHealthCheckRemoveTabletAfterReparent() {
         printComment("6. HealthCheck Test remove tablet after reparent");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -332,13 +320,13 @@ public class HealthCheckTest extends TestSuite {
         printComment("b. Add a no-serving Tablet");
 
         // add master tablet
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
         hc.addTablet(mockTablet.getTablet());
         // add replica tablet
-        MockTablet mockTablet1 = buildMockTablet("cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet1.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
@@ -346,7 +334,7 @@ public class HealthCheckTest extends TestSuite {
         sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 0, 0.5, 0);
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 2, hc.getHealthyCopy().size());
@@ -354,7 +342,7 @@ public class HealthCheckTest extends TestSuite {
         printComment("d. Modify the role of tablet");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
         sendOnNextMessage(mockTablet1, Topodata.TabletType.MASTER, true, 10, 0.5, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
 
@@ -363,7 +351,7 @@ public class HealthCheckTest extends TestSuite {
         printComment("remove tablet");
         hc.removeTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         // healthcheck shouldn't response onNext message
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
@@ -372,29 +360,29 @@ public class HealthCheckTest extends TestSuite {
         }
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.MASTER));
         Assert.assertEquals(1, hcList.size());
-        closeQueryService(mockTablet, mockTablet1);
+        MockTablet.closeQueryService(mockTablet, mockTablet1);
         printOk();
     }
 
     @Test
-    public void testHealthCheckOnNextBeforeRemove() throws InterruptedException {
+    public void testHealthCheckOnNextBeforeRemove() {
         printComment("6a. HealthCheck Test onNext before remove tablet");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -403,33 +391,33 @@ public class HealthCheckTest extends TestSuite {
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.2, 2);
         executorService.execute(() -> hc.removeTablet(mockTablet.getTablet()));
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         // healthcheck shouldn't response onNext message
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testHealthCheckOnNextAfterRemove() throws InterruptedException {
+    public void testHealthCheckOnNextAfterRemove() {
         printComment("6b. HealthCheck Test onNext after remove tablet");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -438,26 +426,26 @@ public class HealthCheckTest extends TestSuite {
         executorService.execute(() -> hc.removeTablet(mockTablet.getTablet()));
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.2, 2);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         // healthcheck shouldn't response onNext message
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testHealthCheckTimeout() throws InterruptedException {
+    public void testHealthCheckTimeout() {
         printComment("7. HealthCheck Test when health check timeout");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
 
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
         Assert.assertEquals(1, mockTablet.getQueryServer().getConnectCount());
@@ -465,14 +453,14 @@ public class HealthCheckTest extends TestSuite {
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
 
         printComment("d. Sleep and wait for check timeout");
 
-        Thread.sleep(90 * 1000);
+        sleepMillisSeconds(90 * 1000);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
         // user shouldn't get a checking timeout tablet
@@ -483,34 +471,31 @@ public class HealthCheckTest extends TestSuite {
             Assert.fail("HealthCheck should try to reconnect tablet query service");
         }
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
     }
 
     /**
      * test the functionality of getHealthyTabletStats
      * 建议统一getHealthyTabletStats，不要即返回null，也可能返回empty list
-     *
-     * @throws IOException
-     * @throws InterruptedException
      */
     @Test
-    public void testGetHealthyTablet() throws InterruptedException {
+    public void testGetHealthyTablet() {
         printComment("9. HealthCheck Test the functionality of getHealthyTabletStats");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet");
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
         Assert.assertEquals(1, mockTablet.getQueryServer().getConnectCount());
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.REPLICA).build());
         Assert.assertEquals(1, hcList.size());
@@ -524,7 +509,7 @@ public class HealthCheckTest extends TestSuite {
         // update health with a change that won't change health array
         printComment("d. update health with realtime stats a change that will change health array");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.2, 35);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         hcList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.REPLICA).build());
         Assert.assertEquals(1, hcList.size());
@@ -536,13 +521,13 @@ public class HealthCheckTest extends TestSuite {
             Query.RealtimeStats.newBuilder().setCpuUsage(0.2).setSecondsBehindMaster(35).build());
 
         printComment("e. Add a second tablet");
-        MockTablet mockTablet2 = buildMockTablet("cell", 11, "host2", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet2 = MockTablet.buildMockTablet(grpcCleanup, "cell", 11, "host2", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet2.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("f. Modify the status of Tablet2 to serving");
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.2, 10);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         Assert.assertEquals("Wrong number of healthy replica tablets", 2, hcList.size());
@@ -569,7 +554,7 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("g. Modify the status of Tablet2 to no-serving");
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, false, 0, 0.2, 10);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         Assert.assertEquals("Wrong number of healthy replica tablets", 1, hcList.size());
@@ -582,7 +567,7 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("h. Second tablet turns into a primary");
         sendOnNextMessage(mockTablet2, Topodata.TabletType.MASTER, true, 10, 0.2, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         hcList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.MASTER).build());
         Assert.assertEquals("Wrong number of healthy master tablets", 1, hcList.size());
@@ -595,7 +580,7 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("i. Old replica goes into primary");
         sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 20, 0.2, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         // check we lost all replicas, and primary is new one
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
@@ -612,7 +597,7 @@ public class HealthCheckTest extends TestSuite {
 
         // old primary sending an old pin should be ignored
         sendOnNextMessage(mockTablet2, Topodata.TabletType.MASTER, true, 10, 0.2, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.MASTER));
         Assert.assertEquals("Wrong number of healthy master tablets", 1, hcList.size());
         assertTabletHealthCheck(hcList.get(0),
@@ -622,12 +607,14 @@ public class HealthCheckTest extends TestSuite {
             new AtomicBoolean(false),
             Query.RealtimeStats.newBuilder().setCpuUsage(0.2).setSecondsBehindMaster(0).build());
 
-        closeQueryService(mockTablet, mockTablet2);
+        MockTablet.closeQueryService(mockTablet, mockTablet2);
         printOk();
     }
 
     @Test
     public void testPrimaryInOtherCell() throws TopoException, InterruptedException {
+        TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
+
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
 
@@ -636,25 +623,27 @@ public class HealthCheckTest extends TestSuite {
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving primary Tablet in different cell");
-        MockTablet mockTablet = buildMockTablet("cell2", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell2", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
         hc.addTablet(mockTablet.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 0, 0.5, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("d.// check that PRIMARY tablet from other cell IS in healthy tablet list");
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.MASTER).build());
         Assert.assertEquals(1, hcList.size());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
 
         printOk();
     }
 
     @Test
     public void testReplicaInOtherCell() throws TopoException, InterruptedException {
+        TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
+
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
 
@@ -663,13 +652,13 @@ public class HealthCheckTest extends TestSuite {
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving replica Tablet");
-        MockTablet mockTablet = buildMockTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("d. check that replica tablet IS in healthy tablet list");
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
@@ -677,41 +666,41 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("e. Add a tablet as replica in different cell");
 
-        MockTablet mockTablet1 = buildMockTablet("cell2", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell2", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet1.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("f. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("g. check that only REPLICA tablet from cell1 is in healthy tablet list");
         hcList = hc.getHealthyTabletStats(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.REPLICA).build());
         Assert.assertEquals(2, hcList.size());
 
-        closeQueryService(mockTablet, mockTablet1);
+        MockTablet.closeQueryService(mockTablet, mockTablet1);
 
         printOk();
     }
 
     @Test
-    public void testGetStandbyTablet() throws InterruptedException {
+    public void testGetStandbyTablet() {
         printComment("12. HealthCheck Test get healthy tablet maybe standby");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving replica Tablet");
-        MockTablet mockTablet = buildMockTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
-        MockTablet mockTablet1 = buildMockTablet("cell1", 1, "b", "k", "s", portMap, Topodata.TabletType.RDONLY);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell1", 1, "b", "k", "s", portMap, Topodata.TabletType.RDONLY);
         hc.addTablet(mockTablet1.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of REPLICA Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("d. Try to get RDONLY tablet by standBy func");
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStatsMaybeStandby(Query.Target.newBuilder().setKeyspace("k").setShard("s").setTabletType(Topodata.TabletType.RDONLY).build());
@@ -726,11 +715,11 @@ public class HealthCheckTest extends TestSuite {
 
         printComment("e. Modify the status of RDONLY Tablet to serving");
         sendOnNextMessage(mockTablet1, Topodata.TabletType.RDONLY, true, 0, 0.25, 10);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("f. send onError the replica GRPC server");
         sendOnErrorMessage(mockTablet);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("g. Try to get REPLICA tablet by standBy func");
         hcList = hc.getHealthyTabletStatsMaybeStandby(createTarget(Topodata.TabletType.REPLICA));
@@ -743,52 +732,52 @@ public class HealthCheckTest extends TestSuite {
             new AtomicBoolean(false),
             Query.RealtimeStats.newBuilder().setCpuUsage(0.25).setSecondsBehindMaster(10).build());
 
-        closeQueryService(mockTablet1);
+        MockTablet.closeQueryService(mockTablet1);
         printOk();
     }
 
     @Test
-    public void testUnhealthyReplicaAsSecondsBehind() throws InterruptedException {
+    public void testUnhealthyReplicaAsSecondsBehind() {
         printComment("13. HealthCheck Test get healthy tablet maybe standby");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving replica Tablet");
-        MockTablet mockTablet = buildMockTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of REPLICA Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 10);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         Assert.assertEquals("Wrong number of healthy replica tablets", 1, hcList.size());
 
         printComment("e. Modify the value of seconds behind master of REPLICA Tablet");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 7201);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         if (hcList != null) {
             Assert.assertEquals("Wrong number of healthy replica tablets, it should be 0", 0, hcList.size());
         }
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testMysqlPort0to3358() throws InterruptedException {
+    public void testMysqlPort0to3358() {
         printComment("14. HealthCheck Test in Tablet MySQL port changed from 0 to 3358");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving replica Tablet (MysqlPort = 0)");
         defaultMysqlPort = 0;
-        MockTablet mockTablet = buildMockTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA, defaultMysqlPort);
         hc.addTablet(mockTablet.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
@@ -796,41 +785,41 @@ public class HealthCheckTest extends TestSuite {
         defaultMysqlPort = 3358;
         Topodata.Tablet tablet = buildTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.replaceTablet(mockTablet.getTablet(), tablet);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
         printComment("d. Modify the status of REPLICA Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 10);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
         List<TabletHealthCheck> hcList = hc.getHealthyTabletStats(createTarget(Topodata.TabletType.REPLICA));
         Assert.assertEquals("Wrong number of healthy replica tablets", 1, hcList.size());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testMysqlPort3358to0() throws InterruptedException {
+    public void testMysqlPort3358to0() {
         printComment("15. HealthCheck Test in Tablet MySQL port changed from 3358 to 0");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
 
         printComment("b. Add a no-serving Tablet(MysqlPort = 3358)");
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet.getTablet());
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("c. Modify the status of Tablet to serving");
         sendOnNextMessage(mockTablet, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 1, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -841,17 +830,17 @@ public class HealthCheckTest extends TestSuite {
         defaultMysqlPort = 0;
         Topodata.Tablet tablet = buildTablet("cell1", 0, "a", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.replaceTablet(mockTablet.getTablet(), tablet);
-        Thread.sleep(6000);
+        sleepMillisSeconds(6000);
 
         Assert.assertEquals("Wrong Tablet data", 0, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
-        closeQueryService(mockTablet);
+        MockTablet.closeQueryService(mockTablet);
         printOk();
     }
 
     @Test
-    public void testDoubleMaster() throws InterruptedException {
+    public void testDoubleMaster() {
         printComment("16. double master one no serving");
         printComment("a. Get Health");
         HealthCheck hc = getHealthCheck();
@@ -859,13 +848,13 @@ public class HealthCheckTest extends TestSuite {
         printComment("b. Add a no-serving Tablet");
 
         // add master tablet
-        MockTablet mockTablet = buildMockTablet("cell", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
+        MockTablet mockTablet = MockTablet.buildMockTablet(grpcCleanup, "cell", 0, "a", "k", "s", portMap, Topodata.TabletType.MASTER);
         hc.addTablet(mockTablet.getTablet());
         // add replica tablet
-        MockTablet mockTablet1 = buildMockTablet("cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell", 1, "b", "k", "s", portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet1.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
@@ -873,18 +862,18 @@ public class HealthCheckTest extends TestSuite {
         sendOnNextMessage(mockTablet, Topodata.TabletType.MASTER, true, 0, 0.5, 0);
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 2, hc.getHealthyCopy().size());
 
         printComment("d. Modify the role of tablet");
         sendOnNextMessage(mockTablet1, Topodata.TabletType.MASTER, true, 10, 0.5, 0);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         printComment("e. Modify old master Tablet to no serving");
         sendOnErrorMessage(mockTablet);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 2, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -896,6 +885,7 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertTrue(CollectionUtils.isNotEmpty(healthyTabletStats));
         Assert.assertEquals(1, healthyTabletStats.size());
 
+        MockTablet.closeQueryService(mockTablet, mockTablet1);
         printOk();
     }
 
@@ -930,19 +920,19 @@ public class HealthCheckTest extends TestSuite {
     }
 
     @Test
-    public void testHealthyChecksumSetBehindMaster() throws InterruptedException {
+    public void testHealthyChecksumSetBehindMaster() {
         HealthCheck hc = getHealthCheck();
         // add tablet
         String keyInHealthy = "k.s.replica";
-        MockTablet mockTablet1 = buildMockTablet("cella", 7, "1.1.1.7", "k", "s", portMap, Topodata.TabletType.REPLICA);
-        MockTablet mockTablet2 = buildMockTablet("cella", 8, "1.1.1.8", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cellb", 67, "1.2.3.67", "k", "s", portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet2 = MockTablet.buildMockTablet(grpcCleanup, "cellb", 198, "1.2.3.198", "k", "s", portMap, Topodata.TabletType.REPLICA);
 
         hc.addTablet(mockTablet1.getTablet());
         hc.addTablet(mockTablet2.getTablet());
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 2);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         // sort list in healthy order by secondsBehindMaster
         hc.recomputeHealthyLocked(keyInHealthy);
@@ -950,7 +940,7 @@ public class HealthCheckTest extends TestSuite {
 
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 2);
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 1);
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         // sort list in healthy order by secondsBehindMaster
         hc.recomputeHealthyLocked(keyInHealthy);
@@ -959,11 +949,11 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertNotEquals(hc.getHealthyCopy().get(keyInHealthy).get(0).getTablet().getHostname(), hc.getHealthyCopy().get(keyInHealthy).get(1).getTablet().getHostname());
         Assert.assertEquals("Wrong HealthyChecksum", firstCrc32, secondCrc32);
 
-        closeQueryService(mockTablet1, mockTablet2);
+        MockTablet.closeQueryService(mockTablet1, mockTablet2);
     }
 
     @Test
-    public void testConcurrentModificationException() throws InterruptedException {
+    public void testConcurrentModificationException() {
         thrown.expect(ConcurrentModificationException.class);
 
         List<TabletHealthCheck> tabletHealthCheckList = new ArrayList<>();
@@ -995,26 +985,26 @@ public class HealthCheckTest extends TestSuite {
             mockGetHealthyTabletStats(healthy, target);
         }
 
-        Thread.sleep(2000);
+        sleepMillisSeconds(2000);
     }
 
     @Test
-    public void testHealthyConcurrentModificationException() throws InterruptedException {
+    public void testHealthyConcurrentModificationException() {
         HealthCheck hc = getHealthCheck();
 
         String keyspace = "k";
         String shard = "s";
         // add replica tablet
-        MockTablet mockTablet0 = buildMockTablet("cell", 1, "a", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet0 = MockTablet.buildMockTablet(grpcCleanup, "cell", 1, "a", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet0.getTablet());
         // add replica tablet
-        MockTablet mockTablet1 = buildMockTablet("cell", 100, "b", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet1 = MockTablet.buildMockTablet(grpcCleanup, "cell", 100, "b", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet1.getTablet());
         // add replica tablet
-        MockTablet mockTablet2 = buildMockTablet("cell", 10, "c", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
+        MockTablet mockTablet2 = MockTablet.buildMockTablet(grpcCleanup, "cell", 10, "c", keyspace, shard, portMap, Topodata.TabletType.REPLICA);
         hc.addTablet(mockTablet2.getTablet());
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
         Assert.assertEquals("Wrong Tablet data", 3, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 0, hc.getHealthyCopy().size());
 
@@ -1023,7 +1013,7 @@ public class HealthCheckTest extends TestSuite {
         sendOnNextMessage(mockTablet1, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
         sendOnNextMessage(mockTablet2, Topodata.TabletType.REPLICA, true, 0, 0.5, 0);
 
-        Thread.sleep(200);
+        sleepMillisSeconds(200);
 
         Assert.assertEquals("Wrong Tablet data", 3, hc.getHealthByAliasCopy().size());
         Assert.assertEquals("Wrong Healthy Tablet data", 1, hc.getHealthyCopy().size());
@@ -1044,7 +1034,8 @@ public class HealthCheckTest extends TestSuite {
             Assert.assertEquals("Wrong Tablet data", 3, healthyTabletStats.size());
         }
 
-        Thread.sleep(2000);
+        sleepMillisSeconds(2000);
+        MockTablet.closeQueryService(mockTablet0, mockTablet1, mockTablet2);
     }
 
     private List<TabletHealthCheck> mockGetHealthyTabletStats(Map<String, List<TabletHealthCheck>> healthy, Query.Target target) {
@@ -1070,13 +1061,6 @@ public class HealthCheckTest extends TestSuite {
         }
     }
 
-    private void closeQueryService(MockTablet... tablets) throws InterruptedException {
-        MockQueryServer.HealthCheckMessage close = new MockQueryServer.HealthCheckMessage(MockQueryServer.MessageType.Close, null);
-        for (MockTablet tablet : tablets) {
-            tablet.getHealthMessage().put(close);
-        }
-    }
-
     protected HealthCheck getHealthCheck() {
         HealthCheck hc = HealthCheck.INSTANCE;
         Assert.assertEquals(0, hc.getHealthByAliasCopy().size());
@@ -1093,30 +1077,6 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals("Wrong serving status", expectServing.get(), actualTabletHealthCheck.getServing().get());
         Assert.assertEquals("Wrong retrying status", expectRetrying.get(), actualTabletHealthCheck.getRetrying().get());
         Assert.assertEquals("Wrong realtime stats", expectStats, actualTabletHealthCheck.getStats());
-    }
-
-    protected MockTablet buildMockTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type) {
-        String serverName = InProcessServerBuilder.generateName();
-        BlockingQueue<MockQueryServer.HealthCheckMessage> healthMessage = new ArrayBlockingQueue<>(2);
-        MockQueryServer queryServer = new MockQueryServer(healthMessage);
-        Server server = null;
-        try {
-            server = InProcessServerBuilder.forName(serverName).directExecutor().addService(queryServer).build().start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        grpcCleanup.register(server);
-
-        ManagedChannel channel =
-            InProcessChannelBuilder.forName(serverName).directExecutor().keepAliveTimeout(10, TimeUnit.SECONDS).keepAliveTime(10, TimeUnit.SECONDS).keepAliveWithoutCalls(true).build();
-        grpcCleanup.register(channel);
-        Topodata.Tablet tablet = buildTablet(cell, uid, hostName, keyspaceName, shard, portMap, type);
-
-        IParentQueryService combinedQueryService = new CombinedQueryService(channel, tablet);
-        TabletDialerAgent.registerTabletCache(tablet, combinedQueryService);
-
-        return new MockTablet(tablet, healthMessage, queryServer, server, channel);
     }
 
     private Topodata.Tablet buildTablet(String cell, Integer uid, String hostName, String keyspaceName, String shard, Map<String, Integer> portMap, Topodata.TabletType type) {
@@ -1164,20 +1124,5 @@ public class HealthCheckTest extends TestSuite {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @AllArgsConstructor
-    @Getter
-    private class MockTablet {
-
-        private final Topodata.Tablet tablet;
-
-        private final BlockingQueue<MockQueryServer.HealthCheckMessage> healthMessage;
-
-        private final MockQueryServer queryServer;
-
-        private final Server server;
-
-        private final ManagedChannel channel;
     }
 }

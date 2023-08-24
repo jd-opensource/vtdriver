@@ -158,6 +158,10 @@ public abstract class TestSuite extends TestSuitePrinter {
         return env.getPassword();
     }
 
+    protected String getCell(TestSuiteEnv env) {
+        return env.getCell();
+    }
+
     protected static class Driver {
         public static DriverEnv of(TestSuiteShardSpec shardSpec) {
             return new DriverEnv(shardSpec);

@@ -42,6 +42,7 @@ import com.jd.jdbc.srvtopo.TxConn;
 import com.jd.jdbc.tindexes.SplitTableUtil;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
+import com.jd.jdbc.util.KeyspaceUtil;
 import com.jd.jdbc.util.threadpool.InitThreadPoolService;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.prometheus.client.Histogram;
@@ -52,7 +53,6 @@ import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
@@ -93,37 +93,42 @@ public class VitessDriver implements java.sql.Driver {
         try {
             SecurityCenter.INSTANCE.addCredential(prop);
             String defaultKeyspace = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
+            String tabletKeyspace = KeyspaceUtil.getTabletKeyspace(defaultKeyspace);
 
             String role = prop.getProperty(Constant.DRIVER_PROPERTY_ROLE_KEY, Constant.DRIVER_PROPERTY_ROLE_RW);
             if (!prop.containsKey(Constant.DRIVER_PROPERTY_ROLE_KEY)) {
                 prop.put(Constant.DRIVER_PROPERTY_ROLE_KEY, role);
             }
             TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
+
             ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "ResilientSrvTopoServer");
 
-            List<String> cells = Arrays.asList(prop.getProperty("cell").split(","));
-            String localCell = cells.get(0);
+            List<String> cells = topoServer.getAllCells(globalContext);
+
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, defaultKeyspace);
+                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, tabletKeyspace);
             }
 
             TabletGateway tabletGateway = TabletGateway.build(resilientServer);
 
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.watch(globalContext, cell, defaultKeyspace);
+                TopologyWatcherManager.INSTANCE.watch(globalContext, cell, tabletKeyspace);
             }
+
+            String localCell = topoServer.getLocalCell(globalContext, topoServer, cells, tabletKeyspace);
+
             boolean masterFlag = role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW);
             List<Topodata.TabletType> tabletTypes = masterFlag
                 ? Lists.newArrayList(Topodata.TabletType.MASTER)
                 : Lists.newArrayList(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
-            tabletGateway.waitForTablets(globalContext, localCell, defaultKeyspace, tabletTypes);
+            tabletGateway.waitForTablets(globalContext, localCell, tabletKeyspace, tabletTypes);
 
             TxConn txConn = new TxConn(tabletGateway, Vtgate.TransactionMode.MULTI);
             ScatterConn scatterConn = ScatterConn.newScatterConn("VttabletCall", txConn, tabletGateway);
             Resolver resolver = new Resolver(resilientServer, tabletGateway, localCell, scatterConn);
             Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);
 
-            List<ResolvedShard> resolvedShardList = resolver.getAllShards(globalContext, defaultKeyspace, Topodata.TabletType.MASTER).getResolvedShardList();
+            List<ResolvedShard> resolvedShardList = resolver.getAllShards(globalContext, tabletKeyspace, Topodata.TabletType.MASTER).getResolvedShardList();
             int shardNumber = CollectionUtils.isEmpty(resolvedShardList) ? 0 : resolvedShardList.size();
             Config.setConfig(prop, defaultKeyspace, SecurityCenter.INSTANCE.getCredential(defaultKeyspace).getUser(), tabletType, shardNumber);
             if (masterFlag) {
@@ -208,5 +213,4 @@ public class VitessDriver implements java.sql.Driver {
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
         throw new SQLFeatureNotSupportedException();
     }
-
 }

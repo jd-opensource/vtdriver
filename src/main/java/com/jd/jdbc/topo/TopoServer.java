@@ -21,13 +21,9 @@ package com.jd.jdbc.topo;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.CurrentShard;
-import static com.jd.jdbc.topo.Topo.pathForCellInfo;
-import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
-import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
-import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
-import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
+import com.jd.jdbc.sqlparser.support.logging.Log;
+import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import io.vitess.proto.Topodata;
 import java.util.ArrayList;
@@ -41,7 +37,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import vschema.Vschema;
 
+import static com.jd.jdbc.topo.Topo.pathForCellInfo;
+import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
+import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
+import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
+import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+
 public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, TopoTablet, TopoVschema {
+
+    private static final Log log = LogFactory.getLog(TopoServer.class);
 
     static final String GLOBAL_CELL = "global";
 
@@ -72,6 +77,8 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
     ReentrantLock lock;
 
     Map<String, TopoConnection> cells;
+
+    String serverAddress;
 
     /**
      *
@@ -181,6 +188,33 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
 
     public static Map<String, Topodata.SrvKeyspace> getSrvkeyspaceMapCopy() {
         return new HashMap<>(SRVKEYSPACE_MAP);
+    }
+
+    public List<String> getAllCells(IContext ctx) throws TopoException {
+        List<TopoConnection.DirEntry> dirEntryList = this.globalCell.listDir(ctx, CELLS_PATH, false, false);
+        List<String> cells = Topo.dirEntriesToStringArray(dirEntryList);
+        if (cells.size() < 1) {
+            throw TopoException.wrap("Cells Information missing");
+        }
+        return cells;
+    }
+
+    public String getLocalCell(IContext globalContext, TopoServer topoServer, List<String> cells, String defaultKeyspace) throws TopoException {
+        String localCell = cells.get(0);
+        for (String cell : cells) {
+            try {
+                Topodata.SrvKeyspace getSrvKeyspace = topoServer.getSrvKeyspace(globalContext, cell, defaultKeyspace);
+                if (getSrvKeyspace != null) {
+                    localCell = cell;
+                    return localCell;
+                }
+            } catch (TopoException e) {
+                if (e.getCode() != TopoExceptionCode.NO_NODE) {
+                    throw TopoException.wrap(e.getMessage());
+                }
+            }
+        }
+        return localCell;
     }
 
     /**
@@ -309,6 +343,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
             return result;
         } catch (TopoException e) {
             if (TopoException.isErrType(e, NO_NODE)) {
+                log.debug("failed to get tablet in cell " + cell + " . error: " + e);
                 return null;
             }
             throw e;
@@ -351,5 +386,9 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
             throw TopoException.wrap(e.getMessage());
         }
         return keyspace;
+    }
+
+    public String getServerAddress() {
+        return this.serverAddress;
     }
 }

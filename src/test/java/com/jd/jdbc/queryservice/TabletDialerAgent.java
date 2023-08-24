@@ -28,4 +28,8 @@ public class TabletDialerAgent {
     public static void clearTabletCache() {
         TabletDialer.clearTabletCache();
     }
+
+    public static void close(final Topodata.Tablet tablet) {
+        TabletDialer.close(tablet);
+    }
 }

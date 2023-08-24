@@ -19,8 +19,9 @@ limitations under the License.
 package com.jd.jdbc.topo;
 
 import com.jd.jdbc.context.IContext;
-import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+import com.jd.jdbc.context.VtBackgroundContext;
+import com.jd.jdbc.topo.topoproto.TopoProto;
+import io.vitess.proto.Topodata;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
+import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+import static com.jd.jdbc.topo.TopoServer.TABLET_FILE;
 
 @AllArgsConstructor
 public class MemoryTopoServer implements TopoConnection {
@@ -89,7 +94,7 @@ public class MemoryTopoServer implements TopoConnection {
     public Version create(IContext ctx, String filePath, byte[] contents) throws TopoException {
         byte[] contentsCopy = contents;
         if (contentsCopy == null) {
-            contentsCopy = new byte[]{};
+            contentsCopy = new byte[] {};
         }
 
         String[] dirFile = pathSplit(filePath);
@@ -113,13 +118,13 @@ public class MemoryTopoServer implements TopoConnection {
     private String[] pathSplit(String path) {
         int i = lastSlash(path);
 
-        String[] strings = new String[]{path.substring(0, i+1), path.substring(i+1)};
+        String[] strings = new String[] {path.substring(0, i + 1), path.substring(i + 1)};
         return strings;
     }
 
     private int lastSlash(String path) {
         int i = path.length() - 1;
-        for (; i >=0 ; i--) {
+        for (; i >= 0; i--) {
             if (path.charAt(i) == '/') {
                 return i;
             }
@@ -156,8 +161,8 @@ public class MemoryTopoServer implements TopoConnection {
         ConnGetResponse connGetResponse;
         for (Map.Entry<String, Node> childMap : node.getChildren().entrySet()) {
             connGetResponse = new ConnGetResponse();
-            connGetResponse.setContents(childMap.getValue().getContents());
-            connGetResponse.setVersion(childMap.getValue());
+            connGetResponse.setContents(childMap.getValue().getChildren().get(TABLET_FILE).getContents());
+            connGetResponse.setVersion(childMap.getValue().getChildren().get(TABLET_FILE));
             connGetResponseList.add(connGetResponse);
         }
         return connGetResponseList;
@@ -183,6 +188,37 @@ public class MemoryTopoServer implements TopoConnection {
     @Override
     public void close() {
 
+    }
+
+    public static void addCellInMemoryTopo(TopoServer topoServer, String cell) throws TopoException {
+        TopoConnection globalCell = topoServer.globalCell;
+        globalCell.create(new VtBackgroundContext(), Topo.pathForCellInfo(cell), null);
+        TopoFactory factory = topoServer.topoFactory;
+        if (factory instanceof MemoryTopoFactory) {
+            MemoryTopoFactory memoryTopoFactory = (MemoryTopoFactory) factory;
+            memoryTopoFactory.getCells().put(cell, memoryTopoFactory.newDirectory(cell, null));
+        }
+    }
+
+    public static void deleteCellInMemoryTopo(IContext ctx, TopoServer topoServer, String cell) throws TopoException {
+        TopoConnection globalCell = topoServer.globalCell;
+        TopoFactory factory = topoServer.topoFactory;
+        if (factory instanceof MemoryTopoFactory) {
+            MemoryTopoFactory memoryTopoFactory = (MemoryTopoFactory) factory;
+            memoryTopoFactory.deleteNode(cell);
+            memoryTopoFactory.getCells().remove(cell);
+        }
+        List<String> allCells = topoServer.getAllCells(ctx);
+    }
+
+    // createTablet creates a new tablet and all associated paths for the
+    // replication graph.
+    public static void createTablet(IContext ctx, TopoServer topoServer, Topodata.Tablet tablet) throws TopoException {
+        TopoConnection conn = topoServer.connForCell(ctx, tablet.getAlias().getCell());
+        byte[] data = tablet.toByteArray();
+        //Topodata.Tablet testTablet = Topodata.Tablet.parseFrom(data);
+        String tabletPath = Topo.pathForTabletAlias(TopoProto.tabletAliasString(tablet.getAlias()));
+        conn.create(ctx, tabletPath, data);
     }
 
     @AllArgsConstructor

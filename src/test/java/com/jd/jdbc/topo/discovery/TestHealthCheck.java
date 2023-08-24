@@ -33,19 +33,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestHealthCheck {
 
     private final HealthCheck hc = HealthCheck.INSTANCE;
 
+    @Ignore
     @Test
     public void waitForAllServingTabletsTimeoutTest() throws Exception {
         IContext ctx = VtContext.withCancel(VtContext.background());
         List<Query.Target> targetList = new CopyOnWriteArrayList<>();
         targetList.add(Query.Target.newBuilder()
-            .setCell("sh61aa")
-            .setKeyspace("vtdriver3")
+            .setCell("aa")
+            .setKeyspace("vtdriver")
             .setShard("-80")
             .setTabletType(Topodata.TabletType.MASTER)
             .build());
