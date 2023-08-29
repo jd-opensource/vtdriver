@@ -30,6 +30,7 @@ import com.jd.jdbc.discovery.SecurityCenter;
 import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.monitor.ConnectionCollector;
 import com.jd.jdbc.monitor.MonitorServer;
+import com.jd.jdbc.session.TransactionMode;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.srvtopo.ResilientServer;
@@ -47,7 +48,6 @@ import com.jd.jdbc.util.threadpool.InitThreadPoolService;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import io.prometheus.client.Histogram;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.sql.Connection;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
@@ -123,7 +123,7 @@ public class VitessDriver implements java.sql.Driver {
                 : Lists.newArrayList(Topodata.TabletType.REPLICA, Topodata.TabletType.RDONLY);
             tabletGateway.waitForTablets(globalContext, localCell, tabletKeyspace, tabletTypes);
 
-            TxConn txConn = new TxConn(tabletGateway, Vtgate.TransactionMode.MULTI);
+            TxConn txConn = new TxConn(tabletGateway, TransactionMode.MULTI);
             ScatterConn scatterConn = ScatterConn.newScatterConn("VttabletCall", txConn, tabletGateway);
             Resolver resolver = new Resolver(resilientServer, tabletGateway, localCell, scatterConn);
             Topodata.TabletType tabletType = VitessJdbcProperyUtil.getTabletType(prop);

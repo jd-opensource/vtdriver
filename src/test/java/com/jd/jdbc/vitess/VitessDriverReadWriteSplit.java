@@ -287,7 +287,6 @@ public class VitessDriverReadWriteSplit extends TestSuite {
         for (int i = 0; i < 100000000; i++) {
             try {
                 ResultSet resultSet = ps11.executeQuery();
-                printResult(resultSet);
             } catch (Exception e) {
                 e.printStackTrace();
             }

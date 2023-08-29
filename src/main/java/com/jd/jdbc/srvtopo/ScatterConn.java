@@ -27,6 +27,7 @@ import com.jd.jdbc.discovery.HealthCheck;
 import com.jd.jdbc.queryservice.IQueryService;
 import com.jd.jdbc.queryservice.StreamIterator;
 import com.jd.jdbc.session.SafeSession;
+import com.jd.jdbc.session.ShardSession;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqltypes.BatchVtResultSet;
@@ -38,11 +39,9 @@ import com.jd.jdbc.vitess.VitessConnection;
 import com.jd.jdbc.vitess.mysql.VitessPropertyKey;
 import io.vitess.proto.Query;
 import io.vitess.proto.Topodata;
-import io.vitess.proto.Vtgate;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.AllArgsConstructor;
@@ -117,10 +116,6 @@ public class ScatterConn {
             Long transactionId = shardActionInfo.transactionId;
             Long reservedId = shardActionInfo.reservedId;
 
-            if (safeSession != null && safeSession.getVitessConnection().getSession() != null) {
-                opts = safeSession.getVitessConnection().getSession().getOptions();
-            }
-
             if (autocommit) {
                 // As this is auto-commit, the transactionID is supposed to be zero.
                 if (shardActionInfo.transactionId != 0L) {
@@ -147,8 +142,7 @@ public class ScatterConn {
                     }
                     try {
                         BeginVtResultSet beginVtResultSet =
-                            queryService.beginExecute(ctx, rs.getTarget(), Objects.requireNonNull(safeSession).getVitessConnection().getSession().getSavepointsList(), queries.get(i).getSql(),
-                                queries.get(i).getBindVariablesMap(), shardActionInfo.reservedId, opts);
+                            queryService.beginExecute(ctx, rs.getTarget(), null, queries.get(i).getSql(), queries.get(i).getBindVariablesMap(), shardActionInfo.reservedId, opts);
                         innerResultSet = beginVtResultSet.getVtResultSet();
                         transactionId = beginVtResultSet.getTransactionId();
                         alias = beginVtResultSet.getAlias();
@@ -206,9 +200,6 @@ public class ScatterConn {
             Topodata.TabletAlias alias = null;
             Long transactionId = shardActionInfo.transactionId;
             Long reservedId = shardActionInfo.reservedId;
-            if (safeSession != null && safeSession.getVitessConnection().getSession() != null) {
-                opts = safeSession.getVitessConnection().getSession().getOptions();
-            }
             if (autocommit) {
                 // As this is auto-commit, the transactionID is supposed to be zero.
                 if (shardActionInfo.transactionId != 0L) {
@@ -426,13 +417,8 @@ public class ScatterConn {
         }
         if (updated.actionNeeded != ActionNeeded.NOTHING && (updated.transactionId != 0 || updated.reservedId != 0)) {
             try {
-                safeSession.appendOrUpdate(Vtgate.Session.ShardSession.newBuilder()
-                        .setTarget(rs.getTarget())
-                        .setTransactionId(updated.transactionId)
-                        .setReservedId(updated.reservedId)
-                        .setTabletAlias(updated.alias)
-                        .build(),
-                    this.txConn.getTxMode());
+                ShardSession shardSession = new ShardSession(updated.reservedId, updated.transactionId, rs.getTarget(), updated.alias);
+                safeSession.appendOrUpdate(shardSession, this.txConn.getTxMode());
             } catch (Exception e) {
                 logger.error("ScatterConn.oneShard.safeSession.appendOrUpdate.exception", e);
                 exception = e;

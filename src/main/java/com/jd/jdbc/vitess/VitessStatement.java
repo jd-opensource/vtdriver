@@ -1098,13 +1098,13 @@ public class VitessStatement extends AbstractVitessStatement {
                     return Boolean.FALSE;
                 }
                 methodName += "()";
-                lastInsertId = this.connection.getSessionNew().getLastInsertId();
+                lastInsertId = this.connection.getSession().getLastInsertId();
             }
         } else if (expr instanceof SQLVariantRefExpr) {
             String name = ((SQLVariantRefExpr) expr).getName();
             if (SQLUtils.nameEquals(name, FUNCATION_IDENTITY)) {
                 methodName = name;
-                lastInsertId = this.connection.getSessionNew().getLastInsertId();
+                lastInsertId = this.connection.getSession().getLastInsertId();
             }
         }
 

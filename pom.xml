@@ -16,7 +16,6 @@
 
         <!-- plugins -->
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
@@ -25,7 +24,6 @@
         <checkstyle.version>8.20</checkstyle.version>
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
         <grpc.version>1.41.0</grpc.version>
-        <protobuf.version>3.5.0</protobuf.version>
         <surefire-junit4.version>3.0.0-M5</surefire-junit4.version>
 
         <!-- dependencies -->
@@ -258,26 +256,6 @@
                         <version>${surefire-junit4.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>${protobuf-maven-plugin.version}</version>
-                <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
-                    </protocArtifact>
-                    <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}
-                    </pluginArtifact>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
