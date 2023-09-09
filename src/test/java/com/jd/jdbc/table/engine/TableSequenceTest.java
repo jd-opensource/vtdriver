@@ -18,9 +18,15 @@ package com.jd.jdbc.table.engine;
 
 import com.jd.jdbc.table.TableTestUtil;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -56,8 +62,7 @@ public class TableSequenceTest extends TestSuite {
         if (stmt2 != null) {
             stmt2.close();
         }
-        closeConnection(conn);
-        closeConnection(conn2);
+        closeConnection(conn, conn2);
         TableTestUtil.setDefaultTableConfig();
     }
 
@@ -73,6 +78,88 @@ public class TableSequenceTest extends TestSuite {
         TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq-tindex.yml");
         testSequence(stmt);
         testSequence(stmt2);
+    }
+
+    @Ignore
+    @Test
+    public void testEachTableSequence() {
+        List<TestCase> testCaseList = new ArrayList<>();
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (null, '11')", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (null, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (101, '11')", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (101, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_seq_test (f_key, f_tinyint) values ('22' , 1)", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (f_key, f_tinyint) values ('22' , ?)", 55));
+
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (null, '11')", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (null, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (101, '11')", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (101, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (f_key, f_tinyint) values ('22' , 1)", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (f_key, f_tinyint) values ('22' , ?)", 55));
+
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq.yml");
+        for (TestCase testCase : testCaseList) {
+            try {
+                if (testCase.var != null) {
+                    PreparedStatement prepareStatement = conn2.prepareStatement(testCase.sql);
+                    prepareStatement.setInt(1, testCase.var);
+                    prepareStatement.execute();
+                } else {
+                    Statement statement = conn2.createStatement();
+                    statement.execute(testCase.sql);
+                }
+            } catch (SQLException e) {
+                if (e instanceof SQLFeatureNotSupportedException && e.getMessage().equals("Unsupported to use seq for each table on split table")) {
+                    printOk(testCase.toString());
+                } else {
+                    Assert.fail();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testEachTableSequenceAsTindex() {
+        List<TestCase> testCaseList = new ArrayList<>();
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (null, '11')", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (null, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (101, '11')", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key) values (101, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key, f_tinyint) values (null, '22', 1)", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key, f_tinyint) values (null, '22', ?)", 55));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key, f_tinyint) values (101, '22', 1)", null));
+        testCaseList.add(new TestCase("insert into table_seq_test (id, f_key, f_tinyint) values (101, '22', ?)", 55));
+
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (null, '11')", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (null, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (101, '11')", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key) values (101, ?)", 22));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key, f_tinyint) values (null, '22', 1)", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key, f_tinyint) values (null, '22', ?)", 55));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key, f_tinyint) values (101, '22', 1)", null));
+        testCaseList.add(new TestCase("insert into table_split_seq_test (id, f_key, f_tinyint) values (101, '22', ?)", 55));
+
+        TableTestUtil.setSplitTableConfig("engine/tableengine/split-table-seq-tindex.yml");
+        for (TestCase testCase : testCaseList) {
+            try {
+                if (testCase.var != null) {
+                    PreparedStatement prepareStatement = conn2.prepareStatement(testCase.sql);
+                    prepareStatement.setInt(1, testCase.var);
+                    prepareStatement.execute();
+                } else {
+                    Statement statement = conn2.createStatement();
+                    statement.execute(testCase.sql);
+                }
+            } catch (SQLException e) {
+                if (e instanceof SQLFeatureNotSupportedException && e.getMessage().equals("Unsupported to use seq for each table on split table")) {
+                    printOk(testCase.toString());
+                } else {
+                    e.printStackTrace();
+                    Assert.fail();
+                }
+            }
+        }
     }
 
     private void testSequence(Statement stmt) throws SQLException {
@@ -94,7 +181,7 @@ public class TableSequenceTest extends TestSuite {
         checkByCount(stmt, num, "table_engine_test");
     }
 
-    public void checkByCountDistinct(Statement stmt, final int expected, String tableName, String column) throws SQLException {
+    private void checkByCountDistinct(Statement stmt, final int expected, String tableName, String column) throws SQLException {
         ResultSet resultSet = stmt.executeQuery("select count(distinct(" + column + ")) from " + tableName);
         Assert.assertTrue(resultSet.next());
         int actual = resultSet.getInt(1);
@@ -102,11 +189,19 @@ public class TableSequenceTest extends TestSuite {
         Assert.assertFalse(resultSet.next());
     }
 
-    public void checkByCount(Statement stmt, final int expected, String tableName) throws SQLException {
+    private void checkByCount(Statement stmt, final int expected, String tableName) throws SQLException {
         ResultSet resultSet = stmt.executeQuery("select count(*) from " + tableName);
         Assert.assertTrue(resultSet.next());
         int actual = resultSet.getInt(1);
         Assert.assertEquals(printFail("[FAIL]"), expected, actual);
         Assert.assertFalse(resultSet.next());
+    }
+
+    @AllArgsConstructor
+    @ToString
+    class TestCase {
+        private String sql;
+
+        private Integer var;
     }
 }

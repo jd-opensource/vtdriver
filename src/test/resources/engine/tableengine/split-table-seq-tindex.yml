@@ -8,11 +8,33 @@ schemas:
           shardingColumnName: id,
           shardingColumnType: INT64,
           sequenceColumnName: id }
+      - { actualTableExprs: 'table_seq_test_${1..2}',
+          logicTable: table_seq_test,
+          shardingAlgorithms: ShardTableByMurmur,
+          shardingColumnName: id,
+          shardingColumnType: INT64 }
+      - { actualTableExprs: 'table_split_seq_test_${1..2}',
+          logicTable: table_split_seq_test,
+          shardingAlgorithms: ShardTableByMurmur,
+          shardingColumnName: id,
+          shardingColumnType: INT64,
+          sequenceColumnName: id }
 
   - schema: customer
     logicTables:
       - { actualTableExprs: 'table_engine_test_${1..4}',
           logicTable: table_engine_test,
+          shardingAlgorithms: ShardTableByMurmur,
+          shardingColumnName: id,
+          shardingColumnType: INT64,
+          sequenceColumnName: id }
+      - { actualTableExprs: 'table_seq_test_${1..2}',
+          logicTable: table_seq_test,
+          shardingAlgorithms: ShardTableByMurmur,
+          shardingColumnName: id,
+          shardingColumnType: INT64 }
+      - { actualTableExprs: 'table_split_seq_test_${1..2}',
+          logicTable: table_split_seq_test,
           shardingAlgorithms: ShardTableByMurmur,
           shardingColumnName: id,
           shardingColumnType: INT64,

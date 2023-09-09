@@ -47,8 +47,10 @@ import com.jd.jdbc.sqlparser.dialect.mysql.visitor.SwitchTableVisitor;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
+import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
 import io.netty.util.internal.StringUtil;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,8 +59,6 @@ import java.util.StringJoiner;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import vschema.Vschema;
-
-import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
 
 public class InsertPlan {
     public static PrimitiveEngine newBuildInsertPlan(MySqlInsertReplaceStatement stmt, VSchemaManager vm, String defaultKeyspace) throws SQLException {
@@ -333,7 +333,7 @@ public class InsertPlan {
         List<SQLExpr> duplicateKeyUpdateExprList = stmt.getDuplicateKeyUpdate();
         if (duplicateKeyUpdateExprList != null && !duplicateKeyUpdateExprList.isEmpty()) {
             if (isTindexChangine(duplicateKeyUpdateExprList, insertEngine.getTable())) {
-                throw new SQLException("unsupported: DML cannot change tindex column");
+                throw new SQLFeatureNotSupportedException("unsupported: DML cannot change tindex column");
             }
             insertEngine.setInsertOpcode(Engine.InsertOpcode.InsertShardedIgnore);
         }
@@ -343,10 +343,10 @@ public class InsertPlan {
 
         List<SQLInsertStatement.ValuesClause> valuesList = stmt.getValuesList();
         if (stmt.getSelectQuery().getSubQuery() != null) {
-            throw new SQLException("unsupported: insert into select");
+            throw new SQLFeatureNotSupportedException("unsupported: insert into select");
         } else if (valuesList != null && !valuesList.isEmpty()) {
             if (valuesHasQuery(valuesList)) {
-                throw new SQLException("unsupported: subquery in insert values");
+                throw new SQLFeatureNotSupportedException("unsupported: subquery in insert values");
             }
         } else {
             throw new SQLException("BUG: unexpected construct in insert: " + valuesList);
@@ -392,9 +392,16 @@ public class InsertPlan {
         insertEngine.setInsertReplaceStmt(stmt);
 
         MySqlInsertReplaceStatement stmtClone = (MySqlInsertReplaceStatement) stmt.clone();
-        SwitchTableVisitor visitor = new SwitchTableVisitor(new HashMap<String, String>() {{
-            put(ltb.getLogicTable(), ltb.getFirstActualTableName());
-        }});
+        Map<String, String> map = new HashMap<>();
+        map.put(ltb.getLogicTable(), ltb.getFirstActualTableName());
+        SwitchTableVisitor visitor = new SwitchTableVisitor(map);
+
+        // check use seq for each table on split table
+        Vschema.Table table = vm.getTable(defaultKeyspace, ltb.getFirstActualTableName());
+        if (table != null && table.hasAutoIncrement()) {
+            throw new SQLFeatureNotSupportedException("Unsupported to use seq for each table on split table");
+        }
+
         stmtClone.accept(visitor);
         InsertEngine innerInsertEigine = (InsertEngine) newBuildInsertPlan(stmtClone, vm, defaultKeyspace);
 
