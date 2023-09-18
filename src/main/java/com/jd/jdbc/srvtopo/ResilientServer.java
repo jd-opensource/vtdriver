@@ -18,7 +18,6 @@ limitations under the License.
 
 package com.jd.jdbc.srvtopo;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.monitor.SrvKeyspaceCollector;
@@ -27,6 +26,7 @@ import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.topo.TopoException;
 import com.jd.jdbc.topo.TopoExceptionCode;
 import com.jd.jdbc.topo.TopoServer;
+import com.jd.jdbc.util.threadpool.VtThreadFactoryBuilder;
 import io.vitess.proto.Topodata;
 import java.util.Objects;
 import java.util.Set;
@@ -44,7 +44,7 @@ public class ResilientServer implements SrvTopoServer {
     private static final ScheduledThreadPoolExecutor srvKeyspaceTimer;
 
     static {
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("srvKeyspace-Timer").build();
+        ThreadFactory threadFactory = new VtThreadFactoryBuilder.DefaultThreadFactory("srvKeyspace-Timer", true);
         srvKeyspaceTimer = new ScheduledThreadPoolExecutor(1, threadFactory, new ThreadPoolExecutor.DiscardPolicy());
         srvKeyspaceTimer.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         srvKeyspaceTimer.setRemoveOnCancelPolicy(true);

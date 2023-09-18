@@ -77,6 +77,8 @@ public class NetUtil {
             // 发送POST请求必须设置如下两行
             conn.setDoOutput(true);
             conn.setDoInput(true);
+            conn.setConnectTimeout(5);
+            conn.setReadTimeout(5);
             conn.connect();
 
             out = new PrintWriter(conn.getOutputStream());
