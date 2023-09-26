@@ -137,9 +137,16 @@ public class PlanBuilder {
     }
 
     private static PrimitiveEngine buildPlanForBypass(final SQLStatement stmt, final VSchemaManager vm, final String defaultKeyspace, final Destination destination)
-        throws SQLFeatureNotSupportedException {
+        throws SQLException {
         if (stmt instanceof MySqlInsertReplaceStatement) {
             throw new SQLFeatureNotSupportedException("insert statement does not support execute by destination");
+        }
+        if (stmt instanceof SQLUpdateStatement) {
+            SQLTableSource tableSource = ((SQLUpdateStatement) stmt).getTableSource();
+            if (!(tableSource instanceof SQLExprTableSource)) {
+                throw new SQLFeatureNotSupportedException("unsupported: multi-table update");
+            }
+            UpdatePlan.buildChangedVindexesValues((SQLUpdateStatement) stmt, vm.getTable(defaultKeyspace, TableNameUtils.getTableSimpleName((SQLExprTableSource) tableSource)), null);
         }
 
         Vschema.Keyspace ks = vm.getKeyspace(defaultKeyspace);
