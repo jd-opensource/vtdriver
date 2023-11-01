@@ -80,7 +80,7 @@ public class TestResult {
             for (int j = 0; j < row.length; j++) {
                 VtResultValue item;
                 if (row[j].equals("null")) {
-                    item = new VtResultValue(null, Query.Type.NULL_TYPE);
+                    item = VtResultValue.NULL;
                 } else {
                     Class<?> javaClass = VtType.DataTypeConverter.fromTypeString(fields[j].getType().toString()).getJavaClass();
                     Object o = convertValue(row[j], javaClass);

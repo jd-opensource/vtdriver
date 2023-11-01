@@ -30,7 +30,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class VtResultValue {
-    public static VtResultValue NULL = new VtResultValue();
+    public static final VtResultValue NULL = new VtResultValue();
 
     private Object value;
 

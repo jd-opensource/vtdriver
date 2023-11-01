@@ -19,6 +19,7 @@ limitations under the License.
 package com.jd.jdbc.engine;
 
 import com.jd.jdbc.IExecute;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtResultSet;
@@ -132,12 +133,8 @@ public class JoinEngine implements PrimitiveEngine {
                 for (List<VtResultValue> rightRow : rightResult.getRows()) {
                     resultSet.getRows().add(joinRows(leftRow, rightRow, this.cols));
                 }
-
-                if (this.opcode == Engine.JoinOpcode.LeftJoin && (rightResult.getRows() == null || rightResult.getRows().isEmpty())) {
+                if (this.opcode == Engine.JoinOpcode.LeftJoin && CollectionUtils.isEmpty(rightResult.getRows())) {
                     resultSet.getRows().add(joinRows(leftRow, null, this.cols));
-                    resultSet.setRowsAffected(resultSet.getRowsAffected() + 1);
-                } else {
-                    resultSet.setRowsAffected(resultSet.getRowsAffected() + rightResult.getRows().size());
                 }
                 if (vcursor.exceedsMaxMemoryRows(resultSet.getRows().size())) {
                     throw new SQLException("in-memory row count exceeded allowed limit of " + vcursor.maxMemoryRows());
@@ -279,7 +276,7 @@ public class JoinEngine implements PrimitiveEngine {
     }
 
     private List<VtResultValue> joinRows(List<VtResultValue> leftRow, List<VtResultValue> rightRow, List<Integer> cols) {
-        List<VtResultValue> row = new ArrayList<>();
+        List<VtResultValue> row = new ArrayList<>(cols.size());
         for (Integer index : cols) {
             if (index < 0) {
                 row.add(leftRow.get(-index - 1));
@@ -288,6 +285,8 @@ public class JoinEngine implements PrimitiveEngine {
             // right row can be null on left joins
             if (rightRow != null) {
                 row.add(rightRow.get(index - 1));
+            } else {
+                row.add(VtResultValue.NULL);
             }
         }
         return row;

@@ -19,6 +19,7 @@ limitations under the License.
 package com.jd.jdbc.engine.gen4;
 
 import com.jd.jdbc.IExecute;
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.PrimitiveEngine;
@@ -27,7 +28,6 @@ import com.jd.jdbc.sqltypes.SqlTypes;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtRowList;
-import com.jd.jdbc.sqltypes.VtStreamResultSet;
 import com.jd.jdbc.srvtopo.BindVariable;
 import io.vitess.proto.Query;
 import java.sql.SQLException;
@@ -135,8 +135,7 @@ public class JoinGen4Engine implements PrimitiveEngine {
                 for (List<VtResultValue> rightRow : rightResult.getRows()) {
                     resultSet.getRows().add(joinRows(leftRow, rightRow, this.cols));
                 }
-
-                if (this.opcode == Engine.JoinOpcode.LeftJoin && (rightResult.getRows() == null || rightResult.getRows().isEmpty())) {
+                if (this.opcode == Engine.JoinOpcode.LeftJoin && CollectionUtils.isEmpty(rightResult.getRows())) {
                     resultSet.getRows().add(joinRows(leftRow, null, this.cols));
                 }
                 if (vcursor.exceedsMaxMemoryRows(resultSet.getRows().size())) {
@@ -145,80 +144,6 @@ public class JoinGen4Engine implements PrimitiveEngine {
             }
         }
         return new IExecute.ExecuteMultiShardResponse(resultSet);
-    }
-
-    @Override
-    public IExecute.VtStream streamExecute(IContext ctx, Vcursor vcursor, Map<String, BindVariable> bindValue, boolean wantFields) throws SQLException {
-        IExecute.VtStream leftStream = this.left.streamExecute(ctx, vcursor, bindValue, wantFields);
-        return new IExecute.VtStream() {
-            private IExecute.VtStream leftStreamResult = leftStream;
-
-            private IExecute.VtStream rightStreamResult;
-
-            @Override
-            public VtRowList fetch(boolean wantFields) throws SQLException {
-                return this.internalFetch(wantFields);
-            }
-
-            private VtRowList internalFetch(boolean wantFields) throws SQLException {
-                Map<String, BindVariable> joinVars = new HashMap<>();
-                VtResultSet resultSet = new VtResultSet();
-
-                VtStreamResultSet leftStreamResultSet = new VtStreamResultSet(this.leftStreamResult, wantFields);
-                while (leftStreamResultSet.hasNext()) {
-                    List<VtResultValue> leftRow = leftStreamResultSet.next();
-                    for (Map.Entry<String, Integer> var : vars.entrySet()) {
-                        joinVars.put(var.getKey(), SqlTypes.valueBindVariable(leftRow.get(var.getValue())));
-                    }
-                    boolean rowSent = false;
-                    this.rightStreamResult = right.streamExecute(ctx, vcursor, combineVars(bindValue, joinVars), wantFields);
-                    VtStreamResultSet rightStreamResultSet = new VtStreamResultSet(rightStreamResult, wantFields);
-                    if (wantFields) {
-                        // This code is currently unreachable because the first result
-                        // will always be just the field info, which will cause the outer
-                        // wantfields code path to be executed. But this may change in the future.
-                        wantFields = false;
-                        resultSet.setFields(joinFields(leftStreamResultSet.getFields(), rightStreamResultSet.getFields(), cols));
-                    }
-                    while (rightStreamResultSet.hasNext()) {
-                        rowSent = true;
-                        List<VtResultValue> rightRow = rightStreamResultSet.next();
-                        resultSet.getRows().add(joinRows(leftRow, rightRow, cols));
-                    }
-                    rightStreamResultSet.close();
-                    if (opcode == Engine.JoinOpcode.LeftJoin && !rowSent) {
-                        resultSet.setRows(new ArrayList<List<VtResultValue>>() {
-                            {
-                                add(new ArrayList<VtResultValue>() {{
-                                    addAll(joinRows(leftRow, null, cols));
-                                }});
-                            }
-                        });
-                    }
-                }
-                if (wantFields) {
-                    wantFields = false;
-                    for (Map.Entry<String, Integer> var : vars.entrySet()) {
-                        joinVars.put(var.getKey(), BindVariable.NULL_BIND_VARIABLE);
-                    }
-                    VtResultSet rightResultSet = right.getFields(vcursor, null);
-                    resultSet.setFields(joinFields(leftStreamResultSet.getFields(), rightResultSet.getFields(), cols));
-                }
-                return resultSet;
-            }
-
-            @Override
-            public void close() throws SQLException {
-                if (this.rightStreamResult != null) {
-                    this.rightStreamResult.close();
-                    this.rightStreamResult = null;
-                }
-                if (leftStream != null) {
-                    this.leftStreamResult.close();
-                    this.leftStreamResult = null;
-                }
-            }
-        };
     }
 
     @Override
@@ -289,7 +214,7 @@ public class JoinGen4Engine implements PrimitiveEngine {
             if (rightRow != null) {
                 row.add(rightRow.get(index - 1));
             } else {
-                row.add(new VtResultValue(null, Query.Type.NULL_TYPE));
+                row.add(VtResultValue.NULL);
             }
         }
         return row;

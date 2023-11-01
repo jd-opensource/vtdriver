@@ -80,6 +80,42 @@ public abstract class TestSuite extends TestSuitePrinter {
         }
     }
 
+    public static boolean compareResultSets(ResultSet resultSet1, ResultSet resultSet2) throws SQLException {
+        if (resultSet1 == null || resultSet2 == null) {
+            return false;
+        }
+        ResultSetMetaData metaData1 = resultSet1.getMetaData();
+        ResultSetMetaData metaData2 = resultSet2.getMetaData();
+        int columnCount1 = metaData1.getColumnCount();
+        int columnCount2 = metaData2.getColumnCount();
+        if (columnCount1 != columnCount2) {
+            return false;
+        }
+        for (int i = 1; i <= columnCount1; i++) {
+            String columnName1 = metaData1.getColumnName(i);
+            String columnName2 = metaData2.getColumnName(i);
+            int columnType1 = metaData1.getColumnType(i);
+            int columnType2 = metaData2.getColumnType(i);
+            if (!columnName1.equals(columnName2) || columnType1 != columnType2) {
+                return false;
+            }
+        }
+        while (resultSet1.next() && resultSet2.next()) {
+            for (int i = 1; i <= columnCount1; i++) {
+                Object value1 = resultSet1.getObject(i);
+                Object value2 = resultSet2.getObject(i);
+                if (resultSet1.wasNull() && resultSet2.wasNull()) {
+                    // Both values are null, continue to next column
+                    continue;
+                }
+                if (resultSet1.wasNull() || resultSet2.wasNull() || !value1.equals(value2)) {
+                    return false;
+                }
+            }
+        }
+        return !resultSet1.next() && !resultSet2.next();
+    }
+
     protected static ExecutorService getThreadPool(int num, int max) {
         ExecutorService pool = new ThreadPoolExecutor(num, max,
             60, TimeUnit.SECONDS,
