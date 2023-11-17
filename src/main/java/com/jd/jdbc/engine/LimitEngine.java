@@ -96,20 +96,21 @@ public class LimitEngine implements PrimitiveEngine {
         deepPaginationThreshold = deepPaginationThreshold == null ? DEFAULT_DEEP_PAGINATION_THRESHOLD : deepPaginationThreshold;
 
         if (offset > deepPaginationThreshold) {
-            IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindVariableMap, wantFields);
-            LimitStream limitStream = new LimitStream(count, offset, vtStream);
-            Integer maxRows = (Integer) ctx.getContextValue(VitessPropertyKey.MAX_ROWS.getKeyName());
-            VtRowList vtRowList = new VtStreamResultSet(limitStream, wantFields).reserve(maxRows);
-            List<List<VtResultValue>> rows = new ArrayList<>();
-            while (vtRowList != null && vtRowList.hasNext()) {
-                List<VtResultValue> next = vtRowList.next();
-                rows.add(next);
+            try (IExecute.VtStream vtStream = this.input.streamExecute(ctx, vcursor, bindVariableMap, wantFields)) {
+                LimitStream limitStream = new LimitStream(count, offset, vtStream);
+                Integer maxRows = (Integer) ctx.getContextValue(VitessPropertyKey.MAX_ROWS.getKeyName());
+                VtRowList vtRowList = new VtStreamResultSet(limitStream, wantFields).reserve(maxRows);
+                List<List<VtResultValue>> rows = new ArrayList<>();
+                while (vtRowList != null && vtRowList.hasNext()) {
+                    List<VtResultValue> next = vtRowList.next();
+                    rows.add(next);
+                }
+                VtResultSet resultSet = new VtResultSet(rows.size(), rows);
+                if (wantFields && vtRowList != null) {
+                    resultSet.setFields(vtRowList.getFields());
+                }
+                return new IExecute.ExecuteMultiShardResponse(resultSet);
             }
-            VtResultSet resultSet = new VtResultSet(rows.size(), rows);
-            if (wantFields && vtRowList != null) {
-                resultSet.setFields(vtRowList.getFields());
-            }
-            return new IExecute.ExecuteMultiShardResponse(resultSet);
         }
         IExecute.ExecuteMultiShardResponse response = this.input.execute(ctx, vcursor, bindVariableMap, wantFields);
         VtResultSet result = (VtResultSet) response.getVtRowList();

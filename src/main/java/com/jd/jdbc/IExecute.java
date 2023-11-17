@@ -85,9 +85,10 @@ public interface IExecute {
      */
     List<StreamIterator> streamExecuteMultiShard(IContext ctx, List<ResolvedShard> rss, List<BoundQuery> queries, SafeSession safeSession) throws SQLException;
 
-    interface VtStream {
+    interface VtStream extends AutoCloseable {
         VtRowList fetch(boolean wantFields) throws SQLException;
 
+        @Override
         void close() throws SQLException;
     }
 
