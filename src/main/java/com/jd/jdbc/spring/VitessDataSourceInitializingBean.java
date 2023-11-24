@@ -17,6 +17,8 @@ limitations under the License.
 package com.jd.jdbc.spring;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.baomidou.dynamic.datasource.ds.ItemDataSource;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.vitess.VitessJdbcUrlParser;
@@ -25,8 +27,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
 import javax.sql.DataSource;
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
@@ -54,12 +57,35 @@ public class VitessDataSourceInitializingBean implements ApplicationContextAware
     private void initVitessDataSource(Map<String, DataSource> dataSources) {
         for (Map.Entry<String, DataSource> entry : dataSources.entrySet()) {
             DataSource dataSource = entry.getValue();
-            if (isVitessDataSource(dataSource)) {
-                LOG.info("VtDriver datasource start init: " + entry.getKey());
-                try (Connection connection = dataSource.getConnection()) {
+            warmUpConnectionPool(entry.getKey(), dataSource);
+            warmUpDynamicRoutingDataSource(dataSource);
+            warmAopProxyDataSource(entry.getKey(), dataSource);
+        }
+    }
 
-                } catch (SQLException e) {
-                    LOG.info("VtDriver datasource init error: " + e.getMessage());
+    private void warmUpConnectionPool(String dataSourceName, DataSource dataSource) {
+        if (isVitessDataSource(dataSource)) {
+            LOG.info("VtDriver datasource start init: " + dataSourceName);
+            try (Connection connection = dataSource.getConnection()) {
+            } catch (SQLException e) {
+                LOG.info("VtDriver datasource init error: " + e.getMessage());
+            }
+        }
+    }
+
+    private void warmUpDynamicRoutingDataSource(DataSource dataSource) {
+        String className = dataSource.getClass().getName();
+        if (Objects.equals("com.baomidou.dynamic.datasource.DynamicRoutingDataSource", className)) {
+            com.baomidou.dynamic.datasource.DynamicRoutingDataSource dynamicRoutingDataSource = (DynamicRoutingDataSource) dataSource;
+            Map<String, DataSource> currentDataSources = dynamicRoutingDataSource.getCurrentDataSources();
+            for (Map.Entry<String, DataSource> dataSourceEntry : currentDataSources.entrySet()) {
+                DataSource entryDataSource = dataSourceEntry.getValue();
+                String entryDataSourceClassName = entryDataSource.getClass().getName();
+                if (Objects.equals("com.baomidou.dynamic.datasource.ds.ItemDataSource", entryDataSourceClassName)) {
+                    com.baomidou.dynamic.datasource.ds.ItemDataSource itemDataSource = (ItemDataSource) entryDataSource;
+                    warmUpConnectionPool(itemDataSource.getName(), itemDataSource.getRealDataSource());
+                } else {
+                    warmUpConnectionPool(dataSourceEntry.getKey(), entryDataSource);
                 }
             }
         }
@@ -69,14 +95,18 @@ public class VitessDataSourceInitializingBean implements ApplicationContextAware
         String className = dataSource.getClass().getName();
         switch (className) {
             case "com.alibaba.druid.pool.DruidDataSource":
+            case "com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceWrapper":
                 DruidDataSource druidDataSource = (DruidDataSource) dataSource;
                 return VitessJdbcUrlParser.acceptsUrl(druidDataSource.getUrl());
             case "com.zaxxer.hikari.HikariDataSource":
                 HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
                 return VitessJdbcUrlParser.acceptsUrl(hikariDataSource.getJdbcUrl());
-            case "org.apache.commons.dbcp2.BasicDataSource":
-                BasicDataSource basicDataSource = (BasicDataSource) dataSource;
+            case "org.apache.commons.dbcp.BasicDataSource":
+                org.apache.commons.dbcp.BasicDataSource basicDataSource = (org.apache.commons.dbcp.BasicDataSource) dataSource;
                 return VitessJdbcUrlParser.acceptsUrl(basicDataSource.getUrl());
+            case "org.apache.commons.dbcp2.BasicDataSource":
+                org.apache.commons.dbcp2.BasicDataSource basicDataSource2 = (org.apache.commons.dbcp2.BasicDataSource) dataSource;
+                return VitessJdbcUrlParser.acceptsUrl(basicDataSource2.getUrl());
             case "com.mchange.v2.c3p0.ComboPooledDataSource":
                 ComboPooledDataSource comboPooledDataSource = (ComboPooledDataSource) dataSource;
                 return VitessJdbcUrlParser.acceptsUrl(comboPooledDataSource.getJdbcUrl());
@@ -88,6 +118,47 @@ public class VitessDataSourceInitializingBean implements ApplicationContextAware
                 return VitessJdbcUrlParser.acceptsUrl(tomcatDataSource.getUrl());
             default:
                 return false;
+        }
+    }
+
+    private void warmAopProxyDataSource(String dataSourceName, DataSource dataSource) {
+        if (!AopUtils.isAopProxy(dataSource)) {
+            return;
+        }
+        Class<?> targetClass = AopUtils.getTargetClass(dataSource);
+        String className = targetClass.getName();
+        Class clazz;
+        switch (className) {
+            case "com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceWrapper":
+            case "com.alibaba.druid.pool.DruidDataSource":
+                clazz = com.alibaba.druid.pool.DruidDataSource.class;
+                break;
+            case "com.zaxxer.hikari.HikariDataSource":
+                clazz = com.zaxxer.hikari.HikariDataSource.class;
+                break;
+            case "org.apache.commons.dbcp.BasicDataSource":
+                clazz = org.apache.commons.dbcp.BasicDataSource.class;
+                break;
+            case "org.apache.commons.dbcp2.BasicDataSource":
+                clazz = org.apache.commons.dbcp2.BasicDataSource.class;
+                break;
+            case "com.mchange.v2.c3p0.ComboPooledDataSource":
+                clazz = com.mchange.v2.c3p0.ComboPooledDataSource.class;
+                break;
+            case "org.apache.tomcat.dbcp.dbcp2.BasicDataSource":
+                clazz = org.apache.tomcat.dbcp.dbcp2.BasicDataSource.class;
+                break;
+            case "org.apache.tomcat.jdbc.pool.DataSource":
+                clazz = org.apache.tomcat.jdbc.pool.DataSource.class;
+                break;
+            default:
+                return;
+        }
+        try {
+            DataSource targetDataSource = (DataSource) dataSource.unwrap(clazz);
+            warmUpConnectionPool(dataSourceName, targetDataSource);
+        } catch (Exception e) {
+            LOG.info("init AopProxy datasource error: " + e.getMessage());
         }
     }
 }
