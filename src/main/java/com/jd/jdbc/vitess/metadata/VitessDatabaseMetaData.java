@@ -19,6 +19,7 @@ package com.jd.jdbc.vitess.metadata;
 import static com.jd.jdbc.common.Constant.DRIVER_MAJOR_VERSION;
 import static com.jd.jdbc.common.Constant.DRIVER_MINOR_VERSION;
 import static com.jd.jdbc.common.Constant.DRIVER_NAME;
+import com.jd.jdbc.monitor.VersionCollector;
 import com.jd.jdbc.pool.InnerConnection;
 import com.jd.jdbc.pool.StatefulConnectionPool;
 import com.jd.jdbc.queryservice.util.RoleUtils;
@@ -45,6 +46,7 @@ public class VitessDatabaseMetaData extends AbstractDatabaseMetaData {
             properties.load(VitessDatabaseMetaData.class.getClassLoader().getResourceAsStream("vtdriver-version.properties"));
             if (!properties.isEmpty()) {
                 version = properties.getProperty("version");
+                VersionCollector.getVersionGauge().labels(version).set(0);
             }
         } catch (IOException e) {
         }

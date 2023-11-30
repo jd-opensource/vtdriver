@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public final class SqlErrorCollector extends Collector {
+public final class SqlErrorCollector extends Collector implements Collector.Describable {
     private static final Log LOG = LogFactory.getLog(SqlErrorCollector.class);
 
     private static final Integer DEFAULT_CAPACITY = 300;
@@ -133,6 +133,12 @@ public final class SqlErrorCollector extends Collector {
                 SQL_ERROR_RECORDER_CACHE.put(key, sqlErrorRecorder);
             }
         }
+    }
+
+    @Override
+    public List<MetricFamilySamples> describe() {
+        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, LABEL_NAMES);
+        return Collections.singletonList(labeledGauge);
     }
 
     private static class Ignored {
