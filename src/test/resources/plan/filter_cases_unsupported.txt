@@ -140,3 +140,308 @@
     "Vindex": "user_index"
   }
 }
+
+# this query lead to a nil pointer error
+"select user.id from user left join user_extra on user.col = user_extra.col where foo(user_extra.foobar)"
+Gen3 skip
+"expr cannot be translated, not supported: foo(user_extra.foobar)"
+
+# solving LIKE query with a CFC prefix vindex
+"select c2 from cfc_vindex_col where c1 like 'A%'"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select c2 from cfc_vindex_col where c1 like 'A%'",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "Equal",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select c2 from cfc_vindex_col where 1 != 1",
+    "Query": "select c2 from cfc_vindex_col where c1 like 'A%'",
+    "Table": "cfc_vindex_col",
+    "Values": [
+      "VARCHAR(\"A%\")"
+    ],
+    "Vindex": "cfc"
+  }
+}
+
+# v3 takes cola_map, gen4 takes colb_colc_map, may be based on map key ordering
+"select * from multicolvin where column_a = 3 and column_b = 1"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select * from multicolvin where column_a = 3 and column_b = 1",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "EqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select * from multicolvin where 1 != 1",
+    "Query": "select * from multicolvin where column_a = 3 and column_b = 1",
+    "Table": "multicolvin",
+    "Values": [
+      "INT64(1)"
+    ],
+    "Vindex": "colb_colc_map"
+  }
+}
+
+# uses vindex colb_colc_map
+"select * from multicolvin where column_b = 1 and column_c = 2 and column_a = 3"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select * from multicolvin where column_b = 1 and column_c = 2 and column_a = 3",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "EqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select * from multicolvin where 1 != 1",
+    "Query": "select * from multicolvin where column_b = 1 and column_c = 2 and column_a = 3",
+    "Table": "multicolvin",
+    "Values": [
+      "INT64(1)"
+    ],
+    "Vindex": "colb_colc_map"
+  }
+}
+
+# should use colb_colc_map as first column of the vindex is present in predicate
+"select * from multicolvin where column_b = 1"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select * from multicolvin where column_b = 1",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "EqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select * from multicolvin where 1 != 1",
+    "Query": "select * from multicolvin where column_b = 1",
+    "Table": "multicolvin",
+    "Values": [
+      "INT64(1)"
+    ],
+    "Vindex": "colb_colc_map"
+  }
+}
+
+# should only use first column of the vindex colb_colc_map
+"select * from multicolvin where column_b = 1 and column_c = 2"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select * from multicolvin where column_b = 1 and column_c = 2",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "EqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select * from multicolvin where 1 != 1",
+    "Query": "select * from multicolvin where column_b = 1 and column_c = 2",
+    "Table": "multicolvin",
+    "Values": [
+      "INT64(1)"
+    ],
+    "Vindex": "colb_colc_map"
+  }
+}
+
+# not supported transitive closures with equality inside of an OR
+"select id from user, user_extra where user.id = user_extra.col and (user_extra.col = user_extra.user_id or user_extra.col2 = user_extra.name)"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select id from user, user_extra where user.id = user_extra.col and (user_extra.col = user_extra.user_id or user_extra.col2 = user_extra.name)",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": "R:0",
+    "JoinVars": {
+      "user_extra_col": 0
+    },
+    "TableName": "user_extra_user",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user_extra.col from user_extra where 1 != 1",
+        "Query": "select user_extra.col from user_extra where user_extra.col = user_extra.user_id or user_extra.col2 = user_extra.name",
+        "Table": "user_extra"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select id from user where 1 != 1",
+        "Query": "select id from user where user.id = :user_extra_col",
+        "Table": "user",
+        "Values": [
+          ":user_extra_col"
+        ],
+        "Vindex": "user_index"
+      }
+    ]
+  }
+}
+
+# left join where clauses where we can optimize into an inner join
+"select user.id from user left join user_extra on user.col = user_extra.col where user_extra.foobar = 5"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select user.id from user left join user_extra on user.col = user_extra.col where user_extra.foobar = 5",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": "L:1",
+    "JoinVars": {
+      "user_col": 0
+    },
+    "TableName": "user_user_extra",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.col, user.id from user where 1 != 1",
+        "Query": "select user.col, user.id from user",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select 1 from user_extra where 1 != 1",
+        "Query": "select 1 from user_extra where user_extra.foobar = 5 and user_extra.col = :user_col",
+        "Table": "user_extra"
+      }
+    ]
+  }
+}
+
+# join with transitive closures
+"select id from user, user_extra where user.id = user_extra.col and user_extra.col = user_extra.user_id"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select id from user, user_extra where user.id = user_extra.col and user_extra.col = user_extra.user_id",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id from user, user_extra where 1 != 1",
+    "Query": "select id from user, user_extra where user_extra.col = user_extra.user_id and user.id = user_extra.col",
+    "Table": "user, user_extra"
+  }
+}
+
+# filter after outer join
+"select user.id from user left join user_extra on user.col = user_extra.col where user_extra.id is null"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select user.id from user left join user_extra on user.col = user_extra.col where user_extra.id is null",
+  "Instructions": {
+    "OperatorType": "SimpleProjection",
+    "Columns": [
+      1
+    ],
+    "Inputs": [
+      {
+        "OperatorType": "Filter",
+        "Predicate": "user_extra.id is null",
+        "Inputs": [
+          {
+            "OperatorType": "Join",
+            "Variant": "LeftJoin",
+            "JoinColumnIndexes": "R:0,L:1",
+            "JoinVars": {
+              "user_col": 0
+            },
+            "TableName": "user_user_extra",
+            "Inputs": [
+              {
+                "OperatorType": "Route",
+                "Variant": "SelectScatter",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select user.col, user.id from user where 1 != 1",
+                "Query": "select user.col, user.id from user",
+                "Table": "user"
+              },
+              {
+                "OperatorType": "Route",
+                "Variant": "SelectScatter",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select user_extra.id from user_extra where 1 != 1",
+                "Query": "select user_extra.id from user_extra where user_extra.col = :user_col",
+                "Table": "user_extra"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# SelectReference with uncorrelated subqueries
+"select ref.col from ref where ref.col in (select ref.col from ref)"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select ref.col from ref where ref.col in (select ref.col from ref)",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "Reference",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select ref.col from ref where 1 != 1",
+    "Query": "select ref.col from ref where ref.col in (select ref.col from ref)",
+    "Table": "ref"
+  }
+}
+
+
+
+
+
+

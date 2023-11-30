@@ -1,0 +1,169 @@
+select * from t
+QueryGraph: {
+Tables:
+	TableSet{0}:t
+}
+
+select 1 from t where '1' = 1 and 12 = '12'
+QueryGraph: {
+Tables:
+	TableSet{0}:t
+ForAll: '1' = 1 and 12 = '12'
+}
+
+select id from unsharded union all select id from unsharded_auto
+Concatenate {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:unsharded
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:unsharded_auto
+	}
+}
+
+select id from unsharded union select id from unsharded_auto
+Concatenate(distinct) {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:unsharded
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:unsharded_auto
+	}
+}
+
+select 1 from a union select 2 from b
+Concatenate(distinct) {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:a
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:b
+	}
+}
+
+select id from unsharded union select id from unsharded_auto order by id
+Concatenate(distinct) {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:unsharded
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:unsharded_auto
+	},
+	order by id
+}
+
+(select id from unsharded union all select id from unsharded_auto limit 10) union select id from x order by id
+Concatenate(distinct) {
+	Concatenate {
+		QueryGraph: {
+		Tables:
+			TableSet{0}:unsharded
+		},
+		QueryGraph: {
+		Tables:
+			TableSet{1}:unsharded_auto
+		},
+		limit 10
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{2}:x
+	},
+	order by id
+}
+
+(select id from unsharded union all select id from unsharded_auto) union all select id from x
+Concatenate {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:unsharded
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:unsharded_auto
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{2}:x
+	}
+}
+
+(select id from unsharded union select id from unsharded_auto) union select id from x
+Concatenate(distinct) {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:unsharded
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:unsharded_auto
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{2}:x
+	}
+}
+
+(select id from unsharded union select id from unsharded_auto) union all select id from x
+Concatenate {
+	Concatenate(distinct) {
+		QueryGraph: {
+		Tables:
+			TableSet{0}:unsharded
+		},
+		QueryGraph: {
+		Tables:
+			TableSet{1}:unsharded_auto
+		}
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{2}:x
+	}
+}
+
+select 1 from a union select 2 from b union select 3 from c
+Concatenate(distinct) {
+	QueryGraph: {
+	Tables:
+		TableSet{0}:a
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{1}:b
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{2}:c
+	}
+}
+
+select 1 from a union select 2 from b union select 3 from c union all select 4 from d
+Concatenate {
+	Concatenate(distinct) {
+		QueryGraph: {
+		Tables:
+			TableSet{0}:a
+		},
+		QueryGraph: {
+		Tables:
+			TableSet{1}:b
+		},
+		QueryGraph: {
+		Tables:
+			TableSet{2}:c
+		}
+	},
+	QueryGraph: {
+	Tables:
+		TableSet{3}:d
+	}
+}

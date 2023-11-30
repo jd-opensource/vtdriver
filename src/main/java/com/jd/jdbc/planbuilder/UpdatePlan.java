@@ -143,8 +143,6 @@ public class UpdatePlan implements Builder {
      * planbuilder/update.go --> buildChangedVindexesValues
      */
     public static void buildChangedVindexesValues(SQLUpdateStatement update, Vschema.Table table, String ksidCol) throws SQLException {
-        /*changedVindexes := make(map[string]*engine.VindexValues)
-        buf, offset := initialQuery(ksidCol, table)*/
         for (Vschema.ColumnVindex vindex : table.getColumnVindexesList()) {
             Map<String, VtPlanValue> vindexValueMap = new HashMap<>();
             boolean first = true;
@@ -168,48 +166,15 @@ public class UpdatePlan implements Builder {
                     VtPlanValue pv = extractValueFromUpdate(assignment);
                     vindexValueMap.put(vcol, pv);
                     if (first) {
-                        /*buf.Myprintf(", %v", assignment)*/
                         first = false;
-                    } /*else{
-                        buf.Myprintf(" and %v", assignment)
-                    }*/
+                    }
                 }
             }
             if (vindexValueMap.size() != 0) {
                 // Vindex not changing, continue
                 throw new SQLFeatureNotSupportedException("unsupported: You can't update primary vindex columns. Invalid update on vindex: " + columns.get(0));
             }
-
-            /*if update.Limit != nil && len(update.OrderBy) == 0 {
-                return nil,
-                "", vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "unsupported: Need to provide order by clause when using limit. Invalid update on vindex: %v", vindex.Name)
-            }
-            if i == 0 {
-                return nil,
-                "", vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "unsupported: You can't update primary vindex columns. Invalid update on vindex: %v", vindex.Name)
-            }
-            if _, ok :=vindex.Vindex. (vindexes.Lookup);
-            !ok {
-                return nil,
-                "", vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "unsupported: You can only update lookup vindexes. Invalid update on vindex: %v", vindex.Name)
-            }
-            if !vindex.Owned {
-                return nil,
-                "", vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "unsupported: You can only update owned vindexes. Invalid update on vindex: %v", vindex.Name)
-            }
-            changedVindexes[vindex.Name] = &engine.VindexValues {
-                PvMap:
-                vindexValueMap,
-                        Offset:offset,
-            }
-            offset++*/
         }
-        /*if len(changedVindexes) == 0 {
-            return nil,"", nil
-        }
-        // generate rest of the owned vindex query.
-        buf.Myprintf(" from %v%v%v%v for update", table.Name, update.Where, update.OrderBy, update.Limit)
-        return changedVindexes,buf.String(), nil*/
     }
 
     @Override

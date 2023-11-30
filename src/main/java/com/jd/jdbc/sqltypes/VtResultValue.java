@@ -23,6 +23,7 @@ import io.vitess.proto.Query;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -168,6 +169,27 @@ public class VtResultValue {
         return vtType == null || vtType.equals(Query.Type.NULL_TYPE) || value == null;
     }
 
+    /**
+     * IsComparable returns true if the Value is null safe comparable without collation information.
+     */
+    public boolean isComparable() {
+
+        if (vtType == null || VtType.isNumber(vtType) || VtType.isBinary(vtType)) {
+            return true;
+        }
+        switch (vtType){
+            case TIMESTAMP:
+            case DATE:
+            case TIME:
+            case DATETIME:
+            case ENUM:
+            case SET:
+            case BIT:
+                return true;
+        }
+        return false;
+    }
+
     public byte[] toBytes() {
         if (vtType == Query.Type.EXPRESSION) {
             return null;
@@ -188,5 +210,22 @@ public class VtResultValue {
         } else {
             return String.valueOf(value);
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        VtResultValue value1 = (VtResultValue) o;
+        return Objects.equals(value, value1.value) && vtType == value1.vtType;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value, vtType);
     }
 }

@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.key;
 
+import com.jd.jdbc.common.Hex;
 import io.vitess.proto.Topodata;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -72,6 +73,6 @@ public class DestinationKeyspaceID implements Destination {
 
     @Override
     public String toString() {
-        return "DestinationKeyspaceID(" + Arrays.toString(value) + ")";
+        return "DestinationKeyspaceID(" + Hex.encodeHexString(value) + ")";
     }
 }

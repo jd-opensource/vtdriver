@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public final class HealthCheckCollector extends Collector {
+public final class HealthCheckCollector extends Collector implements Collector.Describable {
     private static final String COLLECT_NAME = "health_check";
 
     private static final String COLLECT_HELP = "healthByAlias info in HealthCheck";
@@ -91,5 +91,11 @@ public final class HealthCheckCollector extends Collector {
 
         long uid = tablet.getAlias().getUid();
         labeledGauge.addMetric(labelValues, tabletHealthCheck.getServing().get() ? uid : -uid);
+    }
+
+    @Override
+    public List<MetricFamilySamples> describe() {
+        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, DefaultConfig.HEALTH_CHECK_LABEL_NAMES);
+        return Collections.singletonList(labeledGauge);
     }
 }

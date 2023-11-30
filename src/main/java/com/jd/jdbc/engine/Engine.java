@@ -20,6 +20,19 @@ package com.jd.jdbc.engine;
 
 import com.google.common.collect.Lists;
 import com.jd.jdbc.IExecute;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvg;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgCount;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgSum;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCount;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCountDistinct;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateMax;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateMin;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateSum;
+import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateSumDistinct;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutExists;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutIn;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutNotIn;
+import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutValue;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.sqlparser.ast.SQLObject;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRestoreVisitor;
@@ -42,20 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
-
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvg;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgCount;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateAvgSum;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCount;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateCountDistinct;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateMax;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateMin;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateSum;
-import static com.jd.jdbc.engine.Engine.AggregateOpcode.AggregateSumDistinct;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutExists;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutIn;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutNotIn;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutValue;
 
 public class Engine {
 
@@ -182,6 +181,20 @@ public class Engine {
         return queries;
     }
 
+    public static List<BoundQuery> getQueriesGen4(SQLObject query, List<Map<String, BindVariable>> bindVariableMapList, String charEncoding) throws SQLException {
+        List<BoundQuery> queries = new ArrayList<>(bindVariableMapList.size());
+        for (Map<String, BindVariable> bindVariableMap : bindVariableMapList) {
+            StringBuilder realQueryOutput = new StringBuilder();
+            VtRestoreVisitor vtRestoreVisitor = new VtRestoreVisitor(realQueryOutput, bindVariableMap, charEncoding);
+            query.accept(vtRestoreVisitor);
+            if (vtRestoreVisitor.getException() != null) {
+                throw vtRestoreVisitor.getException();
+            }
+            queries.add(new BoundQuery(realQueryOutput.toString(), bindVariableMap));
+        }
+        return queries;
+    }
+
     /**
      * @param query
      * @param bindVariableMapList
@@ -289,10 +302,17 @@ public class Engine {
          * SelectNone is used for queries that always return empty values
          */
         SelectNone(8),
+
+        /**
+         * ByDestination is to route explicitly to a given target destination.
+         * Is used when the query explicitly sets a target destination:
+         * in the clause e.g: UPDATE `keyspace[-]`.x1 SET foo=1
+         */
+        ByDestination(9),
         /**
          * NumRouteOpcodes is the number of opcodes
          */
-        NumRouteOpcodes(9);
+        NumRouteOpcodes(10);
 
         @Getter
         private final Integer value;
@@ -363,12 +383,38 @@ public class Engine {
         AggregateSumDistinct(5),
         AggregateAvg(6),
         AggregateAvgSum(7),
-        AggregateAvgCount(8);
+        AggregateAvgCount(8),
+        AggregateRandom(9);
 
         @Getter
         private final Integer value;
 
         AggregateOpcode(Integer value) {
+            this.value = value;
+        }
+    }
+
+
+    /**
+     * These constants list the possible aggregate opcodes.
+     */
+    public enum AggregateOpcodeG4 {
+        /***/
+        AggregateUnassigned(0),
+        AggregateCount(1),
+        AggregateSum(2),
+        AggregateMin(3),
+        AggregateMax(4),
+        AggregateCountDistinct(5),
+        AggregateSumDistinct(6),
+        AggregateGtid(7),
+        AggregateRandom(8),
+        AggregateCountStar(9);
+
+        @Getter
+        private final Integer value;
+
+        AggregateOpcodeG4(Integer value) {
             this.value = value;
         }
     }

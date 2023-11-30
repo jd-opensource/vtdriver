@@ -403,10 +403,6 @@ public class ScatterConn {
      */
     private Exception oneShard(ResolvedShard rs, Integer i, SafeSession safeSession, Boolean autocommit, ShardActionTransactionFunc action) {
         Exception exception = null;
-        /* TODO
-        startTime, statsKey := stc.startAction(name, rs.Target)
-        defer stc.endAction(startTime, allErrors, statsKey, &err, session)
-        */
         ShardActionInfo shardActionInfo = actionInfo(rs.getTarget(), safeSession, autocommit);
         ShardActionTransactionFuncResponse response = action.action(rs, i, shardActionInfo);
         ShardActionInfo updated = response.getShardActionInfo();

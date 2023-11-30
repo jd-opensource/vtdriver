@@ -18,7 +18,6 @@ package com.jd.jdbc.monitor;
 
 
 import com.jd.jdbc.util.threadpool.VtRejectedExecutionHandler;
-
 import io.prometheus.client.Collector;
 import io.prometheus.client.GaugeMetricFamily;
 import java.util.Arrays;

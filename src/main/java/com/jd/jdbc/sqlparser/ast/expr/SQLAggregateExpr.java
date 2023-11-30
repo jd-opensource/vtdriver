@@ -20,10 +20,10 @@ import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.ast.*;
 import com.jd.jdbc.sqlparser.utils.FnvHash;
 import com.jd.jdbc.sqlparser.visitor.SQLASTVisitor;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SQLAggregateExpr extends SQLExprImpl implements Serializable, SQLReplaceable {
 
@@ -242,6 +242,16 @@ public class SQLAggregateExpr extends SQLExprImpl implements Serializable, SQLRe
 
         x.ignoreNulls = ignoreNulls;
 
+        if (attributes != null) {
+            for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (value instanceof SQLObject) {
+                    value = ((SQLObject) value).clone();
+                }
+                x.putAttribute(key, value);
+            }
+        }
         return x;
     }
 

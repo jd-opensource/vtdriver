@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public final class SrvKeyspaceCollector extends Collector {
+public final class SrvKeyspaceCollector extends Collector implements Collector.Describable {
     private static final List<String> LABEL_NAMES = Lists.newArrayList("Keyspace");
 
     private static final String COLLECT_NAME = "SrvKeyspaceCollector";
@@ -66,7 +66,7 @@ public final class SrvKeyspaceCollector extends Collector {
         .help("SrvKeyspaceTask update counter")
         .register(MonitorServer.getCollectorRegistry());
 
-    private static final SrvKeyspaceCollector srvKeyspaceCollector = new SrvKeyspaceCollector();
+    private static final SrvKeyspaceCollector SRV_KEYSPACE_COLLECTOR = new SrvKeyspaceCollector();
 
     private final List<ResilientServer> resilientServerList = new ArrayList<>();
 
@@ -74,7 +74,7 @@ public final class SrvKeyspaceCollector extends Collector {
     }
 
     public static SrvKeyspaceCollector getInstance() {
-        return srvKeyspaceCollector;
+        return SRV_KEYSPACE_COLLECTOR;
     }
 
     public static Counter getCounter() {
@@ -121,5 +121,11 @@ public final class SrvKeyspaceCollector extends Collector {
 
     public void add(final ResilientServer resilientServer) {
         resilientServerList.add(resilientServer);
+    }
+
+    @Override
+    public List<MetricFamilySamples> describe() {
+        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, LABEL_NAMES);
+        return Collections.singletonList(labeledGauge);
     }
 }

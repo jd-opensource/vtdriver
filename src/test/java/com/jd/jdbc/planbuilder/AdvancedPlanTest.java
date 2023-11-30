@@ -86,7 +86,7 @@ public class AdvancedPlanTest extends AbstractPlanTest {
     @Test
     public void case02() throws Exception {
         VSchemaManager vm = loadSchema("src/test/resources/plan/plan_schema.json");
-        Plan plan = build("select * from unsharded_a left join unsharded_b on unsharded_a.id = unsharded_b.id", vm);
+        Plan plan = build("select * from unsharded_a left join unsharded_b on unsharded_a.id = unsharded_b.id", vm, true);
         System.out.println("plan = " + plan);
     }
 }

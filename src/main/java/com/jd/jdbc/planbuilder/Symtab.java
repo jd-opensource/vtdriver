@@ -537,7 +537,10 @@ public class Symtab {
             // Check for nil because there can be nil entries if there
             // are duplicate columns across multiple tables.
             if (this.uniqueColumns.containsKey(col.getSimpleName().toLowerCase())) {
-                return this.uniqueColumns.get(col.getSimpleName().toLowerCase());
+                Column c = this.uniqueColumns.get(col.getSimpleName().toLowerCase());
+                if (c != null) {
+                    return c;
+                }
             }
 
             if (this.tables.size() == 1) {

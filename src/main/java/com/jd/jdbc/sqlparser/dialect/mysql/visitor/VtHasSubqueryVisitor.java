@@ -18,6 +18,7 @@ package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
 import com.jd.jdbc.sqlparser.ast.expr.SQLInSubQueryExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLQueryExpr;
+import com.jd.jdbc.sqlparser.ast.statement.SQLSelect;
 import com.jd.jdbc.sqlparser.ast.statement.SQLSubqueryTableSource;
 import lombok.Getter;
 
@@ -34,6 +35,12 @@ public class VtHasSubqueryVisitor extends MySqlASTVisitorAdapter {
 
     @Override
     public boolean visit(final SQLQueryExpr x) {
+        this.hasSubquery = Boolean.TRUE;
+        return false;
+    }
+
+    @Override
+    public boolean visit(final SQLSelect x) {
         this.hasSubquery = Boolean.TRUE;
         return false;
     }

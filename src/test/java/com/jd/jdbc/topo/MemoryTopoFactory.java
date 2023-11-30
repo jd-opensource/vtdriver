@@ -19,14 +19,13 @@ limitations under the License.
 package com.jd.jdbc.topo;
 
 import com.jd.jdbc.context.VtBackgroundContext;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Synchronized;
 import org.apache.commons.lang3.RandomUtils;
-
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 @Getter
 public class MemoryTopoFactory implements TopoFactory {

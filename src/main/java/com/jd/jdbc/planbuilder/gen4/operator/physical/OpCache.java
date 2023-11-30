@@ -1,7 +1,7 @@
 /*
-Copyright 2021 JD Project Authors. Licensed under Apache-2.0.
+Copyright 2023 JD Project Authors. Licensed under Apache-2.0.
 
-Copyright 2019 The Vitess Authors.
+Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,14 +16,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package com.jd.jdbc.vindexes;
+package com.jd.jdbc.planbuilder.gen4.operator.physical;
 
-public class Vschema {
-    public static final String TYPE_PINNED_TABLE = "";
+import java.util.HashMap;
+import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
-    public static final String CODE_PINNED_TABLE = "00";
+@Getter
+@Setter
+public class OpCache {
+    private Map<TableSetPair, PhysicalOperator> opCacheMap;
 
-    public static final String TYPE_SEQUENCE = "sequence";
-
-    public static final String TYPE_REFERENCE = "reference";
+    public OpCache() {
+        opCacheMap = new HashMap<>();
+    }
 }

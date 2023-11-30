@@ -6,20 +6,21 @@
   "Original": "select col from route1 where id = 1 order by col",
   "Instructions": {
     "OperatorType": "Route",
-    "Variant": "SelectEqualUnique",
+    "Variant": "EqualUnique",
     "Keyspace": {
       "Name": "user",
       "Sharded": true
     },
-    "FieldQuery": "select col from user as route1 where 1 != 1",
-    "Query": "select col from user as route1 where id = 1 order by col asc",
-    "Table": "user",
+    "FieldQuery": "select col from `user` as route1 where 1 != 1",
+    "Query": "select col from `user` as route1 where id = 1 order by col asc",
+    "Table": "`user`",
     "Values": [
-      1
+      "INT64(1)"
     ],
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # Reason: reference table
 # limit on reference table
@@ -39,3 +40,4 @@
     "Table": "ref"
   }
 }
+

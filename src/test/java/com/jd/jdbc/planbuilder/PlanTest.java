@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package com.jd.jdbc.planbuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -41,7 +42,22 @@ import com.jd.jdbc.engine.SendEngine;
 import com.jd.jdbc.engine.SingleRowEngine;
 import com.jd.jdbc.engine.SubQueryEngine;
 import com.jd.jdbc.engine.UpdateEngine;
+import com.jd.jdbc.engine.gen4.AbstractAggregateGen4;
+import com.jd.jdbc.engine.gen4.ConcatenateGen4Engine;
+import com.jd.jdbc.engine.gen4.DistinctGen4Engine;
+import com.jd.jdbc.engine.gen4.FilterGen4Engine;
+import com.jd.jdbc.engine.gen4.GroupByParams;
+import com.jd.jdbc.engine.gen4.JoinGen4Engine;
+import com.jd.jdbc.engine.gen4.LimitGen4Engine;
+import com.jd.jdbc.engine.gen4.MemorySortGen4Engine;
+import com.jd.jdbc.engine.gen4.OrderByParamsGen4;
+import com.jd.jdbc.engine.gen4.OrderedAggregateGen4Engine;
+import com.jd.jdbc.engine.gen4.RouteGen4Engine;
+import com.jd.jdbc.engine.gen4.ScalarAggregateGen4Engine;
+import com.jd.jdbc.engine.gen4.SimpleProjectionGen4Engine;
+import com.jd.jdbc.engine.vcursor.NoopVCursor;
 import com.jd.jdbc.evalengine.EvalEngine;
+import com.jd.jdbc.evalengine.EvalResult;
 import com.jd.jdbc.key.DestinationShard;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
@@ -50,7 +66,6 @@ import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.util.JsonUtil;
 import com.jd.jdbc.vindexes.VKeyspace;
 import io.netty.util.internal.StringUtil;
-import static io.netty.util.internal.StringUtil.NEWLINE;
 import io.vitess.proto.Query;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -61,51 +76,58 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
+import org.junit.Before;
 import org.junit.Test;
 
 public class PlanTest extends AbstractPlanTest {
 
-    @Test
-    public void testOne() throws IOException {
-        VSchemaManager vm = loadSchema("src/test/resources/plan/plan_schema.json");
-        testFile("src/test/resources/plan/one_cases.txt", vm, 0);
+    private final String samePlanMarker = "Gen4 plan same as above";
+
+    private final String gen4ErrorPrefix = "Gen4 error: ";
+
+    private final String gen3Skip = "Gen3 skip";
+
+    protected VSchemaManager vm;
+
+    @Before
+    public void init() throws IOException {
+        vm = loadSchema("src/test/resources/plan/plan_schema.json");
     }
 
     @Test
     public void testPlan() throws IOException {
-        VSchemaManager vm = loadSchema("src/test/resources/plan/plan_schema.json");
         testFile("src/test/resources/plan/aggr_cases.txt", vm, 0);
-        testFile("src/test/resources/plan/dml_insert_cases.txt", vm, 0);
         testFile("src/test/resources/plan/filter_cases.txt", vm, 0);
         testFile("src/test/resources/plan/from_cases.txt", vm, 0);
         testFile("src/test/resources/plan/memory_sort_cases.txt", vm, 0);
         testFile("src/test/resources/plan/postprocess_cases.txt", vm, 0);
         testFile("src/test/resources/plan/select_cases.txt", vm, 0);
         testFile("src/test/resources/plan/union_cases.txt", vm, 0);
+        testFile("src/test/resources/plan/dml_insert_cases.txt", vm, 0);
         testFile("src/test/resources/plan/dml_delete_cases.txt", vm, 0);
         testFile("src/test/resources/plan/dml_update_cases.txt", vm, 0);
     }
 
     @Test
     public void testDestination() throws IOException {
-        VSchemaManager vm = loadSchema("src/test/resources/plan/plan_schema.json");
         testFile("src/test/resources/plan/destination_case.txt", vm, 0);
     }
 
-    private void testFile(String filename, VSchemaManager vm, Integer startPos) throws IOException {
+    protected void testFile(String filename, VSchemaManager vm, Integer startPos) throws IOException {
         List<TestCase> testCaseList = iterateExecFile(filename);
         for (TestCase testCase : testCaseList) {
 
-            if (testCase.lineno <= startPos) {
+            if (testCase.lineno <= startPos || testCase.output.equals("")) {
                 continue;
             }
 
-            printComment("Test Case: " + testCase.comments);
+            printComment("Gen3 Test Case: " + testCase.comments);
             printNormal("Input SQL: " + testCase.input);
 
             TestPlan fromFile;
@@ -119,18 +141,138 @@ public class PlanTest extends AbstractPlanTest {
             }
 
             try {
-                Plan plan = build(testCase.input, vm);
+                Plan plan = build(testCase.input, vm, true);
                 TestPlan fromCode = this.format(plan, testCase.input);
                 printInfo("From Code: " + fromCode);
-
                 assertEquals(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"), fromFile, fromCode);
-                printOk("File: " + filename + ", Line: " + testCase.lineno + " is [OK]");
             } catch (Exception e) {
                 String error = e.getMessage().replaceAll("\"", "");
                 printInfo("From Code: " + error);
                 assertEquals(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"), fromFile.errorMessage.toLowerCase(), error.toLowerCase());
-                printOk("File: " + filename + ", Line: " + testCase.lineno + " is [OK]");
             }
+            printOk("File: " + filename + ", Line: " + testCase.lineno + " is [OK]");
+            System.out.println();
+        }
+    }
+
+    protected void g4TestFile(String filename, VSchemaManager vm, Integer startPos) throws IOException {
+        List<TestCase> testCaseList = iterateExecFile(filename);
+        for (TestCase testCase : testCaseList) {
+
+            if (testCase.lineno <= startPos) {
+                continue;
+            }
+            if (testCase.output2ndPlanner.equals("")) {
+                continue;
+
+            }
+            // our expectation for the new planner on this query is one of three
+            //  - it produces the same plan as V3 - this is shown using empty brackets: {\n}
+            //  - it produces a different but accepted plan - this is shown using the accepted plan
+            //  - or it produces a different plan that has not yet been accepted, or it fails to produce a plan
+            //       this is shown by not having any info at all after the result for the V3 planner
+            //       with this last expectation, it is an error if the Gen4 planner
+            //       produces the same plan as the V3 planner does
+            TestPlan g4fromFile;
+            try {
+                g4fromFile = new ObjectMapper().readValue(testCase.output2ndPlanner, TestPlan.class);
+            } catch (Exception e) {
+                g4fromFile = new TestPlan();
+                g4fromFile.setErrorMessage(testCase.output2ndPlanner.replaceAll("\"", ""));
+            }
+
+            try {
+                Plan plan = build(testCase.input, vm, false);
+                if (plan == null) {
+                    continue;
+                }
+                TestPlan fromCode = this.format(plan, testCase.input);
+                if (!g4fromFile.equals(fromCode)) {
+                    printComment("Gen4 Test Case: " + testCase.comments);
+                    printNormal("Input SQL: " + testCase.input);
+                    printInfo("From File: " + g4fromFile);
+                    printInfo("From Code: " + fromCode);
+                    System.out.println(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"));
+                    System.out.println();
+                }
+            } catch (Exception e) {
+                if (e instanceof NullPointerException) {
+                    printComment("Gen4 Test Case: " + testCase.comments);
+                    printNormal("Input SQL: " + testCase.input);
+                    System.out.println("空指针");
+                    System.out.println(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"));
+                    continue;
+                }
+                String error;
+                if (e.getMessage() != null) {
+                    error = e.getMessage().replaceAll("\"", "");
+                } else {
+                    error = e.toString();
+                }
+                if (g4fromFile.errorMessage == null || !g4fromFile.errorMessage.toLowerCase().equals(error.toLowerCase())) {
+                    printComment("Gen4 Test Case: " + testCase.comments);
+                    printNormal("Input SQL: " + testCase.input);
+                    error = error.replaceAll("\"", "");
+                    if (g4fromFile.errorMessage != null) {
+                        printInfo("From File: " + g4fromFile.errorMessage);
+                    } else {
+                        printInfo("From File: " + g4fromFile);
+                    }
+                    printInfo("From Code: " + error);
+                    System.out.println(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL],errorMessage " + e.getMessage()));
+                    System.out.println();
+                }
+            }
+        }
+    }
+
+    protected void g4AssertTestFile(String filename, VSchemaManager vm, Integer startPos) throws IOException {
+        List<TestCase> testCaseList = iterateExecFile(filename);
+        for (TestCase testCase : testCaseList) {
+
+            if (testCase.lineno <= startPos) {
+                continue;
+            }
+            if (testCase.output2ndPlanner.equals("")) {
+                continue;
+            }
+            // our expectation for the new planner on this query is one of three
+            //  - it produces the same plan as V3 - this is shown using empty brackets: {\n}
+            //  - it produces a different but accepted plan - this is shown using the accepted plan
+            //  - or it produces a different plan that has not yet been accepted, or it fails to produce a plan
+            //       this is shown by not having any info at all after the result for the V3 planner
+            //       with this last expectation, it is an error if the Gen4 planner
+            //       produces the same plan as the V3 planner does
+            printComment("Gen4 Test Case: " + testCase.comments);
+            printNormal("Input SQL: " + testCase.input);
+            TestPlan g4fromFile;
+            try {
+                g4fromFile = new ObjectMapper().readValue(testCase.output2ndPlanner, TestPlan.class);
+            } catch (Exception e) {
+                g4fromFile = new TestPlan();
+                g4fromFile.setErrorMessage(testCase.output2ndPlanner.replaceAll("\"", ""));
+            }
+            try {
+                Plan plan = build(testCase.input, vm, false);
+                if (plan == null) {
+                    printInfo("skip test");
+                    continue;
+                }
+                TestPlan fromCode = this.format(plan, testCase.input);
+                printInfo("From File: " + g4fromFile);
+                printInfo("From Code: " + fromCode);
+                assertEquals(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"), g4fromFile, fromCode);
+            } catch (Exception e) {
+                String error = e.getMessage().replaceAll("\"", "");
+                if (g4fromFile.errorMessage != null) {
+                    printInfo("From File: " + g4fromFile.errorMessage);
+                } else {
+                    printInfo("From File: " + g4fromFile);
+                }
+                printInfo("From Code: " + error);
+                assertEquals(printFail("File: " + filename + ", Line: " + testCase.lineno + " is [FAIL]"), g4fromFile.errorMessage.toLowerCase(), error.toLowerCase());
+            }
+            printOk("File: " + filename + ", Line: " + testCase.lineno + " is [OK]");
             System.out.println();
         }
     }
@@ -143,7 +285,7 @@ public class PlanTest extends AbstractPlanTest {
         StringBuilder comments = new StringBuilder();
         while ((line = br.readLine()) != null) {
             lineno++;
-            if (StringUtil.isNullOrEmpty(line) || NEWLINE.equalsIgnoreCase(line)) {
+            if (StringUtil.isNullOrEmpty(line) || StringUtil.NEWLINE.equalsIgnoreCase(line)) {
                 continue;
             }
             if (line.startsWith("#")) {
@@ -153,14 +295,38 @@ public class PlanTest extends AbstractPlanTest {
             line = line.substring(1).substring(0, line.length() - 2);
             String l;
             StringBuilder output = new StringBuilder();
-            while ((l = br.readLine()) != null) {
+            while (true) {
+                l = br.readLine();
+                if (l.equals(gen3Skip)) {
+                    output = new StringBuilder();
+                    break;
+                }
                 lineno++;
                 output.append(l);
                 if (l.startsWith("}") || l.startsWith("\"")) {
                     break;
                 }
             }
-            testCaseList.add(new TestCase(filename, lineno, line, output.toString(), comments.toString()));
+            StringBuilder output2Planner = new StringBuilder();
+            l = br.readLine();
+            lineno++;
+            if (l != null && l.equals(samePlanMarker)) {
+                output2Planner = output;
+            } else if (l != null && l.startsWith(gen4ErrorPrefix)) {
+                output2Planner = new StringBuilder(l.substring(gen4ErrorPrefix.length()));
+            } else if (l != null && l.startsWith("{")) {
+                output2Planner.append(l);
+                while ((l = br.readLine()) != null) {
+                    lineno++;
+                    output2Planner.append(l);
+                    if (l.startsWith("}") || l.startsWith("\"")) {
+                        break;
+                    }
+                }
+            } else if (l != null) {
+                output2Planner.append(l);
+            }
+            testCaseList.add(new TestCase(filename, lineno, line, output.toString(), output2Planner.toString(), comments.toString()));
             comments = new StringBuilder();
         }
         return testCaseList;
@@ -190,12 +356,32 @@ public class PlanTest extends AbstractPlanTest {
             instructions = this.formatProjectionEngine((ProjectionEngine) primitive);
         } else if (primitive instanceof ConcatenateEngine) {
             instructions = this.formatConcatenateEngine((ConcatenateEngine) primitive);
+        } else if (primitive instanceof ConcatenateGen4Engine) {
+            instructions = this.formatConcatenateEngine((ConcatenateGen4Engine) primitive);
+        } else if (primitive instanceof DistinctGen4Engine) {
+            instructions = this.formatDistinctEngine((DistinctGen4Engine) primitive);
         } else if (primitive instanceof DeleteEngine) {
             instructions = this.formatDeleteEngine((DeleteEngine) primitive);
         } else if (primitive instanceof UpdateEngine) {
             instructions = this.formatUpdateEngine((UpdateEngine) primitive);
         } else if (primitive instanceof SendEngine) {
             instructions = this.formatSendEngine((SendEngine) primitive);
+        } else if (primitive instanceof ScalarAggregateGen4Engine) {
+            instructions = this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) primitive);
+        } else if (primitive instanceof MemorySortGen4Engine) {
+            instructions = this.formatMemorySortGen4Engine((MemorySortGen4Engine) primitive);
+        } else if (primitive instanceof OrderedAggregateGen4Engine) {
+            instructions = this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) primitive);
+        } else if (primitive instanceof RouteGen4Engine) {
+            instructions = this.formatRouteEngine((RouteGen4Engine) primitive);
+        } else if (primitive instanceof LimitGen4Engine) {
+            instructions = this.formatLimitEngine((LimitGen4Engine) primitive);
+        } else if (primitive instanceof JoinGen4Engine) {
+            instructions = this.formatJoinGen4Engine((JoinGen4Engine) primitive);
+        } else if (primitive instanceof SimpleProjectionGen4Engine) {
+            instructions = this.formatSimpleProjection((SimpleProjectionGen4Engine) primitive);
+        } else if (primitive instanceof FilterGen4Engine) {
+            instructions = this.formatFilterEngine((FilterGen4Engine) primitive);
         }
 
         TestPlan testPlan = new TestPlan();
@@ -203,6 +389,217 @@ public class PlanTest extends AbstractPlanTest {
         testPlan.setOriginal(query);
         testPlan.setInstructions(instructions);
         return testPlan;
+    }
+
+    private Instructions formatDistinctEngine(DistinctGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Distinct");
+
+        instructions.setResultColumns(engine.getCheckCols().size());
+
+        List<Instructions> inputList = new ArrayList<>();
+        PrimitiveEngine engineInput = engine.getSource();
+        if (engineInput instanceof RouteGen4Engine) {
+            inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+        } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+            inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+        } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+            inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+        } else if (engineInput instanceof MemorySortGen4Engine) {
+            inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+        } else if (engineInput instanceof LimitGen4Engine) {
+            inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+        } else if (engineInput instanceof JoinGen4Engine) {
+            inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+        } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+            inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+        } else if (engineInput instanceof FilterGen4Engine) {
+            inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+        }
+        instructions.setInputs(inputList);
+        return instructions;
+    }
+
+    private Instructions formatLimitEngine(LimitGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Limit");
+        try {
+            if ((engine.getCount() != null) && (engine.getCount() instanceof EvalEngine.Literal)) {
+                instructions.setCount(engine.getCount(new NoopVCursor(), null));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        PrimitiveEngine engineInput = engine.getInput();
+        if (engineInput != null) {
+            List<Instructions> inputList = new ArrayList<>();
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+            instructions.setInputs(inputList);
+        }
+        return instructions;
+    }
+
+    private Instructions formatRouteEngine(RouteGen4Engine engine) {
+        VKeyspace vKeyspace = engine.getRoutingParameters().getKeyspace();
+        Keyspace keyspace = new Keyspace();
+        keyspace.setName(vKeyspace.getName());
+        keyspace.setSharded(vKeyspace.getSharded());
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Route");
+        Engine.RouteOpcode routeOpcode = engine.getRoutingParameters().getRouteOpcode();
+        instructions.setVariant(routeOpcode.name());
+        instructions.setKeyspace(keyspace);
+        instructions.setFieldQuery(engine.getFieldQuery());
+        instructions.setQuery(engine.getQuery());
+        instructions.setTable(StringUtil.isNullOrEmpty(engine.getTableName()) ? null : engine.getTableName());
+        List<EvalEngine.Expr> sysTableKeyspaceExpr = engine.getRoutingParameters().getSystableTableSchema();
+        if (sysTableKeyspaceExpr != null && !sysTableKeyspaceExpr.isEmpty()) {
+            List<String> exprList = new ArrayList<>();
+            for (EvalEngine.Expr expr : sysTableKeyspaceExpr) {
+                if (expr instanceof EvalEngine.Literal) {
+                    exprList.add(expr.string());
+                }
+            }
+            instructions.setSysTableKeyspaceExpr(exprList);
+        }
+        if (engine.getTruncateColumnCount() > 0) {
+            instructions.setResultColumns(engine.getTruncateColumnCount());
+        }
+        instructions.setOrderBy(buildOrderbyParamString(engine.getOrderBy()));
+        List<Object> values = new ArrayList<>();
+        for (EvalEngine.Expr expr : engine.getRoutingParameters().getValues()) {
+            if (expr == null) {
+                continue;
+            }
+            String string = expr.string();
+            values.add(string);
+        }
+        if (CollectionUtils.isNotEmpty(values)) {
+            instructions.setValueList(values);
+        }
+        return instructions;
+    }
+
+    private String buildOrderbyParamString(List<OrderByParamsGen4> orderBys) {
+        if (CollectionUtils.isNotEmpty(orderBys)) {
+            List<String> results = new ArrayList<>();
+            for (OrderByParamsGen4 obp : orderBys) {
+                String val = String.valueOf(obp.getCol());
+                if (obp.getStarColFixedIndex() > obp.getCol()) {
+                    val = String.valueOf(obp.getStarColFixedIndex());
+                }
+                if (obp.getWeightStrCol() != -1 && obp.getWeightStrCol() != obp.getCol()) {
+                    val = String.format("(%s|%d)", val, obp.getWeightStrCol());
+                }
+                if (obp.isDesc()) {
+                    val += " DESC";
+                } else {
+                    val += " ASC";
+                }
+                results.add(val);
+            }
+            return String.join(", ", results);
+        }
+        return null;
+    }
+
+    private Instructions formatScalarAggregateGen4Engine(ScalarAggregateGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Aggregate");
+        instructions.setVariant("Scalar");
+
+        instructions.setAggregates(buildAggregateParamsString(engine.getAggregates()));
+        if (engine.getTruncateColumnCount() > 0) {
+            instructions.setResultColumns(engine.getTruncateColumnCount());
+        }
+        PrimitiveEngine engineInput = engine.getInput();
+
+        if (engineInput != null) {
+            List<Instructions> inputList = new ArrayList<>();
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+            instructions.setInputs(inputList);
+        }
+        return instructions;
+    }
+
+    private String buildAggregateParamsString(List<AbstractAggregateGen4.AggregateParams> aggregates) {
+        if (CollectionUtils.isEmpty(aggregates)) {
+            return null;
+        }
+        List<String> results = new ArrayList<>();
+        for (AbstractAggregateGen4.AggregateParams ap : aggregates) {
+            String result;
+            String keyCol = String.valueOf(ap.getCol());
+            if (ap.isWAssigned()) {
+                keyCol = String.format("%s|%d", keyCol, ap.getWCol());
+            }
+            String dispOrigOp = "";
+            if (ap.getOrigOpcode() != null && ap.getOrigOpcode() != ap.getOpcode()) {
+                dispOrigOp = "_" + getAggregateOpcodeG4String(ap.getOrigOpcode());
+            }
+            if (!ap.getAlias().equals("")) {
+                String alias;
+                switch (ap.getOpcode()) {
+                    case AggregateCountStar:
+                    case AggregateCount:
+                    case AggregateSum:
+                    case AggregateMin:
+                    case AggregateMax:
+                    case AggregateCountDistinct:
+                    case AggregateSumDistinct:
+                        alias = ap.getAlias().toLowerCase();
+                        break;
+                    default:
+                        alias = ap.getAlias();
+                }
+
+                result = String.format("%s%s(%s) AS %s", getAggregateOpcodeG4String(ap.getOpcode()), dispOrigOp, keyCol, alias);
+            } else {
+                result = String.format("%s%s(%s)", getAggregateOpcodeG4String(ap.getOpcode()), dispOrigOp, keyCol);
+            }
+            results.add(result);
+        }
+        return String.join(", ", results);
+    }
+
+    private String getAggregateOpcodeG4String(Engine.AggregateOpcodeG4 opcodeG4) {
+        for (Map.Entry<String, Engine.AggregateOpcodeG4> entry : AbstractAggregateGen4.SUPPORTED_AGGREGATES.entrySet()) {
+            if (entry.getValue() == opcodeG4) {
+                return entry.getKey();
+            }
+        }
+        return "ERROR";
     }
 
     private Instructions formatSendEngine(SendEngine engine) {
@@ -246,8 +643,7 @@ public class PlanTest extends AbstractPlanTest {
             List<String> exprList = new ArrayList<>();
             for (EvalEngine.Expr expr : sysTableKeyspaceExpr) {
                 if (expr instanceof EvalEngine.Literal) {
-                    Query.Type type = ((EvalEngine.Literal) expr).getVal().getType();
-                    exprList.add(type.name() + "(\"" + expr.string() + "\")");
+                    exprList.add(expr.string());
                 }
             }
             instructions.setSysTableKeyspaceExpr(exprList);
@@ -305,7 +701,6 @@ public class PlanTest extends AbstractPlanTest {
         if (keyList != null && !keyList.isEmpty()) {
             instructions.setGroupBy(keyList.stream().map(String::valueOf).collect(Collectors.joining(", ")));
         }
-
         PrimitiveEngine engineInput = engine.getInput();
         if (engineInput != null) {
             List<Instructions> inputList = new ArrayList<>();
@@ -321,6 +716,60 @@ public class PlanTest extends AbstractPlanTest {
             instructions.setInputs(inputList);
         }
         return instructions;
+    }
+
+    private Instructions formatOrderedAggregateGen4Engine(OrderedAggregateGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Aggregate");
+        instructions.setVariant("Ordered");
+
+        instructions.setGroupBy(buildGroupByParamsString(engine.getGroupByKeys()));
+        instructions.setAggregates(buildAggregateParamsString(engine.getAggregates()));
+
+        if (engine.getTruncateColumnCount() > 0) {
+            instructions.setResultColumns(engine.getTruncateColumnCount());
+        }
+
+        PrimitiveEngine engineInput = engine.getInput();
+        if (engineInput != null) {
+            List<Instructions> inputList = new ArrayList<>();
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+            instructions.setInputs(inputList);
+        }
+        return instructions;
+    }
+
+    private String buildGroupByParamsString(List<GroupByParams> groupByKeys) {
+        if (CollectionUtils.isEmpty(groupByKeys)) {
+            return null;
+        }
+        List<String> results = new ArrayList<>();
+        for (GroupByParams gbp : groupByKeys) {
+            String result;
+            if (gbp.getWeightStringCol() == -1 || gbp.getKeyCol().equals(gbp.getWeightStringCol())) {
+                result = String.valueOf(gbp.getKeyCol());
+            } else {
+                result = String.format("(%d|%d)", gbp.getKeyCol(), gbp.getWeightStringCol());
+            }
+            results.add(result);
+        }
+        return String.join(", ", results);
     }
 
     private Instructions formatMemorySortEngine(MemorySortEngine engine) {
@@ -352,6 +801,42 @@ public class PlanTest extends AbstractPlanTest {
             } else if (engineInput instanceof SubQueryEngine) {
                 inputList.add(this.formatSubqueryEngine((SubQueryEngine) engineInput));
             }
+            instructions.setInputs(inputList);
+        }
+        return instructions;
+    }
+
+    private Instructions formatMemorySortGen4Engine(MemorySortGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Sort");
+        instructions.setVariant("Memory");
+        instructions.setOrderBy(buildOrderbyParamString(engine.getOrderByParams()));
+
+        if (engine.getTruncateColumnCount() > 0) {
+            instructions.setResultColumns(engine.getTruncateColumnCount());
+        }
+
+        PrimitiveEngine engineInput = engine.getInput();
+        if (engineInput != null) {
+            List<Instructions> inputList = new ArrayList<>();
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+
             instructions.setInputs(inputList);
         }
         return instructions;
@@ -428,6 +913,97 @@ public class PlanTest extends AbstractPlanTest {
                 } else if (engineInput instanceof LimitEngine) {
                     inputList.add(this.formatLimitEngine((LimitEngine) engineInput));
                 }
+            }
+        }
+        instructions.setInputs(inputList);
+        return instructions;
+    }
+
+    private Instructions formatSimpleProjection(SimpleProjectionGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("SimpleProjection");
+        instructions.setColumns(engine.getCols());
+        List<PrimitiveEngine> inputs = engine.inputs();
+        List<Instructions> inputList = new ArrayList<>();
+        for (PrimitiveEngine engineInput : inputs) {
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+        }
+        instructions.setInputs(inputList);
+        return instructions;
+    }
+
+    private Instructions formatFilterEngine(FilterGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Filter");
+        instructions.setPredicate(engine.getAstPredicate().toString());
+
+        List<PrimitiveEngine> inputs = engine.inputs();
+        List<Instructions> inputList = new ArrayList<>();
+        for (PrimitiveEngine engineInput : inputs) {
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+        }
+        instructions.setInputs(inputList);
+        return instructions;
+    }
+
+    private Instructions formatJoinGen4Engine(JoinGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Join");
+        instructions.setVariant(engine.getOpcode().name().replace("Normal", ""));
+        instructions.setJoinColumnIndexes(engine.getCols());
+        instructions.setTableName(engine.getTableName());
+
+        List<PrimitiveEngine> inputs = engine.inputs();
+        List<Instructions> inputList = new ArrayList<>();
+        for (PrimitiveEngine engineInput : inputs) {
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
             }
         }
         instructions.setInputs(inputList);
@@ -544,6 +1120,34 @@ public class PlanTest extends AbstractPlanTest {
         return instructions;
     }
 
+    private Instructions formatConcatenateEngine(ConcatenateGen4Engine engine) {
+        Instructions instructions = new Instructions();
+        instructions.setOperatorType("Concatenate");
+
+        List<Instructions> inputList = new ArrayList<>();
+        for (PrimitiveEngine engineInput : engine.getSourceList()) {
+            if (engineInput instanceof RouteGen4Engine) {
+                inputList.add(this.formatRouteEngine((RouteGen4Engine) engineInput));
+            } else if (engineInput instanceof OrderedAggregateGen4Engine) {
+                inputList.add(this.formatOrderedAggregateGen4Engine((OrderedAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof ScalarAggregateGen4Engine) {
+                inputList.add(this.formatScalarAggregateGen4Engine((ScalarAggregateGen4Engine) engineInput));
+            } else if (engineInput instanceof MemorySortGen4Engine) {
+                inputList.add(this.formatMemorySortGen4Engine((MemorySortGen4Engine) engineInput));
+            } else if (engineInput instanceof LimitGen4Engine) {
+                inputList.add(this.formatLimitEngine((LimitGen4Engine) engineInput));
+            } else if (engineInput instanceof JoinGen4Engine) {
+                inputList.add(this.formatJoinGen4Engine((JoinGen4Engine) engineInput));
+            } else if (engineInput instanceof SimpleProjectionGen4Engine) {
+                inputList.add(this.formatSimpleProjection((SimpleProjectionGen4Engine) engineInput));
+            } else if (engineInput instanceof FilterGen4Engine) {
+                inputList.add(this.formatFilterEngine((FilterGen4Engine) engineInput));
+            }
+        }
+        instructions.setInputs(inputList);
+        return instructions;
+    }
+
     private Instructions formatUpdateEngine(UpdateEngine engine) {
         VKeyspace vKeyspace = engine.getKeyspace();
         Keyspace keyspace = new Keyspace();
@@ -586,7 +1190,7 @@ public class PlanTest extends AbstractPlanTest {
         return instructions;
     }
 
-    private String formatEvalResult(EvalEngine.EvalResult evalResult) {
+    private String formatEvalResult(EvalResult evalResult) {
         String str = "";
         Query.Type type = evalResult.getType();
         switch (type) {
@@ -710,6 +1314,8 @@ public class PlanTest extends AbstractPlanTest {
 
         private String output;
 
+        private String output2ndPlanner;
+
         private String comments;
     }
 
@@ -724,7 +1330,8 @@ public class PlanTest extends AbstractPlanTest {
         @JsonProperty(value = "Instructions", index = 3)
         private Instructions instructions;
 
-        private String errorMessage;
+        @JsonProperty(value = "errorMessage", index = 4)
+        private String errorMessage = null;
 
         @Override
         public String toString() {
@@ -800,21 +1407,26 @@ public class PlanTest extends AbstractPlanTest {
         @JsonProperty(value = "Expressions", index = 22)
         private List<String> expressions;
 
-        @JsonProperty(value = "Inputs", index = 23)
+        @JsonProperty(value = "ResultColumns", index = 23)
+        private Integer resultColumns;
+
+        @JsonProperty(value = "Inputs", index = 24)
         private List<Instructions> inputs;
 
-        @JsonProperty(value = "TargetDestination", index = 24)
+        @JsonProperty(value = "TargetDestination", index = 25)
         private String targetDestination;
 
-        @JsonProperty(value = "IsDML", index = 25)
+        @JsonProperty(value = "IsDML", index = 26)
         private boolean isDML;
 
-        @JsonProperty(value = "SingleShardOnly", index = 26)
+        @JsonProperty(value = "SingleShardOnly", index = 27)
         private boolean singleShardOnly;
 
-        @JsonProperty(value = "ShardNameNeeded", index = 27)
+        @JsonProperty(value = "ShardNameNeeded", index = 28)
         private boolean shardNameNeeded;
 
+        @JsonProperty(value = "Predicate", index = 29)
+        private String predicate;
 
         @Override
         public boolean equals(Object o) {
@@ -849,13 +1461,14 @@ public class PlanTest extends AbstractPlanTest {
                 Objects.equal(targetDestination, that.targetDestination) &&
                 Objects.equal(isDML, that.isDML) &&
                 Objects.equal(singleShardOnly, that.singleShardOnly) &&
-                Objects.equal(shardNameNeeded, that.shardNameNeeded);
+                Objects.equal(shardNameNeeded, that.shardNameNeeded) &&
+                Objects.equal(predicate, that.predicate);
         }
 
         @Override
         public int hashCode() {
             return Objects.hashCode(operatorType, variant, aggregates, distinct, groupBy, orderBy, count, keyspace, targetTabletType, multiShardAutocommit, fieldQuery, query, table, valueList,
-                joinColumnIndexes, tableName, columns, strColumns, sysTableKeyspaceExpr, expressions, inputs, targetDestination, isDML, singleShardOnly, shardNameNeeded);
+                joinColumnIndexes, tableName, columns, strColumns, sysTableKeyspaceExpr, expressions, inputs, targetDestination, isDML, singleShardOnly, shardNameNeeded, predicate);
         }
 
         @Override

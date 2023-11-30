@@ -36,7 +36,7 @@ public class PlanPerformanceTest extends AbstractPlanTest {
     public void testOnce() throws Exception {
         long sTime = System.currentTimeMillis();
         for (int i = 0; i < 10000000; i++) {
-            PlanTest.build("select a, b, count(*) from user group by a order by b limit 10", vm);
+            PlanTest.build("select a, b, count(*) from user group by a order by b limit 10", vm, true);
         }
         long eTime = System.currentTimeMillis();
 

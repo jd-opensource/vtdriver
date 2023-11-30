@@ -47,7 +47,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.visitor.SwitchTableVisitor;
 import com.jd.jdbc.sqltypes.VtPlanValue;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.vindexes.VKeyspace;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
+import static com.jd.jdbc.vindexes.VschemaConstant.TYPE_PINNED_TABLE;
 import io.netty.util.internal.StringUtil;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;

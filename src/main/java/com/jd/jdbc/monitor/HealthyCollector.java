@@ -23,11 +23,12 @@ import com.jd.jdbc.discovery.TabletHealthCheck;
 import io.prometheus.client.Collector;
 import io.prometheus.client.GaugeMetricFamily;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-public final class HealthyCollector extends Collector {
+public final class HealthyCollector extends Collector implements Collector.Describable {
     private static final String COLLECT_NAME = "healthy";
 
     private static final String COLLECT_HELP = "healthy info in HealthCheck";
@@ -108,4 +109,9 @@ public final class HealthyCollector extends Collector {
         return Crc32Utill.checksumByCrc32(sb.toString().getBytes());
     }
 
+    @Override
+    public List<MetricFamilySamples> describe() {
+        GaugeMetricFamily labeledGauge = new GaugeMetricFamily(COLLECT_NAME, COLLECT_HELP, DefaultConfig.HEALTH_CHECK_LABEL_NAMES);
+        return Collections.singletonList(labeledGauge);
+    }
 }

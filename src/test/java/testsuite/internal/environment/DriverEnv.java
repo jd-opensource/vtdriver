@@ -20,9 +20,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import testsuite.internal.TestSuiteShardSpec;
 import testsuite.internal.config.DriverJdbcCfg;
-import testsuite.internal.config.TestSuiteCfgReader;
-
 import static testsuite.internal.config.TestSuiteCfgPath.DEV;
+import testsuite.internal.config.TestSuiteCfgReader;
 
 public class DriverEnv extends TestSuiteEnv {
 

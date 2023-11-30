@@ -2828,6 +2828,7 @@ public class SQLASTOutputVisitor extends SQLASTVisitorAdapter implements Paramet
                 && left instanceof SQLUnionQuery
                 && ((SQLUnionQuery) left).getOperator() == operator
                 && !right.isBracket()
+                && x.getLimit() == null
                 && orderBy == null) {
 
             SQLUnionQuery leftUnion = (SQLUnionQuery) left;

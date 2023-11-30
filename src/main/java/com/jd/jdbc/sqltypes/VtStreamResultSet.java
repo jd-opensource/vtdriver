@@ -136,10 +136,6 @@ public class VtStreamResultSet implements VtRowList {
         this.vtStream.close();
         this.vtStream = null;
 
-        if (owningStatement != null) {
-            owningStatement.removeOpenResultSet(this);
-        }
-
         this.closed = true;
     }
 

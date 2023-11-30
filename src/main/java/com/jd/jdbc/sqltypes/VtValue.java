@@ -323,6 +323,25 @@ public class VtValue {
         return StringUtils.toString(vtValue, charEncoding);
     }
 
+    /**
+     * String returns a printable version of the value.
+     *
+     * @return
+     */
+    public String string() {
+        if (isNull()) {
+            return "null";
+        }
+        String string = this.toString();
+        if (this.vtType == Query.Type.VARBINARY || this.vtType == Query.Type.VARCHAR) {
+            string = "\"" + string + "\"";
+        }
+        if (this.isQuoted() || this.vtType == Query.Type.BIT) {
+            return this.vtType + "(" + string + ")";
+        }
+        return this.vtType + "(" + string + ")";
+    }
+
     public boolean toBoolean() {
         if (isNull()) {
             return false;
@@ -476,6 +495,48 @@ public class VtValue {
             return null;
         }
         return vtValue;
+    }
+
+    public float toFloat() throws SQLException {
+        if (isNull()) {
+            return 0;
+        }
+
+        if (isNumber()) {
+            BigDecimal d = new BigDecimal(new String(vtValue, 0, vtValue.length));
+            if ((d.compareTo(Constants.BIG_DECIMAL_MAX_NEGATIVE_FLOAT_VALUE) < 0 || d.compareTo(Constants.BIG_DECIMAL_MAX_FLOAT_VALUE) > 0)) {
+                throw new SQLException("number out of range: " + d.toString());
+            }
+            return (float) d.doubleValue();
+        }
+
+        if (getVtType() == Query.Type.BIT) {
+            return new BigInteger(ByteBuffer.allocate(vtValue.length + 1).put((byte) 0).put(vtValue, 0, vtValue.length).array()).floatValue();
+        }
+
+        String s = new String(vtValue, 0, vtValue.length);
+        return Float.parseFloat(s);
+    }
+
+    public double toDouble() throws SQLException {
+        if (isNull()) {
+            return 0;
+        }
+
+        if (isNumber()) {
+            BigDecimal d = new BigDecimal(new String(vtValue, 0, vtValue.length));
+            if ((d.compareTo(Constants.BIG_DECIMAL_MAX_NEGATIVE_DOUBLE_VALUE) < 0 || d.compareTo(Constants.BIG_DECIMAL_MAX_DOUBLE_VALUE) > 0)) {
+                throw new SQLException("number out of range: " + d.toString());
+            }
+            return d.doubleValue();
+        }
+
+        if (getVtType() == Query.Type.BIT) {
+            return new BigInteger(ByteBuffer.allocate(vtValue.length + 1).put((byte) 0).put(vtValue, 0, vtValue.length).array()).doubleValue();
+        }
+
+        String s = new String(vtValue, 0, vtValue.length);
+        return Double.parseDouble(s);
     }
 
     public Query.Value toQueryValue() {

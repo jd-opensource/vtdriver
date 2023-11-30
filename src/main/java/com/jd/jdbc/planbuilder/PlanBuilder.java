@@ -20,6 +20,7 @@ package com.jd.jdbc.planbuilder;
 
 import com.google.common.collect.Sets;
 import com.jd.jdbc.VSchemaManager;
+import com.jd.jdbc.common.Constant;
 import com.jd.jdbc.engine.Engine;
 import com.jd.jdbc.engine.JoinEngine;
 import com.jd.jdbc.engine.Plan;
@@ -30,6 +31,7 @@ import com.jd.jdbc.engine.SingleRowEngine;
 import com.jd.jdbc.evalengine.EvalEngine;
 import com.jd.jdbc.key.Bytes;
 import com.jd.jdbc.key.Destination;
+import com.jd.jdbc.planbuilder.gen4.Gen4Planner;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.SqlParser;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
@@ -68,6 +70,7 @@ import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceState
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.CheckNodeTypesVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtHasSubqueryVisitor;
+import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRemoveDbNameVisitor;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
@@ -89,6 +92,8 @@ import vschema.Vschema;
 public class PlanBuilder {
     private static final Log LOGGER = LogFactory.getLog(PlanBuilder.class);
 
+    private static final boolean GEN4_PLAN_ENABLE = Boolean.getBoolean(Constant.GEN4_PLAN_ENABLE);
+
     /**
      * BuildFromStmt builds a plan based on the AST provided.
      *
@@ -100,7 +105,7 @@ public class PlanBuilder {
      * @throws SQLException
      */
     public static Plan buildFromStmt(final SQLStatement stmt, final VSchemaManager vm, final String defaultKeyspace, final BindVarNeeds bindVarNeeds, Destination destination) throws SQLException {
-        PrimitiveEngine instruction = createInstructionFor(stmt, vm, defaultKeyspace, destination);
+        PrimitiveEngine instruction = createInstructionFor(stmt, "", vm, defaultKeyspace, destination);
         return new Plan(SqlParser.astToStatementType(stmt), instruction, bindVarNeeds);
     }
 
@@ -111,12 +116,16 @@ public class PlanBuilder {
      * @return
      * @throws SQLException
      */
-    private static PrimitiveEngine createInstructionFor(final SQLStatement stmt, final VSchemaManager vm, final String defaultKeyspace, Destination destination) throws SQLException {
+    private static PrimitiveEngine createInstructionFor(final SQLStatement stmt, final String query, final VSchemaManager vm, final String defaultKeyspace, Destination destination)
+        throws SQLException {
         if (destination != null) {
             return buildPlanForBypass(stmt, vm, defaultKeyspace, destination);
         }
 
         if (stmt instanceof SQLSelectStatement) {
+            if (GEN4_PLAN_ENABLE) {
+                return Gen4Planner.gen4SelectStmtPlanner(query, defaultKeyspace, (SQLSelectStatement) stmt, null, vm);
+            }
             if (((SQLSelectStatement) stmt).getSelect().getQuery() instanceof SQLUnionQuery) {
                 return buildUnionPlan((SQLSelectStatement) stmt, vm, defaultKeyspace);
             }
@@ -233,8 +242,8 @@ public class PlanBuilder {
      * @return
      * @throws SQLException
      */
-    private static PrimitiveEngine handleDualSelects(SQLSelectQuery query, VSchemaManager vm, String defaultKeyspace) throws SQLException {
-        if (!(query instanceof SQLSelectQueryBlock)) {
+    public static PrimitiveEngine handleDualSelects(SQLSelectQuery query, VSchemaManager vm, String defaultKeyspace) throws SQLException {
+        if (!(query instanceof MySqlSelectQueryBlock)) {
             throw new SQLFeatureNotSupportedException("unsupported sql statement: " + SQLUtils.toMySqlString(query, SQLUtils.NOT_FORMAT_OPTION).trim());
         }
 
@@ -427,6 +436,13 @@ public class PlanBuilder {
         }
         filters.add(node);
         return filters;
+    }
+
+    // removeKeyspaceFromColName removes the Qualifier.Qualifier on all ColNames in the expression tree
+    public static SQLExpr removeKeyspaceFromColName(SQLExpr expr) {
+        VtRemoveDbNameVisitor visitor = new VtRemoveDbNameVisitor();
+        expr.accept(visitor);
+        return expr;
     }
 
     /**
@@ -652,6 +668,20 @@ public class PlanBuilder {
             return colName.equalsIgnoreCase(col);
         }
         return false;
+    }
+
+    public static MySqlSelectQueryBlock getFirstSelect(SQLSelectQuery selStmt) throws SQLException {
+        if (selStmt == null) {
+            return null;
+        }
+        if (selStmt instanceof MySqlSelectQueryBlock) {
+            return (MySqlSelectQueryBlock) selStmt;
+        } else if (selStmt instanceof SQLUnionQuery) {
+            SQLUnionQuery sqlUnionQuery = (SQLUnionQuery) selStmt;
+            return getFirstSelect(sqlUnionQuery.getLeft());
+        } else {
+            throw new SQLException("[BUG]: unknown type for SelectStatement");
+        }
     }
 
     @Getter

@@ -45,4 +45,5 @@ public class Constant {
 
     public static final String DEFAULT_SPLIT_TABLE_CONFIG_PATH = "vtdriver-split-table.yml";
 
+    public static final String GEN4_PLAN_ENABLE = "vtdriver.gen4plan.enable";
 }

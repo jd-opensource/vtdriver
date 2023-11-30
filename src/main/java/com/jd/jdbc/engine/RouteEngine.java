@@ -22,6 +22,7 @@ import com.jd.jdbc.IExecute;
 import com.jd.jdbc.IExecute.ExecuteMultiShardResponse;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.evalengine.EvalEngine;
+import com.jd.jdbc.evalengine.EvalResult;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.key.DestinationAllShard;
 import com.jd.jdbc.key.DestinationAnyShard;
@@ -336,7 +337,7 @@ public class RouteEngine extends AbstractRouteEngine {
         boolean schemaExists = false;
         EvalEngine.ExpressionEnv env = new EvalEngine.ExpressionEnv(bindVariableMap);
         for (EvalEngine.Expr expr : this.sysTableKeyspaceExpr) {
-            EvalEngine.EvalResult evalResult = expr.evaluate(env);
+            EvalResult evalResult = expr.evaluate(env);
             String other = evalResult.value().toString();
             if (StringUtil.isNullOrEmpty(keyspace)) {
                 keyspace = other;
