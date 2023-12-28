@@ -41,15 +41,14 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import testsuite.TestSuite;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.Test;
+import testsuite.TestSuite;
 import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
 
 /*
@@ -530,6 +529,109 @@ public class TypeTest extends TestSuite {
     private void cleanBitTinyint() throws SQLException {
         try (Statement stmt = driverConnection.createStatement()) {
             stmt.executeUpdate("delete from type_bit_tinyint");
+        }
+    }
+
+    @Test
+    public void sumFields() throws SQLException {
+        String sql = "select sum(f_key), sum(f_tinyint), sum(f_u_tinyint),sum(f_smallint),sum(f_u_smallint),sum(f_mediumint),sum(f_u_mediumint),sum(f_int),sum(f_u_int),sum(f_bigint),sum(f_u_bigint)" +
+            ",sum(f_float),sum(f_u_float),sum(f_double),sum(f_u_double),sum(f_decimal),sum(f_u_decimal),sum(f_bit),sum(f_date)," +
+            "sum(f_time),sum(f_datetime),sum(f_timestamp),sum(f_year),sum(f_boolean),sum(f_varchar),sum(f_text),sum(f_ttext)" +
+            ",sum(f_mtext),sum(f_ltext),sum(f_varbinary),sum(f_blob),sum(f_mblob),sum(f_tblob),sum(f_lblob),sum(f_binary)," +
+            "sum(f_enum),sum(f_set),sum(f_json)  from type_test ";
+        stmtSelect = driverConnection.prepareStatement(sql);
+        ResultSet rs = stmtSelect.executeQuery();
+        while (rs.next()) {
+            System.out.println(rs.getMetaData().getColumnTypeName(1));
+            System.out.println(rs.getMetaData().getColumnTypeName(2));
+            System.out.println(rs.getMetaData().getColumnTypeName(3));
+            System.out.println(rs.getMetaData().getColumnTypeName(4));
+            System.out.println(rs.getMetaData().getColumnTypeName(5));
+            System.out.println(rs.getMetaData().getColumnTypeName(6));
+            System.out.println(rs.getMetaData().getColumnTypeName(7));
+            System.out.println(rs.getMetaData().getColumnTypeName(8));
+            System.out.println(rs.getMetaData().getColumnTypeName(9));
+            System.out.println(rs.getMetaData().getColumnTypeName(10));
+            System.out.println(rs.getMetaData().getColumnTypeName(11));
+            System.out.println(rs.getMetaData().getColumnTypeName(12));
+            System.out.println(rs.getMetaData().getColumnTypeName(13));
+            System.out.println(rs.getMetaData().getColumnTypeName(14));
+            System.out.println(rs.getMetaData().getColumnTypeName(15));
+            System.out.println(rs.getMetaData().getColumnTypeName(16));
+            System.out.println(rs.getMetaData().getColumnTypeName(17));
+            System.out.println(rs.getMetaData().getColumnTypeName(18));
+            System.out.println(rs.getMetaData().getColumnTypeName(19));
+            System.out.println(rs.getMetaData().getColumnTypeName(20));
+            System.out.println(rs.getMetaData().getColumnTypeName(21));
+            System.out.println(rs.getMetaData().getColumnTypeName(22));
+            System.out.println(rs.getMetaData().getColumnTypeName(23));
+            System.out.println(rs.getMetaData().getColumnTypeName(24));
+            System.out.println(rs.getMetaData().getColumnTypeName(25));
+            System.out.println(rs.getMetaData().getColumnTypeName(26));
+            System.out.println(rs.getMetaData().getColumnTypeName(27));
+            System.out.println(rs.getMetaData().getColumnTypeName(28));
+            System.out.println(rs.getMetaData().getColumnTypeName(29));
+            System.out.println(rs.getMetaData().getColumnTypeName(30));
+            System.out.println(rs.getMetaData().getColumnTypeName(31));
+            System.out.println(rs.getMetaData().getColumnTypeName(32));
+            System.out.println(rs.getMetaData().getColumnTypeName(33));
+            System.out.println(rs.getMetaData().getColumnTypeName(34));
+            System.out.println(rs.getMetaData().getColumnTypeName(35));
+            System.out.println(rs.getMetaData().getColumnTypeName(36));
+            System.out.println(rs.getMetaData().getColumnTypeName(37));
+            System.out.println(rs.getMetaData().getColumnTypeName(38));
+        }
+    }
+
+    @Test
+    public void countFields() throws SQLException {
+        String sql =
+            "select count(f_key), count(f_tinyint), count(f_u_tinyint),count(f_smallint),count(f_u_smallint),count(f_mediumint),count(f_u_mediumint),count(f_int),count(f_u_int),count(f_bigint),count(f_u_bigint)" +
+                ",count(f_float),count(f_u_float),count(f_double),count(f_u_double),count(f_decimal),count(f_u_decimal),count(f_bit),count(f_date)," +
+                "count(f_time),count(f_datetime),count(f_timestamp),count(f_year),count(f_boolean),count(f_varchar),count(f_text),count(f_ttext)" +
+                ",count(f_mtext),count(f_ltext),count(f_varbinary),count(f_blob),count(f_mblob),count(f_tblob),count(f_lblob),count(f_binary)," +
+                "count(f_enum),count(f_set),count(f_json)  from type_test ";
+        stmtSelect = driverConnection.prepareStatement(sql);
+        ResultSet rs = stmtSelect.executeQuery();
+        while (rs.next()) {
+            System.out.println(rs.getMetaData().getColumnTypeName(1));
+            System.out.println(rs.getMetaData().getColumnTypeName(2));
+            System.out.println(rs.getMetaData().getColumnTypeName(3));
+            System.out.println(rs.getMetaData().getColumnTypeName(4));
+            System.out.println(rs.getMetaData().getColumnTypeName(5));
+            System.out.println(rs.getMetaData().getColumnTypeName(6));
+            System.out.println(rs.getMetaData().getColumnTypeName(7));
+            System.out.println(rs.getMetaData().getColumnTypeName(8));
+            System.out.println(rs.getMetaData().getColumnTypeName(9));
+            System.out.println(rs.getMetaData().getColumnTypeName(10));
+            System.out.println(rs.getMetaData().getColumnTypeName(11));
+            System.out.println(rs.getMetaData().getColumnTypeName(12));
+            System.out.println(rs.getMetaData().getColumnTypeName(13));
+            System.out.println(rs.getMetaData().getColumnTypeName(14));
+            System.out.println(rs.getMetaData().getColumnTypeName(15));
+            System.out.println(rs.getMetaData().getColumnTypeName(16));
+            System.out.println(rs.getMetaData().getColumnTypeName(17));
+            System.out.println(rs.getMetaData().getColumnTypeName(18));
+            System.out.println(rs.getMetaData().getColumnTypeName(19));
+            System.out.println(rs.getMetaData().getColumnTypeName(20));
+            System.out.println(rs.getMetaData().getColumnTypeName(21));
+            System.out.println(rs.getMetaData().getColumnTypeName(22));
+            System.out.println(rs.getMetaData().getColumnTypeName(23));
+            System.out.println(rs.getMetaData().getColumnTypeName(24));
+            System.out.println(rs.getMetaData().getColumnTypeName(25));
+            System.out.println(rs.getMetaData().getColumnTypeName(26));
+            System.out.println(rs.getMetaData().getColumnTypeName(27));
+            System.out.println(rs.getMetaData().getColumnTypeName(28));
+            System.out.println(rs.getMetaData().getColumnTypeName(29));
+            System.out.println(rs.getMetaData().getColumnTypeName(30));
+            System.out.println(rs.getMetaData().getColumnTypeName(31));
+            System.out.println(rs.getMetaData().getColumnTypeName(32));
+            System.out.println(rs.getMetaData().getColumnTypeName(33));
+            System.out.println(rs.getMetaData().getColumnTypeName(34));
+            System.out.println(rs.getMetaData().getColumnTypeName(35));
+            System.out.println(rs.getMetaData().getColumnTypeName(36));
+            System.out.println(rs.getMetaData().getColumnTypeName(37));
+            System.out.println(rs.getMetaData().getColumnTypeName(38));
         }
     }
 }
