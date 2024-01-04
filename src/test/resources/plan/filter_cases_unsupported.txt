@@ -440,7 +440,28 @@ Gen3 skip
   }
 }
 
-
+# Single table equality route with unsigned value
+"select id from user where name = 18446744073709551615"
+{
+  "QueryType": "SELECT",
+  "Original": "select id from user where name = 18446744073709551615",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectEqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id from user where 1 != 1",
+    "Query": "select id from user where name = 18446744073709551615",
+    "Table": "user",
+    "Values": [
+      "UINT64(18446744073709551615)"
+    ],
+    "Vindex": "name_user_map"
+  }
+}
+Gen4 plan same as above
 
 
 
