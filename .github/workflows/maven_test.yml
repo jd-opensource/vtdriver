@@ -138,6 +138,27 @@ jobs:
       - name: Test charEncoding
         run: mvn clean test -Dtest=\
           com.jd.jdbc.engine.CharEncodingTest
+      - name: Test gen4
+        run: mvn clean test -Dtest=\
+          com.jd.jdbc.engine.gen4.ConcatenateGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.DistinctGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.FilterGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.JoinGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.LimitGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.MemorySortGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.OrderedAggregateGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.RouteGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.ScalarAggregateGen4EngineTest,\
+          com.jd.jdbc.engine.gen4.VitessCompareTest,\
+          com.jd.jdbc.planbuilder.Gen4PlanTest,\
+          com.jd.jdbc.planbuilder.gen4.AnalyzerTest,\
+          com.jd.jdbc.planbuilder.gen4.HorizonPlanningTest,\
+          com.jd.jdbc.planbuilder.gen4.OperatorTest,\
+          com.jd.jdbc.planbuilder.gen4.QueryProjectionTest,\
+          com.jd.jdbc.planbuilder.gen4.RewriterTest,\
+          com.jd.jdbc.planbuilder.gen4.operator.physical.RoutePlanningTest,\
+          com.jd.jdbc.planbuilder.semantics.EarlyRewriterTest,\
+          com.jd.jdbc.planbuilder.semantics.TableSetTest
       - name: install vtdriver
         run: mvn clean install -Dmaven.test.skip=true
 #      - name: Test starter
