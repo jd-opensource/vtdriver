@@ -134,16 +134,28 @@ public class SQLSelectParser extends SQLParser {
                     if (right instanceof SQLSelectQueryBlock) {
                         SQLSelectQueryBlock rightQuery = (SQLSelectQueryBlock) right;
                         SQLOrderBy orderBy = rightQuery.getOrderBy();
-                        SQLLimit limit = rightQuery.getLimit();
-                        if (orderBy != null && limit == null) {
+                        if (orderBy != null) {
                             union.setOrderBy(orderBy);
                             rightQuery.setOrderBy(null);
                         }
+
+                        SQLLimit limit = rightQuery.getLimit();
+                        if (limit != null) {
+                            union.setLimit(limit);
+                            rightQuery.setLimit(null);
+                        }
                     } else if (right instanceof SQLUnionQuery) {
                         SQLUnionQuery rightUnion = (SQLUnionQuery) right;
-                        if (rightUnion.getOrderBy() != null) {
-                            union.setOrderBy(rightUnion.getOrderBy());
+                        final SQLOrderBy orderBy = rightUnion.getOrderBy();
+                        if (orderBy != null) {
+                            union.setOrderBy(orderBy);
                             rightUnion.setOrderBy(null);
+                        }
+
+                        SQLLimit limit = rightUnion.getLimit();
+                        if (limit != null) {
+                            union.setLimit(limit);
+                            rightUnion.setLimit(null);
                         }
                     }
                 }

@@ -17,6 +17,7 @@
 package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
 import com.jd.jdbc.planbuilder.RoutePlan;
+import com.jd.jdbc.sqlparser.SqlParser;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOpExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator;
@@ -28,6 +29,13 @@ import java.util.List;
 
 public class VtRouteWireupFixUpAstVisitor extends MySqlASTVisitorAdapter {
     private final RoutePlan rb;
+
+    private boolean exprIsValue(SQLExpr expr) {
+        if (this.rb != null) {
+            return this.rb.exprIsValue(expr);
+        }
+        return SqlParser.isValue(expr);
+    }
 
     public VtRouteWireupFixUpAstVisitor(final RoutePlan rb) {
         this.rb = rb;
@@ -47,7 +55,7 @@ public class VtRouteWireupFixUpAstVisitor extends MySqlASTVisitorAdapter {
         SQLExpr leftValue = x.getLeft();
         SQLExpr rightValue = x.getRight();
         if (SQLBinaryOperator.Equality.equals(x.getOperator())) {
-            if (this.rb.exprIsValue(leftValue) && !this.rb.exprIsValue(rightValue)) {
+            if (exprIsValue(leftValue) && !exprIsValue(rightValue)) {
                 x.setRight(leftValue);
                 x.setLeft(rightValue);
             }

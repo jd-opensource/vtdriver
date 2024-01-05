@@ -170,3 +170,8 @@ hs_err_pid*
 
 /src/test/resources/vitess_env/build_vitess/
 dependency-reduced-pom.xml
+
+
+# vscode
+
+.vscode

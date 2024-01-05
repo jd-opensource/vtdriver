@@ -16,6 +16,7 @@ limitations under the License.
 
 package com.jd.jdbc.evalengine;
 
+import com.jd.jdbc.sqltypes.VtNumberRange;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
 import io.vitess.proto.Query;
@@ -207,51 +208,51 @@ public class ArithmeticTest {
     @Test
     public void testAddNumeric() throws SQLException {
         List<NumAddTestCase> testCases = new ArrayList<NumAddTestCase>() {{
-            add(new NumAddTestCase(new EvalEngine.EvalResult(Long.valueOf(1), Query.Type.INT64),
-                new EvalEngine.EvalResult(Long.valueOf(2), Query.Type.INT64),
-                new EvalEngine.EvalResult(Long.valueOf(3), Query.Type.INT64)));
+            add(new NumAddTestCase(new EvalResult(Long.valueOf(1), Query.Type.INT64),
+                new EvalResult(Long.valueOf(2), Query.Type.INT64),
+                new EvalResult(Long.valueOf(3), Query.Type.INT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(Long.valueOf(1), Query.Type.INT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(2), Query.Type.UINT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(3), Query.Type.UINT64)));
+            add(new NumAddTestCase(new EvalResult(Long.valueOf(1), Query.Type.INT64),
+                new EvalResult(BigInteger.valueOf(2), Query.Type.UINT64),
+                new EvalResult(BigInteger.valueOf(3), Query.Type.UINT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(Long.valueOf(1), Query.Type.INT64),
-                new EvalEngine.EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
-                new EvalEngine.EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
+            add(new NumAddTestCase(new EvalResult(Long.valueOf(1), Query.Type.INT64),
+                new EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
+                new EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1), Query.Type.UINT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(2), Query.Type.UINT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(3), Query.Type.UINT64)));
+            add(new NumAddTestCase(new EvalResult(BigInteger.valueOf(1), Query.Type.UINT64),
+                new EvalResult(BigInteger.valueOf(2), Query.Type.UINT64),
+                new EvalResult(BigInteger.valueOf(3), Query.Type.UINT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1), Query.Type.UINT64),
-                new EvalEngine.EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
-                new EvalEngine.EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
+            add(new NumAddTestCase(new EvalResult(BigInteger.valueOf(1), Query.Type.UINT64),
+                new EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
+                new EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(Double.valueOf(1), Query.Type.FLOAT64),
-                new EvalEngine.EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
-                new EvalEngine.EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
+            add(new NumAddTestCase(new EvalResult(Double.valueOf(1), Query.Type.FLOAT64),
+                new EvalResult(Double.valueOf(2), Query.Type.FLOAT64),
+                new EvalResult(Double.valueOf(3), Query.Type.FLOAT64)));
             // Int64 overflow
-            add(new NumAddTestCase(new EvalEngine.EvalResult(9223372036854775807L, Query.Type.INT64),
-                new EvalEngine.EvalResult(2L, Query.Type.INT64),
-                new EvalEngine.EvalResult(9223372036854775809d, Query.Type.FLOAT64)));
+            add(new NumAddTestCase(new EvalResult(9223372036854775807L, Query.Type.INT64),
+                new EvalResult(2L, Query.Type.INT64),
+                new EvalResult(9223372036854775809d, Query.Type.FLOAT64)));
             // Int64 underflow
-            add(new NumAddTestCase(new EvalEngine.EvalResult(-9223372036854775807L, Query.Type.INT64),
-                new EvalEngine.EvalResult(-2L, Query.Type.INT64),
-                new EvalEngine.EvalResult(-9223372036854775809d, Query.Type.FLOAT64)));
+            add(new NumAddTestCase(new EvalResult(-9223372036854775807L, Query.Type.INT64),
+                new EvalResult(-2L, Query.Type.INT64),
+                new EvalResult(-9223372036854775809d, Query.Type.FLOAT64)));
 
-            add(new NumAddTestCase(new EvalEngine.EvalResult(-1L, Query.Type.INT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64)));
+            add(new NumAddTestCase(new EvalResult(-1L, Query.Type.INT64),
+                new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64),
+                new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64)));
             // Uint64 overflow
-            add(new NumAddTestCase(new EvalEngine.EvalResult(new BigInteger("18446744073709551615"), Query.Type.UINT64),
-                new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64),
-                new EvalEngine.EvalResult(new BigInteger("18446744073709551617"), Query.Type.UINT64)));
+            add(new NumAddTestCase(new EvalResult(new BigInteger("18446744073709551615"), Query.Type.UINT64),
+                new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64),
+                new EvalResult(new BigInteger("18446744073709551617"), Query.Type.UINT64)));
         }};
 
         int i = 0;
         for (NumAddTestCase testCase : testCases) {
             i++;
-            EvalEngine.EvalResult result = Arithmetic.addNumeric(testCase.value1, testCase.value2);
+            EvalResult result = Arithmetic.addNumeric(testCase.value1, testCase.value2);
             printInfo("NO." + i + " Test case: [" + testCase + "]");
             printInfo("NO." + i + " Test Result: [" + result.toString() + "]");
 
@@ -271,20 +272,20 @@ public class ArithmeticTest {
     @Test
     public void testCastFromNumeric() throws Exception {
         List<CFNTestCase> testCases = new ArrayList<CFNTestCase>() {{
-            add(new CFNTestCase(Query.Type.INT64, new EvalEngine.EvalResult(1l, Query.Type.INT64), VtValue.newVtValue(Query.Type.INT64, "1".getBytes())));
-            add(new CFNTestCase(Query.Type.INT64, new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), VtValue.newVtValue(Query.Type.INT64, "1".getBytes())));
-            add(new CFNTestCase(Query.Type.INT64, new EvalEngine.EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.INT64, "0".getBytes())));
-            add(new CFNTestCase(Query.Type.UINT64, new EvalEngine.EvalResult(1l, Query.Type.INT64), VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(1l).toString().getBytes())));
-            add(new CFNTestCase(Query.Type.UINT64, new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64),
-                VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(1l).toString().getBytes())));
-            add(new CFNTestCase(Query.Type.UINT64, new EvalEngine.EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(0l).toString().getBytes())));
-            add(new CFNTestCase(Query.Type.FLOAT64, new EvalEngine.EvalResult(1l, Query.Type.INT64), VtValue.newVtValue(Query.Type.FLOAT64, "1".getBytes())));
-            add(new CFNTestCase(Query.Type.FLOAT64, new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), VtValue.newVtValue(Query.Type.FLOAT64, "1".getBytes())));
-            add(new CFNTestCase(Query.Type.FLOAT64, new EvalEngine.EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.FLOAT64, "0.0000000000000001".getBytes())));
-            add(new CFNTestCase(Query.Type.DECIMAL, new EvalEngine.EvalResult(1l, Query.Type.INT64), VtValue.newVtValue(Query.Type.DECIMAL, "1".getBytes())));
-            add(new CFNTestCase(Query.Type.DECIMAL, new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), VtValue.newVtValue(Query.Type.DECIMAL, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.INT64, new EvalResult(1L, Query.Type.INT64), VtValue.newVtValue(Query.Type.INT64, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.INT64, new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), VtValue.newVtValue(Query.Type.INT64, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.INT64, new EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.INT64, "0".getBytes())));
+            add(new CFNTestCase(Query.Type.UINT64, new EvalResult(1L, Query.Type.INT64), VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(1L).toString().getBytes())));
+            add(new CFNTestCase(Query.Type.UINT64, new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64),
+                VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(1L).toString().getBytes())));
+            add(new CFNTestCase(Query.Type.UINT64, new EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.UINT64, BigInteger.valueOf(0L).toString().getBytes())));
+            add(new CFNTestCase(Query.Type.FLOAT64, new EvalResult(1L, Query.Type.INT64), VtValue.newVtValue(Query.Type.FLOAT64, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.FLOAT64, new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), VtValue.newVtValue(Query.Type.FLOAT64, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.FLOAT64, new EvalResult(1.2e-16, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.FLOAT64, "0.0000000000000001".getBytes())));
+            add(new CFNTestCase(Query.Type.DECIMAL, new EvalResult(1L, Query.Type.INT64), VtValue.newVtValue(Query.Type.DECIMAL, "1".getBytes())));
+            add(new CFNTestCase(Query.Type.DECIMAL, new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), VtValue.newVtValue(Query.Type.DECIMAL, "1".getBytes())));
             // For float, we should not use scientific notation.
-            add(new CFNTestCase(Query.Type.DECIMAL, new EvalEngine.EvalResult(0.00000000000000012d, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.DECIMAL, "0.0000000000000001".getBytes())));
+            add(new CFNTestCase(Query.Type.DECIMAL, new EvalResult(0.00000000000000012d, Query.Type.FLOAT64), VtValue.newVtValue(Query.Type.DECIMAL, "0.0000000000000001".getBytes())));
         }};
 
         int i = 0;
@@ -305,37 +306,37 @@ public class ArithmeticTest {
     @Test
     public void testCompareNumeric() {
         List<CompNumTestCase> testCases = new ArrayList<CompNumTestCase>() {{
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(2l, Query.Type.INT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2l, Query.Type.INT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 1));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(1L, Query.Type.INT64), 0));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(2L, Query.Type.INT64), -1));
+            add(new CompNumTestCase(new EvalResult(2L, Query.Type.INT64), new EvalResult(1L, Query.Type.INT64), 1));
             // Special case.
-            add(new CompNumTestCase(new EvalEngine.EvalResult(-1l, Query.Type.INT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2l, Query.Type.INT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1l, Query.Type.INT64), new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2l, Query.Type.INT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 1));
+            add(new CompNumTestCase(new EvalResult(-1L, Query.Type.INT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), -1));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 0));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), -1));
+            add(new CompNumTestCase(new EvalResult(2L, Query.Type.INT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 1));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(1d, Query.Type.FLOAT64), 0));
+            add(new CompNumTestCase(new EvalResult(1L, Query.Type.INT64), new EvalResult(2d, Query.Type.FLOAT64), -1));
+            add(new CompNumTestCase(new EvalResult(2L, Query.Type.INT64), new EvalResult(1d, Query.Type.FLOAT64), 1));
             // Special case.
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(-1l, Query.Type.INT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(2l, Query.Type.INT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(2l, Query.Type.INT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), new EvalEngine.EvalResult(1l, Query.Type.INT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(BigInteger.valueOf(2l), Query.Type.UINT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), new EvalEngine.EvalResult(BigInteger.valueOf(1l), Query.Type.UINT64), 1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 0));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), -1));
-            add(new CompNumTestCase(new EvalEngine.EvalResult(2d, Query.Type.FLOAT64), new EvalEngine.EvalResult(1d, Query.Type.FLOAT64), 1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(-1L, Query.Type.INT64), 1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(1L, Query.Type.INT64), 0));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(2L, Query.Type.INT64), -1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), new EvalResult(1L, Query.Type.INT64), 1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 0));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), -1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(1d, Query.Type.FLOAT64), 0));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), new EvalResult(2d, Query.Type.FLOAT64), -1));
+            add(new CompNumTestCase(new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), new EvalResult(1d, Query.Type.FLOAT64), 1));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(1L, Query.Type.INT64), 0));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(2L, Query.Type.INT64), -1));
+            add(new CompNumTestCase(new EvalResult(2d, Query.Type.FLOAT64), new EvalResult(1L, Query.Type.INT64), 1));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 0));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(BigInteger.valueOf(2L), Query.Type.UINT64), -1));
+            add(new CompNumTestCase(new EvalResult(2d, Query.Type.FLOAT64), new EvalResult(BigInteger.valueOf(1L), Query.Type.UINT64), 1));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(1d, Query.Type.FLOAT64), 0));
+            add(new CompNumTestCase(new EvalResult(1d, Query.Type.FLOAT64), new EvalResult(2d, Query.Type.FLOAT64), -1));
+            add(new CompNumTestCase(new EvalResult(2d, Query.Type.FLOAT64), new EvalResult(1d, Query.Type.FLOAT64), 1));
         }};
 
         int i = 0;
@@ -350,6 +351,83 @@ public class ArithmeticTest {
             } else {
                 printFail("NO." + i + " Test case is [FAIL]");
             }
+        }
+    }
+
+    @Test
+    public void testToUint64() throws SQLException {
+        // max bigInteger with Query.Type.UINT64
+        VtValue vtValue1 = VtValue.newVtValue(Query.Type.UINT64, VtNumberRange.BIGINTEGER_INT64_MAX.toString().getBytes());
+        BigInteger ret = EvalEngine.toUint64(vtValue1);
+        Assert.assertEquals(VtNumberRange.BIGINTEGER_INT64_MAX, ret);
+
+        // max unit64 with Query.Type.UINT64
+        VtValue vtValue2 = VtValue.newVtValue(Query.Type.UINT64, VtNumberRange.UINT64_MAX.toString().getBytes());
+        BigInteger ret2 = EvalEngine.toUint64(vtValue2);
+        Assert.assertEquals(VtNumberRange.UINT64_MAX, ret2);
+
+        // max unit64 with Query.Type.VARCHAR
+        VtValue vtValue3 = VtValue.newVtValue(Query.Type.VARCHAR, VtNumberRange.UINT64_MAX.toString().getBytes());
+        BigInteger ret3 = EvalEngine.toUint64(vtValue3);
+        Assert.assertEquals(VtNumberRange.UINT64_MAX, ret3);
+
+        // switch VtValue INT64 to UINT64 when value out of range
+        VtValue vtValue4 = VtValue.newVtValue(Query.Type.INT64, VtNumberRange.BIGINTEGER_INT64_MAX.toString().getBytes());
+        BigInteger ret4 = EvalEngine.toUint64(vtValue4);
+        Assert.assertEquals(VtNumberRange.BIGINTEGER_INT64_MAX, ret4);
+
+        // switch VtValue INT64 to UINT64 when value out of range
+        VtValue vtValue5 = VtValue.newVtValue(Query.Type.INT64, VtNumberRange.UINT64_MAX.toString().getBytes());
+        BigInteger ret5 = EvalEngine.toUint64(vtValue5);
+        Assert.assertEquals(VtNumberRange.UINT64_MAX, ret5);
+
+        // For non-number type, Int64 is the default.
+        VtValue vtValue6 = VtValue.newVtValue(Query.Type.VARCHAR, Integer.toString(2).getBytes());
+        BigInteger ret6 = EvalEngine.toUint64(vtValue6);
+        Assert.assertEquals(BigInteger.valueOf(2), ret6);
+
+        // min unit64: 0
+        VtValue vtValue7 = VtValue.newVtValue(Query.Type.UINT64, Long.toString(VtNumberRange.UINT64_MIN).getBytes());
+        BigInteger ret7 = EvalEngine.toUint64(vtValue7);
+        Assert.assertEquals(BigInteger.ZERO, ret7);
+
+        try {
+            String caseStr = "abcd";
+            VtValue vtValue = VtValue.newVtValue(Query.Type.VARCHAR, caseStr.getBytes());
+            EvalEngine.toUint64(vtValue);
+        } catch (SQLException e) {
+            Assert.assertEquals("could not parse value: 'abcd'", e.getMessage());
+        }
+
+        try {
+            VtValue vtValue = VtValue.newVtValue(Query.Type.UINT64, Integer.toString(-1).getBytes());
+            EvalEngine.toUint64(vtValue);
+        } catch (SQLException e) {
+            Assert.assertEquals("wrong data type UINT64 for -1", e.getMessage());
+        }
+
+        // negative number with Query.Type.INT64
+        try {
+            VtValue vtValue = VtValue.newVtValue(Query.Type.INT64, Long.toString(VtNumberRange.INT64_MIN).getBytes());
+            EvalEngine.toUint64(vtValue);
+        } catch (SQLException e) {
+            Assert.assertEquals("negative number cannot be converted to unsigned: -9223372036854775808", e.getMessage());
+        }
+
+        try {
+            VtValue vtValue = VtValue.newVtValue(Query.Type.INT64, Double.toString(1.2).getBytes());
+            EvalEngine.toUint64(vtValue);
+        } catch (NumberFormatException e) {
+            Assert.assertEquals("For input string: \"1.2\"", e.getMessage());
+        }
+
+        // bigger than maxBigInteger
+        try {
+            BigInteger biggerMaxBigInteger = VtNumberRange.BIGINTEGER_INT64_MAX.add(BigInteger.ONE);
+            VtValue vtValue = VtValue.newVtValue(Query.Type.UINT64, biggerMaxBigInteger.toString().getBytes());
+            EvalEngine.toUint64(vtValue);
+        } catch (SQLException e) {
+            Assert.assertEquals("wrong data type UINT64 for 18446744073709551616", e.getMessage());
         }
     }
 
@@ -448,11 +526,11 @@ public class ArithmeticTest {
     @AllArgsConstructor
     @Getter
     private class NumAddTestCase {
-        EvalEngine.EvalResult value1;
+        EvalResult value1;
 
-        EvalEngine.EvalResult value2;
+        EvalResult value2;
 
-        EvalEngine.EvalResult result;
+        EvalResult result;
 
         @Override
         public String toString() {
@@ -466,7 +544,7 @@ public class ArithmeticTest {
     private class CFNTestCase {
         Query.Type type;
 
-        EvalEngine.EvalResult value;
+        EvalResult value;
 
         VtValue out;
 
@@ -480,9 +558,9 @@ public class ArithmeticTest {
     @AllArgsConstructor
     @Getter
     private class CompNumTestCase {
-        EvalEngine.EvalResult value1;
+        EvalResult value1;
 
-        EvalEngine.EvalResult value2;
+        EvalResult value2;
 
         Integer out;
 

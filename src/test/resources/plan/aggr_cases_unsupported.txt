@@ -7,8 +7,8 @@
   "Instructions": {
     "OperatorType": "Join",
     "Variant": "Join",
-    "JoinColumnIndexes": [-1,1],
-    "TableName": "user_unsharded",
+    "JoinColumnIndexes": "L:0,R:0",
+    "TableName": "`user`_unsharded",
     "Inputs": [
       {
         "OperatorType": "Route",
@@ -17,13 +17,13 @@
           "Name": "user",
           "Sharded": true
         },
-        "FieldQuery": "select user.a from user where 1 != 1",
-        "Query": "select user.a from user",
+        "FieldQuery": "select `user`.a from user where 1 != 1",
+        "Query": "select `user`.a from user",
         "Table": "user"
       },
       {
         "OperatorType": "Route",
-        "Variant": "SelectUnsharded",
+        "Variant": "Unsharded",
         "Keyspace": {
           "Name": "main",
           "Sharded": false
@@ -35,6 +35,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # Reason: routing rules
 # routing rules for aggregates
@@ -44,7 +45,7 @@
   "Original": "select id, count(*) from route2 group by id",
   "Instructions": {
     "OperatorType": "Route",
-    "Variant": "SelectUnsharded",
+    "Variant": "Unsharded",
     "Keyspace": {
       "Name": "main",
       "Sharded": false
@@ -54,6 +55,7 @@
     "Table": "unsharded"
   }
 }
+Gen4 plan same as above
 
 # Reason: reference table
 # order by on a reference table
@@ -63,7 +65,7 @@
   "Original": "select col from ref order by col",
   "Instructions": {
     "OperatorType": "Route",
-    "Variant": "SelectReference",
+    "Variant": "Reference",
     "Keyspace": {
       "Name": "user",
       "Sharded": true
@@ -71,5 +73,117 @@
     "FieldQuery": "select col from ref where 1 != 1",
     "Query": "select col from ref order by col asc",
     "Table": "ref"
+  }
+}
+Gen4 plan same as above
+
+# aggregation filtering by having on a route with no group by with non-unique vindex filter
+"select 1 from user having count(id) = 10 and name = 'a'"
+{
+  "QueryType": "SELECT",
+  "Original": "select 1 from user having count(id) = 10 and name = 'a'",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectEqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select 1 from user where 1 != 1",
+    "Query": "select 1 from user having count(id) = 10 and name = 'a'",
+    "Table": "user",
+    "Values": [
+      "VARCHAR(\"a\")"
+    ],
+    "Vindex": "name_user_map"
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select 1 from user having count(id) = 10 and name = 'a'",
+  "Instructions": {
+    "OperatorType": "SimpleProjection",
+    "Columns": [
+      0
+    ],
+    "Inputs": [
+      {
+        "OperatorType": "Filter",
+        "Predicate": "OFFSET(1, 'count(id)') = 10",
+        "Inputs": [
+          {
+            "OperatorType": "Aggregate",
+            "Variant": "Scalar",
+            "Aggregates": "random(0) AS 1, sum_count(1) AS count(id)",
+            "Inputs": [
+              {
+                "OperatorType": "Route",
+                "Variant": "Equal",
+                "Keyspace": {
+                  "Name": "user",
+                  "Sharded": true
+                },
+                "FieldQuery": "select 1, count(id) from user where 1 != 1",
+                "Query": "select 1, count(id) from user where `name` = 'a'",
+                "Table": "user",
+                "Values": [
+                  "VARCHAR(\"a\")"
+                ],
+                "Vindex": "name_user_map"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# order by inside and outside parenthesis select
+"(select id from user order by 1 desc) order by 1 asc limit 2"
+{
+  "QueryType": "SELECT",
+  "Original": "(select id from user order by 1 desc) order by 1 asc limit 2",
+  "Instructions": {
+    "OperatorType": "Limit",
+    "Count": "INT64(2)",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select id, weight_string(id) from user where 1 != 1",
+        "OrderBy": "(0|1) ASC",
+        "Query": "select id, weight_string(id) from user order by 1 asc limit :__upper_limit",
+        "ResultColumns": 1,
+        "Table": "user"
+      }
+    ]
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "(select id from user order by 1 desc) order by 1 asc limit 2",
+  "Instructions": {
+    "OperatorType": "Limit",
+    "Count": "INT64(2)",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select id, weight_string(id) from user where 1 != 1",
+        "OrderBy": "(0|1) ASC",
+        "Query": "select id, weight_string(id) from user order by id asc limit :__upper_limit",
+        "ResultColumns": 1,
+        "Table": "user"
+      }
+    ]
   }
 }

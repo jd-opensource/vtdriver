@@ -18,13 +18,14 @@ limitations under the License.
 
 package com.jd.jdbc.sqltypes;
 
-import com.jd.jdbc.vitess.VitessStatement;
 import io.vitess.proto.Query;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.StringJoiner;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -44,8 +45,6 @@ public class VtResultSet implements VtRowList {
     private int curRow = -1;
 
     private boolean closed = false;
-
-    private VitessStatement owningStatement = null;
 
     public VtResultSet() {
         this.rows = new ArrayList<>();
@@ -201,10 +200,6 @@ public class VtResultSet implements VtRowList {
             return;
         }
 
-        if (owningStatement != null) {
-            owningStatement.removeOpenResultSet(this);
-        }
-
         this.closed = true;
     }
 
@@ -232,6 +227,7 @@ public class VtResultSet implements VtRowList {
         return vtRowList;
     }
 
+    @Override
     public BigInteger getInsertID() {
         return this.insertID;
     }
@@ -244,4 +240,36 @@ public class VtResultSet implements VtRowList {
         this.insertID = setId;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        VtResultSet that = (VtResultSet) o;
+        return rowsAffected == that.rowsAffected && isDML == that.isDML && curRow == that.curRow && closed == that.closed && Arrays.equals(fields, that.fields) &&
+            Objects.equals(insertID, that.insertID) && Objects.equals(rows, that.rows);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(rowsAffected, insertID, rows, isDML, curRow, closed);
+        result = 31 * result + Arrays.hashCode(fields);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", VtResultSet.class.getSimpleName() + "[", "]")
+            .add("fields=" + Arrays.toString(fields))
+            .add("rowsAffected=" + rowsAffected)
+            .add("insertID=" + insertID)
+            .add("rows=" + rows)
+            .add("isDML=" + isDML)
+            .add("curRow=" + curRow)
+            .add("closed=" + closed)
+            .toString();
+    }
 }

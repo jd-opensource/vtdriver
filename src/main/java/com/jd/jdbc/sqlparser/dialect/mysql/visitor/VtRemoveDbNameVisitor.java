@@ -17,6 +17,7 @@
 package com.jd.jdbc.sqlparser.dialect.mysql.visitor;
 
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLPropertyExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLExprTableSource;
 import com.jd.jdbc.sqlparser.ast.statement.SQLTableSource;
@@ -50,4 +51,14 @@ public class VtRemoveDbNameVisitor extends MySqlASTVisitorAdapter {
         }
         return false;
     }
+
+    @Override
+    public boolean visit(final SQLPropertyExpr x) {
+        SQLExpr owner = x.getOwner();
+        if (owner instanceof SQLPropertyExpr) {
+            x.setOwner(new SQLIdentifierExpr(((SQLPropertyExpr) owner).getName()));
+        }
+        return false;
+    }
+
 }

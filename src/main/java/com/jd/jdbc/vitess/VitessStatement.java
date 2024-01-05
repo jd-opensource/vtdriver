@@ -73,10 +73,8 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
@@ -115,7 +113,7 @@ public class VitessStatement extends AbstractVitessStatement {
 
     protected List<VtRowList> resultSets = new ArrayList<>();
 
-    protected Set<VtRowList> openedResultSets = new HashSet<>();
+    protected List<VtRowList> openedResultSets = new ArrayList<>();
 
     protected volatile Boolean isClosed;
 
@@ -462,10 +460,6 @@ public class VitessStatement extends AbstractVitessStatement {
             return false;
         }
         return resultSets.get(0).isQuery();
-    }
-
-    public void removeOpenResultSet(VtRowList result) {
-        openedResultSets.remove(result);
     }
 
     protected int executeUpdateInternal(IContext ctx, String sql, Map<String, BindVariable> bindVariableMap, boolean clearBatchedGeneratedKeys, boolean returnGeneratedKeys) throws SQLException {

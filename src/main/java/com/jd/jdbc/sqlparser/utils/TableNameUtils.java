@@ -16,8 +16,13 @@ limitations under the License.
 
 package com.jd.jdbc.sqlparser.utils;
 
+import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLName;
+import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLPropertyExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLExprTableSource;
+import com.jd.jdbc.sqlparser.ast.statement.SQLSubqueryTableSource;
+import com.jd.jdbc.sqlparser.ast.statement.SQLTableSource;
 import io.netty.util.internal.StringUtil;
 import java.sql.SQLException;
 
@@ -29,5 +34,43 @@ public class TableNameUtils {
             throw new SQLException("Table name is not found");
         }
         return tableName.getSimpleName();
+    }
+
+    public static String getQualifier(SQLTableSource tableSource) {
+        if (tableSource instanceof SQLExprTableSource) {
+            SQLExpr tableSourceExpr = ((SQLExprTableSource) tableSource).getExpr();
+            if (tableSourceExpr instanceof SQLPropertyExpr) {
+                return ((SQLPropertyExpr) tableSourceExpr).getOwnernName();
+            }
+            return tableSource.getAlias();
+        }
+        if (tableSource instanceof SQLSubqueryTableSource) {
+            return tableSource.getAlias();
+        }
+        return "";
+    }
+
+    public static String getAlias(SQLTableSource tableSource) {
+        if (tableSource instanceof SQLExprTableSource) {
+            return tableSource.getAlias();
+        }
+        return tableSource.getAlias();
+    }
+
+    public static String getDatabaseName(SQLExprTableSource tableSource) {
+        SQLExpr tableExpr = tableSource.getExpr();
+        if (!(tableExpr instanceof SQLPropertyExpr)) {
+            return null;
+        }
+
+        SQLExpr schemaExpr = ((SQLPropertyExpr) tableExpr).getOwner();
+        if (schemaExpr instanceof SQLIdentifierExpr) {
+            String schemaName = ((SQLIdentifierExpr) schemaExpr).getSimpleName();
+//            if (RoutePlan.systemTable(schemaName)) {
+//                return null;
+//            }
+            return schemaName;
+        }
+        return null;
     }
 }

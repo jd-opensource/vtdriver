@@ -15,6 +15,21 @@
     "Table": "user"
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 from user having col2 = 2",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select user.col1 from user where 1 != 1",
+    "Query": "select user.col1 from user where col2 = 2",
+    "Table": "user"
+  }
+}
 
 # ORDER BY, reference col from local table.
 "select col from user where name = 5 order by aa"
@@ -37,6 +52,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # ORDER BY uses column numbers
 "select col from user where name = 1 order by 1"
@@ -52,6 +68,25 @@
     },
     "FieldQuery": "select col from user where 1 != 1",
     "Query": "select col from user where name = 1 order by 1 asc",
+    "Table": "user",
+    "Values": [
+      "INT64(1)"
+    ],
+    "Vindex": "user_index"
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select col from user where name = 1 order by 1",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectEqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select col from user where 1 != 1",
+    "Query": "select col from user where name = 1 order by col asc",
     "Table": "user",
     "Values": [
       "INT64(1)"
@@ -77,6 +112,22 @@
     "Table": "user"
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select col from user order by col",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select col from user where 1 != 1",
+    "OrderBy": "0 ASC",
+    "Query": "select col from user order by col asc",
+    "Table": "user"
+  }
+}
 
 # ORDER BY works for select * from authoritative table
 "select * from authoritative order by user_id"
@@ -95,6 +146,7 @@
     "Table": "authoritative"
   }
 }
+Gen4 error: unsupported: '*' expression in cross-shard query
 
 # ORDER BY works for select * from authoritative table
 "select * from authoritative order by col1"
@@ -113,6 +165,7 @@
     "Table": "authoritative"
   }
 }
+Gen4 error: unsupported: '*' expression in cross-shard query
 
 # ORDER BY on scatter with text column
 "select a, textcol1, b from user order by a, textcol1, b"
@@ -131,8 +184,25 @@
     "Table": "user"
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select a, textcol1, b from user order by a, textcol1, b",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select a, textcol1, b, weight_string(a), weight_string(b) from user where 1 != 1",
+    "OrderBy": "(0|3) ASC, 1 ASC, (2|4) ASC",
+    "Query": "select a, textcol1, b, weight_string(a), weight_string(b) from user order by a asc, textcol1 asc, b asc",
+    "ResultColumns": 3,
+    "Table": "user"
+  }
+}
 
-# ORDER BY on scatter with text column, qualified name
+# ORDER BY on scatter with text column, qualified name TODO: can plan better
 "select a, user.textcol1, b from user order by a, textcol1, b"
 {
   "QueryType": "SELECT",
@@ -146,6 +216,23 @@
     },
     "FieldQuery": "select a, user.textcol1, b, weight_string(user.textcol1) from user where 1 != 1",
     "Query": "select a, user.textcol1, b, weight_string(user.textcol1) from user order by a asc, textcol1 asc, b asc",
+    "Table": "user"
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select a, user.textcol1, b from user order by a, textcol1, b",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select a, user.textcol1, b, weight_string(a), weight_string(b) from user where 1 != 1",
+    "OrderBy": "(0|3) ASC, 1 ASC, (2|4) ASC",
+    "Query": "select a, user.textcol1, b, weight_string(a), weight_string(b) from user order by a asc, textcol1 asc, b asc",
+    "ResultColumns": 3,
     "Table": "user"
   }
 }
@@ -167,10 +254,28 @@
     "Table": "user"
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select a, textcol1, b, textcol2 from user order by a, textcol1, b, textcol2",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select a, textcol1, b, textcol2, weight_string(a), weight_string(b) from user where 1 != 1",
+    "OrderBy": "(0|4) ASC, 1 ASC, (2|5) ASC, 3 ASC",
+    "Query": "select a, textcol1, b, textcol2, weight_string(a), weight_string(b) from user order by a asc, textcol1 asc, b asc, textcol2 asc",
+    "ResultColumns": 4,
+    "Table": "user"
+  }
+}
 
 # ORDER BY invalid col number on scatter
 "select col from user order by 2"
 "column number out of range: 2"
+Gen4 error: Unknown column '2' in 'order clause'
 
 # ORDER BY NULL
 "select col from user order by null"
@@ -189,6 +294,7 @@
     "Table": "user"
   }
 }
+Gen4 plan same as above
 
 # ORDER BY RAND()
 "select col from user order by RAND()"
@@ -207,6 +313,7 @@
     "Table": "user"
   }
 }
+Gen4 plan same as above
 
 # Order by, '*' expression
 "select * from user where name = 5 order by col"
@@ -229,6 +336,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # Order by, qualified '*' expression
 "select user.* from user where name = 5 order by user.col"
@@ -251,6 +359,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # Order by, '*' expression with qualified reference
 "select * from user where name = 5 order by user.col"
@@ -273,18 +382,22 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # Order by, qualified '*' expression, name mismatched.
 "select user.* from user where id = 5 order by e.col"
 "symbol e.col not found"
+Gen4 plan same as above
 
 # Order by, invalid column number
 "select col from user order by 18446744073709551616"
 "error parsing column number: 18446744073709551616"
+Gen4 plan same as above
 
 # Order by, out of range column number
 "select col from user order by 2"
 "column number out of range: 2"
+Gen4 error: unknown column '2' in 'order clause'
 
 # Order by, '*' expression with qualified reference and using collate
 "select * from user where name = 5 order by user.col collate utf8_general_ci"
@@ -307,6 +420,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 #Order by with math functions
 "select * from user where name = 5 order by -col1"
@@ -329,6 +443,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 #Order by with string operations
 "select * from user where name = 5 order by concat(col,col1) collate utf8_general_ci desc"
@@ -351,6 +466,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 #Order by with math operations
 "select * from user where name = 5 order by name+col collate utf8_general_ci desc"
@@ -373,6 +489,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # LIMIT
 "select col1 from user where name = 1 limit 1"
@@ -395,6 +512,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # limit for scatter
 "select col from user limit 1"
@@ -419,6 +537,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # cross-shard expression in parenthesis with limit
 "select * from user where (id1 = 4 AND name1 ='abc') limit 5"
@@ -443,11 +562,34 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # invalid limit expression
 "select id from user limit 1+1"
 "unexpected expression in LIMIT: expression is too complex 1 + 1"
+{
+  "QueryType": "SELECT",
+  "Original": "select id from user limit 1+1",
+  "Instructions": {
+    "OperatorType": "Limit",
+    "Count": "2",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select id from user where 1 != 1",
+        "Query": "select id from user limit :__upper_limit",
+        "Table": "user"
+      }
+    ]
+  }
+}
 
+# TODO: this should be 'Column 'col1' in having clause is ambiguous'
 # non-ambiguous symbol reference
 "select user.col1, user_extra.col1 from user join user_extra having user_extra.col1 = 2"
 {
@@ -479,6 +621,40 @@
         },
         "FieldQuery": "select user_extra.col1 from user_extra where 1 != 1",
         "Query": "select user_extra.col1 from user_extra having user_extra.col1 = 2",
+        "Table": "user_extra"
+      }
+    ]
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1, user_extra.col1 from user join user_extra having user_extra.col1 = 2",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-1,1],
+    "TableName": "user_user_extra",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.col1 from user where 1 != 1",
+        "Query": "select user.col1 from user",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user_extra.col1 from user_extra where 1 != 1",
+        "Query": "select user_extra.col1 from user_extra where user_extra.col1 = 2",
         "Table": "user_extra"
       }
     ]
@@ -516,6 +692,40 @@
         },
         "FieldQuery": "select user_extra.col3 from user_extra where 1 != 1",
         "Query": "select user_extra.col3 from user_extra having user_extra.col3 = 1",
+        "Table": "user_extra"
+      }
+    ]
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, user_extra.col3 from user join user_extra having 1 = 1 and a = 1 and a = user.col2 and user_extra.col3 = 1",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-1,-2,1],
+    "TableName": "user_user_extra",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.col1 as a, user.col2 from user where 1 != 1",
+        "Query": "select user.col1 as a, user.col2 from user where user.col1 = 1 and user.col1 = user.col2 and 1 = 1",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user_extra.col3 from user_extra where 1 != 1",
+        "Query": "select user_extra.col3 from user_extra where user_extra.col3 = 1 and 1 = 1",
         "Table": "user_extra"
       }
     ]
@@ -562,6 +772,40 @@
     ]
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by null",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-2,-3,1],
+    "TableName": "user_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.name, user.col1 as a, user.col2 from user where 1 != 1",
+        "Query": "select user.name, user.col1 as a, user.col2 from user where user.name = 1",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select music.col3 from music where 1 != 1",
+        "Query": "select music.col3 from music where music.id = :user_name",
+        "Table": "music"
+      }
+    ]
+  }
+}
 
 # ORDER BY non-key column for join
 "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by a"
@@ -588,6 +832,41 @@
           "INT64(1)"
         ],
         "Vindex": "hash"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select music.col3 from music where 1 != 1",
+        "Query": "select music.col3 from music where music.id = :user_name",
+        "Table": "music"
+      }
+    ]
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by a",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-2,-3,1],
+    "TableName": "user_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.name, user.col1 as a, user.col2, weight_string(user.col1) from user where 1 != 1",
+        "OrderBy": "(1|3) ASC",
+        "Query": "select user.name, user.col1 as a, user.col2, weight_string(user.col1) from user where user.name = 1 order by a asc",
+        "Table": "user"
       },
       {
         "OperatorType": "Route",
@@ -644,6 +923,41 @@
     ]
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, music.col3 from user, music where user.name = music.id and user.name = 1 order by a",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-2,-3,1],
+    "TableName": "user_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.name, user.col1 as a, user.col2, weight_string(user.col1) from user where 1 != 1",
+        "OrderBy": "(1|3) ASC",
+        "Query": "select user.name, user.col1 as a, user.col2, weight_string(user.col1) from user where user.name = 1 order by a asc",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select music.col3 from music where 1 != 1",
+        "Query": "select music.col3 from music where music.id = :user_name",
+        "Table": "music"
+      }
+    ]
+  }
+}
 
 # ORDER BY RAND() for join
 "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by RAND()"
@@ -670,6 +984,40 @@
           "INT64(1)"
         ],
         "Vindex": "hash"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select music.col3 from music where 1 != 1",
+        "Query": "select music.col3 from music where music.id = :user_name order by RAND()",
+        "Table": "music"
+      }
+    ]
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select user.col1 as a, user.col2, music.col3 from user join music on user.name = music.id where user.name = 1 order by RAND()",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-2,-3,1],
+    "TableName": "user_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectEqualUnique",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select user.name, user.col1 as a, user.col2 from user where 1 != 1",
+        "Query": "select user.name, user.col1 as a, user.col2 from user where user.name = 1 order by RAND()",
+        "Table": "user"
       },
       {
         "OperatorType": "Route",
@@ -729,10 +1077,12 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # ambiguous symbol reference
 "select user.col1, user_extra.col1 from user join user_extra having col1 = 2"
 "ambiguous symbol reference: col1"
+Gen4 error: Column 'col1' in field list is ambiguous
 
 # HAVING uses subquery
 "select name from user having name in ( select col from user )"
@@ -843,6 +1193,7 @@
   }
 }
 
+
 # ORDER BY RAND() after pull-out subquery
 "select col from user where col in ( select col2 from user ) order by rand()"
 {
@@ -877,6 +1228,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # Order by, '*' expression in a subquery
 "select u.name, e.name from user u join user_extra e where u.col = e.col and u.col in ( select * from user where user.name = u.name order by col )"
@@ -914,10 +1266,45 @@
     ]
   }
 }
+{
+  "QueryType": "SELECT",
+  "Original": "select u.id, e.id from user u join user_extra e where u.col = e.col and u.col in (select * from user where user.name = u.id order by col)",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": [-2,1],
+    "TableName": "user_user_extra",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select u.col, u.id from user as u where 1 != 1",
+        "Query": "select u.col, u.id from user as u where u.col in (select * from user where user.name = u.id order by col asc)",
+        "Table": "user"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select e.id from user_extra as e where 1 != 1",
+        "Query": "select e.id from user_extra as e where e.col = :u_col",
+        "Table": "user_extra"
+      }
+    ]
+  }
+}
 
 # Order by, verify outer symtab is searched according to its own context.
 "select u.name from user u having u.name in (select col2 from user where user.name = u.name order by u.col)"
 "symbol u.col not found in subquery"
+
 
 # Order by subquery column
 "select * from user u join ( select user_id from user_extra where user_id = 5 ) eu on u.name = eu.user_id where u.name = 5 order by eu.user_id"
@@ -940,6 +1327,7 @@
     "Vindex": "user_index"
   }
 }
+Gen4 plan same as above
 
 # limit for scatter with bind var
 "select col from user limit :a"
@@ -964,6 +1352,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # scatter limit after pullout subquery
 "select col from user where col in ( select col1 from user ) limit 1"
@@ -1005,3 +1394,526 @@
     ]
   }
 }
+Gen4 plan same as above
+
+# Distinct with column alias
+"select distinct a as c, a from user"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select distinct a as c, a from user",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "GroupBy": "(0|2), (1|2)",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select a as c, a, weight_string(a) from user where 1 != 1",
+        "OrderBy": "(0|2) ASC, (0|2) ASC",
+        "Query": "select distinct a as c, a, weight_string(a) from user order by c asc, a asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# Distinct with cross shard query
+"select distinct user.a from user join user_extra"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select distinct user.a from user join user_extra",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "GroupBy": "(0|1)",
+    "ResultColumns": 1,
+    "Inputs": [
+      {
+        "OperatorType": "Join",
+        "Variant": "Join",
+        "JoinColumnIndexes": "L:0,L:1",
+        "TableName": "`user`_user_extra",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "Scatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select `user`.a, weight_string(`user`.a) from `user` where 1 != 1",
+            "OrderBy": "(0|1) ASC",
+            "Query": "select `user`.a, weight_string(`user`.a) from `user` order by `user`.a asc",
+            "Table": "`user`"
+          },
+          {
+            "OperatorType": "Route",
+            "Variant": "Scatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select 1 from user_extra where 1 != 1",
+            "Query": "select 1 from user_extra",
+            "Table": "user_extra"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# Distinct with same column
+"select distinct a, a from user"
+"generating order by clause: ambiguous symbol reference: a"
+{
+  "QueryType": "SELECT",
+  "Original": "select distinct a, a from user",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "GroupBy": "(0|2), (1|2)",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select a, a, weight_string(a) from user where 1 != 1",
+        "OrderBy": "(0|2) ASC, (0|2) ASC",
+        "Query": "select distinct a, a, weight_string(a) from user order by a asc, a asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+#Order by derived table column
+"select * from user u join (select user_id from user_extra where user_id = 5) eu on u.id = eu.user_id where u.id = 5 order by eu.user_id"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select * from user u join (select user_id from user_extra where user_id = 5) eu on u.id = eu.user_id where u.id = 5 order by eu.user_id",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "EqualUnique",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select * from `user` as u, (select user_id from user_extra where 1 != 1) as eu where 1 != 1",
+    "Query": "select * from `user` as u, (select user_id from user_extra where user_id = 5) as eu where u.id = 5 and u.id = eu.user_id order by eu.user_id asc",
+    "Table": "`user`, user_extra",
+    "Values": [
+      "INT64(5)"
+    ],
+    "Vindex": "user_index"
+  }
+}
+
+# ordering on the left side of the join
+"select name from user, music order by name"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select name from user, music order by name",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": "L:0",
+    "TableName": "`user`_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "Scatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select `name`, weight_string(`name`) from `user` where 1 != 1",
+        "OrderBy": "(0|1) ASC",
+        "Query": "select `name`, weight_string(`name`) from `user` order by `name` asc",
+        "Table": "`user`"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select 1 from music where 1 != 1",
+        "Query": "select 1 from music",
+        "Table": "music"
+      }
+    ]
+  }
+}
+
+# order by with ambiguous column reference ; valid in MySQL
+"select id, id from user order by id"
+"ambiguous symbol reference: id"
+{
+  "QueryType": "SELECT",
+  "Original": "select id, id from user order by id",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id, id, weight_string(id) from user where 1 != 1",
+    "OrderBy": "(0|2) ASC",
+    "Query": "select id, id, weight_string(id) from user order by id asc",
+    "ResultColumns": 2,
+    "Table": "user"
+  }
+}
+
+# order by column alias
+"select id as foo from music order by foo"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select id as foo from music order by foo",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id as foo, weight_string(id) from music where 1 != 1",
+    "OrderBy": "(0|1) ASC",
+    "Query": "select id as foo, weight_string(id) from music order by foo asc",
+    "ResultColumns": 1,
+    "Table": "music"
+  }
+}
+
+# join order by with ambiguous column reference ; valid in MySQL
+"select name, name from user, music order by `name`"
+"ambiguous symbol reference: `name`"
+{
+  "QueryType": "SELECT",
+  "Original": "select name, name from user, music order by name",
+  "Instructions": {
+    "OperatorType": "Join",
+    "Variant": "Join",
+    "JoinColumnIndexes": "L:0,L:0",
+    "TableName": "`user`_music",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "Scatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select `name`, weight_string(`name`) from `user` where 1 != 1",
+        "OrderBy": "(0|1) ASC",
+        "Query": "select `name`, weight_string(`name`) from `user` order by `name` asc",
+        "Table": "`user`"
+      },
+      {
+        "OperatorType": "Route",
+        "Variant": "Scatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select 1 from music where 1 != 1",
+        "Query": "select 1 from music",
+        "Table": "music"
+      }
+    ]
+  }
+}
+
+# column alias for a table column in order by
+"select id as foo, id2 as id from music order by id"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select id as foo, id2 as id from music order by id",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id as foo, id2 as id, weight_string(id2) from music where 1 != 1",
+    "OrderBy": "(1|2) ASC",
+    "Query": "select id as foo, id2 as id, weight_string(id2) from music order by id asc",
+    "ResultColumns": 2,
+    "Table": "music"
+  }
+}
+
+# aggregation and non-aggregations column without group by
+"select count(id), num from user"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select count(id), num from user",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Scalar",
+    "Aggregates": "sum_count(0) AS count(id), random(1) AS num",
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select count(id), num from user where 1 != 1",
+        "Query": "select count(id), num from user",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# aggregation and non-aggregations column with order by
+"select count(id), num from user order by 2"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select count(id), num from user order by 2",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Scalar",
+    "Aggregates": "sum_count(0) AS count(id), random(1) AS num",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select count(id), num, weight_string(num) from user where 1 != 1",
+        "OrderBy": "(1|2) ASC",
+        "Query": "select count(id), num, weight_string(num) from user order by num asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# aggregation and non-aggregations column with group by and order by
+"select count(id), num from user group by 2 order by 1"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select count(id), num from user group by 2 order by 1",
+  "Instructions": {
+    "OperatorType": "Sort",
+    "Variant": "Memory",
+    "OrderBy": "0 ASC",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Ordered",
+        "Aggregates": "sum_count(0) AS count(id)",
+        "GroupBy": "(1|2)",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select count(id), num, weight_string(num) from user where 1 != 1 group by num, weight_string(num)",
+            "OrderBy": "(1|2) ASC",
+            "Query": "select count(id), num, weight_string(num) from user group by num, weight_string(num) order by num asc",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# aggregation and non-aggregations column with group by
+"select count(id), num from user group by 2"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select count(id), num from user group by 2",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "Aggregates": "sum_count(0) AS count(id)",
+    "GroupBy": "(1|2)",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select count(id), num, weight_string(num) from user where 1 != 1 group by num, weight_string(num)",
+        "OrderBy": "(1|2) ASC",
+        "Query": "select count(id), num, weight_string(num) from user group by num, weight_string(num) order by num asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# Scatter order by and aggregation: order by column must reference column from select list
+"select col, count(*) from user group by col order by c1"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select col, count(*) from user group by col order by c1",
+  "Instructions": {
+    "OperatorType": "Aggregate",
+    "Variant": "Ordered",
+    "Aggregates": "sum_count_star(1) AS count(*), random(2) AS c1",
+    "GroupBy": "0",
+    "ResultColumns": 2,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select col, count(*), c1, weight_string(c1) from user where 1 != 1 group by col",
+        "OrderBy": "(2|3) ASC, 0 ASC",
+        "Query": "select col, count(*), c1, weight_string(c1) from user group by col order by c1 asc, col asc",
+        "Table": "user"
+      }
+    ]
+  }
+}
+
+# ORDER BY on select t.* TODO:*后面的表达式排序 原测试用例第三代是报错，vtdriver执行不报错
+"select t.*, t.col from user t order by t.col"
+Gen3 skip
+Gen4 error: unsupported: '*' expression in cross-shard query
+
+# ORDER BY on select multi *
+"select *, name, *, col from user order by col"
+Gen3 skip
+Gen4 error: unsupported: '*' expression in cross-shard query
+
+# ORDER BY on select multi t.*
+"select t.*, t.name, t.*, t.col from user t order by t.col"
+Gen3 skip
+Gen4 error: unsupported: '*' expression in cross-shard query
+
+# ORDER BY on select *
+"select *, col from user order by col"
+Gen3 skip
+Gen4 error: unsupported: '*' expression in cross-shard query
+
+# ORDER BY column offset
+"select id as foo from music order by 1"
+Gen3 skip
+{
+  "QueryType": "SELECT",
+  "Original": "select id as foo from music order by 1",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectScatter",
+    "Keyspace": {
+      "Name": "user",
+      "Sharded": true
+    },
+    "FieldQuery": "select id as foo, weight_string(id) from music where 1 != 1",
+    "OrderBy": "(0|1) ASC",
+    "Query": "select id as foo, weight_string(id) from music order by foo asc",
+    "ResultColumns": 1,
+    "Table": "music"
+  }
+}
+
+# Equal filter with hexadecimal value
+"select count(*) a from user having a = 0x01"
+"unsupported: filtering on results of aggregates"
+{
+  "QueryType": "SELECT",
+  "Original": "select count(*) a from user having a = 0x01",
+  "Instructions": {
+    "OperatorType": "Filter",
+    "Predicate": "a = 0x01",
+    "Inputs": [
+      {
+        "OperatorType": "Aggregate",
+        "Variant": "Scalar",
+        "Aggregates": "sum_count_star(0) AS a",
+        "Inputs": [
+          {
+            "OperatorType": "Route",
+            "Variant": "SelectScatter",
+            "Keyspace": {
+              "Name": "user",
+              "Sharded": true
+            },
+            "FieldQuery": "select count(*) as a from user where 1 != 1",
+            "Query": "select count(*) as a from user",
+            "Table": "user"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+# Order by has subqueries
+"select id from unsharded order by (select id from unsharded)"
+{
+  "QueryType": "SELECT",
+  "Original": "select id from unsharded order by (select id from unsharded)",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectUnsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "FieldQuery": "select id from unsharded where 1 != 1",
+    "Query": "select id from unsharded order by ( select id from unsharded ) asc",
+    "Table": "unsharded"
+  }
+}
+{
+  "QueryType": "SELECT",
+  "Original": "select id from unsharded order by (select id from unsharded)",
+  "Instructions": {
+    "OperatorType": "Route",
+    "Variant": "SelectUnsharded",
+    "Keyspace": {
+      "Name": "main",
+      "Sharded": false
+    },
+    "FieldQuery": "select id from unsharded where 1 != 1",
+    "Query": "select id from unsharded order by ( select id from unsharded )",
+    "Table": "unsharded"
+  }
+}
+

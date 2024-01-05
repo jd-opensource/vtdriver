@@ -25,10 +25,9 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import static java.sql.Types.LONGVARBINARY;
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.sql.Types.LONGVARBINARY;
 
 public class VtType {
     private static final int flagIsIntegral = Query.Flag.ISINTEGRAL_VALUE;
@@ -118,6 +117,10 @@ public class VtType {
 
     public static boolean isNumber(Query.Type typ) {
         return isIntegral(typ) || isFloat(typ) || typ.getNumber() == Query.Type.DECIMAL_VALUE;
+    }
+
+    public static boolean isDate(Query.Type t) {
+        return t == Query.Type.DATETIME || t == Query.Type.DATE || t == Query.Type.TIMESTAMP || t == Query.Type.TIME;
     }
 
     public static Query.Type getQueryType(String columnTypeName) throws SQLException {

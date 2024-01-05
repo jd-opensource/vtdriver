@@ -31,6 +31,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # union all between two SelectEqualUnique
 "select id from user where name = 1 union all select id from user where name = 5"
@@ -69,6 +70,33 @@
           "INT64(5)"
         ],
         "Vindex": "user_index"
+      }
+    ]
+  }
+}
+Gen4 plan same as above
+
+# union distinct between two scatter selects
+# Vitess支持，VtDriver gen3报错
+"select name from user union select user_id from music"
+"unsupported: UNION cannot be executed as a single route"
+{
+  "QueryType": "SELECT",
+  "Original": "select name from user union select user_id from music",
+  "Instructions": {
+    "OperatorType": "Distinct",
+    "ResultColumns": 1,
+    "Inputs": [
+      {
+        "OperatorType": "Route",
+        "Variant": "SelectScatter",
+        "Keyspace": {
+          "Name": "user",
+          "Sharded": true
+        },
+        "FieldQuery": "select name, weight_string(name) from user where 1 != 1 union select user_id, weight_string(user_id) from music where 1 != 1",
+        "Query": "select name, weight_string(name) from user union select user_id, weight_string(user_id) from music",
+        "Table": "user"
       }
     ]
   }
@@ -119,6 +147,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # Union all
 "select col1, col2 from user union all select col1, col2 from user_extra"
@@ -153,6 +182,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # union operations in subqueries (FROM)
 "select * from (select * from user union all select * from user_extra) as t"
@@ -195,6 +225,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # union all between two scatter selects, with order by
 "(select id from user order by id limit 5) union all (select id from music order by id desc limit 5)"
@@ -241,6 +272,7 @@
     ]
   }
 }
+Gen4 plan same as above
 
 # union all on scatter and single route
 "select id from user where name = 1 union select id from user where name = 1 union all select id from user"
@@ -279,3 +311,4 @@
     ]
   }
 }
+Gen4 plan same as above

@@ -21,6 +21,7 @@ package com.jd.jdbc.engine;
 import com.jd.jdbc.IExecute;
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.evalengine.EvalEngine;
+import com.jd.jdbc.evalengine.EvalResult;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqltypes.VtResultSet;
 import com.jd.jdbc.sqltypes.VtResultValue;
@@ -122,7 +123,7 @@ public class ProjectionEngine implements PrimitiveEngine {
                 for (List<VtResultValue> row : vtResultSet.getRows()) {
                     env.setRow(row);
                     for (EvalEngine.Expr expr : exprs) {
-                        EvalEngine.EvalResult res = expr.evaluate(env);
+                        EvalResult res = expr.evaluate(env);
                         row.add(convertToVtResultValue(res, vcursor.getCharEncoding()));
                     }
                     rows.add(row);
@@ -232,7 +233,7 @@ public class ProjectionEngine implements PrimitiveEngine {
         for (List<VtResultValue> row : resultSet.getRows()) {
             env.setRow(row);
             for (EvalEngine.Expr expr : this.exprs) {
-                EvalEngine.EvalResult res = expr.evaluate(env);
+                EvalResult res = expr.evaluate(env);
                 row.add(convertToVtResultValue(res, charEncoding));
             }
             rows.add(row);
@@ -241,15 +242,15 @@ public class ProjectionEngine implements PrimitiveEngine {
         return new IExecute.ExecuteMultiShardResponse(resultSet);
     }
 
-    private static VtResultValue convertToVtResultValue(EvalEngine.EvalResult res, String charEncoding) throws SQLException {
+    private static VtResultValue convertToVtResultValue(EvalResult res, String charEncoding) throws SQLException {
         VtResultValue resultValue;
         switch (res.getType()) {
             case FLOAT64:
-                EvalEngine.EvalResult evalResult1 = new EvalEngine.EvalResult(BigDecimal.valueOf(res.getFval()).setScale(4, RoundingMode.HALF_UP), Query.Type.DECIMAL);
+                EvalResult evalResult1 = new EvalResult(BigDecimal.valueOf(res.getFval()).setScale(4, RoundingMode.HALF_UP), Query.Type.DECIMAL);
                 resultValue = evalResult1.resultValue();
                 break;
             case VARBINARY:
-                EvalEngine.EvalResult evalResult2 = new EvalEngine.EvalResult(res.getBytes(), Query.Type.VARBINARY);
+                EvalResult evalResult2 = new EvalResult(res.getBytes(), Query.Type.VARBINARY);
                 Charset cs = StringUtils.isEmpty(charEncoding) ? Charset.defaultCharset() : Charset.forName(charEncoding);
                 resultValue = VtResultValue.newVtResultValue(Query.Type.VARBINARY, new String(evalResult2.getBytes(), cs));
                 break;

@@ -18,9 +18,20 @@ limitations under the License.
 
 package com.jd.jdbc.evalengine;
 
+import com.jd.jdbc.common.util.CollectionUtils;
 import com.jd.jdbc.key.Bytes;
-import com.jd.jdbc.sqlparser.support.logging.Log;
-import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.sqlparser.ast.SQLExpr;
+import com.jd.jdbc.sqlparser.ast.SQLName;
+import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOpExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator;
+import com.jd.jdbc.sqlparser.ast.expr.SQLCharExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLIntegerExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLNullExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLPropertyExpr;
+import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefExpr;
+import com.jd.jdbc.sqlparser.ast.expr.VtOffset;
+import com.jd.jdbc.sqltypes.VtNumberRange;
 import com.jd.jdbc.sqltypes.VtResultValue;
 import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.vitess.resultset.ResultSetUtil;
@@ -28,8 +39,8 @@ import io.vitess.proto.Query;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,6 +49,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class EvalEngine {
+
+    public static final int TRUE_FLAG = 1;
+
+    private static final Literal NULL_EXPR = new Literal(new EvalResult());
 
     /**
      * Cast converts a Value to the target type.
@@ -89,6 +104,13 @@ public class EvalEngine {
             }
         }
         throw new SQLException("types are not comparable: " + value1.getVtType() + " vs " + value2.getVtType());
+    }
+
+    public static Integer allCompare(final VtResultValue value1, final VtResultValue value2) throws SQLException {
+        if (value1.isNull() || value2.isNull()) {
+            return 0;
+        }
+        return nullSafeCompare(value1, value2);
     }
 
     private static Boolean isByteComparable(final VtResultValue value) {
@@ -204,8 +226,16 @@ public class EvalEngine {
     }
 
     public static Expr newLiteralIntFromBytes(byte[] val) {
-        Long ival = Long.parseLong(new String(val));
-        return newLiteralInt(ival);
+        BigInteger uval = new BigInteger(val);
+        if (uval.compareTo(new BigInteger(String.valueOf(VtNumberRange.INT64_MAX))) <= 0) {
+            Long ival = Long.parseLong(new String(val));
+            return newLiteralInt(ival);
+        }
+        return newLiteralUint(uval);
+    }
+
+    public static Expr newLiteralUint(BigInteger i) {
+        return new Literal(new EvalResult(i, Query.Type.UINT64));
     }
 
     public static Expr newLiteralInt(Long i) {
@@ -244,8 +274,37 @@ public class EvalEngine {
                 return new EvalResult(val.getVtValue(), Query.Type.VARBINARY);
             case NULL_TYPE:
                 return new EvalResult(Query.Type.NULL_TYPE);
+            default:
+                throw new SQLException("Type is not supported: " + val.getVtType());
         }
-        throw new SQLException("Type is not supported: " + val.getVtType());
+    }
+
+    private static EvalResult evaluateByType(VtResultValue val) throws SQLException {
+        switch (val.getVtType()) {
+            case INT64:
+                Long lval = Long.valueOf(val.toString());
+                return new EvalResult(lval, Query.Type.INT64);
+            case INT32:
+                Long ival = Long.valueOf(val.toString());
+                return new EvalResult(ival, Query.Type.INT32);
+            case UINT64:
+                BigInteger uval = new BigInteger(val.toString());
+                return new EvalResult(uval, Query.Type.UINT64);
+            case FLOAT64:
+                Double fval = Double.valueOf(val.toString());
+                return new EvalResult(fval, Query.Type.FLOAT64);
+            case DECIMAL:
+                BigDecimal bigDecimal = new BigDecimal(val.toString());
+                return new EvalResult(bigDecimal, Query.Type.DECIMAL);
+            case VARCHAR:
+            case TEXT:
+            case VARBINARY:
+                return new EvalResult(val.toBytes(), Query.Type.VARBINARY);
+            case NULL_TYPE:
+                return new EvalResult(Query.Type.NULL_TYPE);
+            default:
+                throw new SQLException("Type is not supported: " + val.getVtType());
+        }
     }
 
     private static Query.Type mergeNumericalTypes(Query.Type ltype, Query.Type rtype) {
@@ -254,18 +313,161 @@ public class EvalEngine {
                 if (rtype == Query.Type.UINT32 || rtype == Query.Type.INT64 || rtype == Query.Type.UINT64 || rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
                     return rtype;
                 }
+                break;
             case INT64:
                 if (rtype == Query.Type.UINT64 || rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
                     return rtype;
                 }
+                break;
             case UINT64:
                 if (rtype == Query.Type.FLOAT64 || rtype == Query.Type.DECIMAL) {
                     return rtype;
                 }
+                break;
             case DECIMAL:
                 break;
+            default:
+                throw new RuntimeException();
         }
         return ltype;
+    }
+
+    public static Expr translate(SQLExpr e, TranslationLookup translationLookup) throws SQLException {
+        return translateEx(e, translationLookup, true);
+    }
+
+    public static Expr translate(List<SQLExpr> targetList, TranslationLookup lookup) throws SQLException {
+        List<Expr> exprList = new ArrayList<>();
+        for (SQLExpr expr : targetList) {
+            Expr translate = translate(expr, lookup);
+            if (translate == null) {
+                return null;
+            }
+            exprList.add(translate);
+        }
+        return new TupleExpr(exprList);
+    }
+
+    public static Expr translateEx(SQLExpr e, TranslationLookup translationLookup, boolean simplify) throws SQLException {
+        Expr expr = translateExpr(e, translationLookup);
+        if (expr == null) {
+            return expr;
+        }
+        if (simplify) {
+            expr = Simplify.simplifyExpr(new EvalEngine.ExpressionEnv(), expr);
+        }
+        return expr;
+    }
+
+    public static Expr translateEx(List<SQLExpr> targetList, TranslationLookup lookup, boolean simplify) throws SQLException {
+        Expr expr = translate(targetList, lookup);
+        if (expr == null) {
+            return expr;
+        }
+        if (simplify) {
+            expr = Simplify.simplifyExpr(new EvalEngine.ExpressionEnv(), expr);
+        }
+        return expr;
+    }
+
+    private static Expr translateExpr(SQLExpr e, TranslationLookup translationLookup) throws SQLException {
+        if (e instanceof SQLIdentifierExpr || e instanceof SQLPropertyExpr) {
+            try {
+                int idx = translationLookup.columnLookup((SQLName) e);
+                if (idx >= 0) {
+                    return new Column(idx);
+                }
+                return null;
+            } catch (SQLException exception) {
+                return null;
+            }
+        } else if (e instanceof SQLBinaryOpExpr) {
+            return translateComparisonExpr(e, translationLookup);
+        } else if (e instanceof VtOffset) {
+            return new Column(((VtOffset) e).getValue());
+        } else if (e instanceof SQLVariantRefExpr) {
+            int index = ((SQLVariantRefExpr) e).getIndex();
+            if (Integer.valueOf(-1).equals(index)) {
+                // default value
+                return new EvalEngine.BindVariable(((SQLVariantRefExpr) e).getName());
+            }
+            return new EvalEngine.BindVariable(String.valueOf(index));
+        } else if (e instanceof SQLNullExpr) {
+            return NULL_EXPR;
+        } else if (e instanceof SQLIntegerExpr) {
+            return EvalEngine.newLiteralIntFromBytes(((SQLIntegerExpr) e).getNumber().toString().getBytes());
+        } else if (e instanceof SQLCharExpr) {
+            return new Literal(new EvalResult(((SQLCharExpr) e).getText().getBytes(), Query.Type.VARCHAR));
+        } else {
+            // todo
+            return new AnyExpr(e);
+        }
+    }
+
+    private static Expr translateComparisonExpr(SQLExpr e, TranslationLookup translationLookup) throws SQLException {
+        SQLExpr left = ((SQLBinaryOpExpr) e).getLeft();
+        SQLExpr right = ((SQLBinaryOpExpr) e).getRight();
+        Expr leftE = translateExpr(left, translationLookup);
+        Expr rightE = translateExpr(right, translationLookup);
+        BinaryExpr bExpr;
+        SQLBinaryOperator op = ((SQLBinaryOpExpr) e).getOperator();
+        switch (op) {
+            case Equality:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareEQ(), leftE, rightE);
+            case NotEqual:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareNE(), leftE, rightE);
+            case LessThan:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareLT(), leftE, rightE);
+            case LessThanOrEqual:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareLE(), leftE, rightE);
+            case GreaterThan:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareGT(), leftE, rightE);
+            case GreaterThanOrEqual:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareGE(), leftE, rightE);
+            case LessThanOrEqualOrGreaterThan:
+                return new Comparisons.ComparisonExpr(new Comparisons.CompareNullSafeEQ(), leftE, rightE);
+            case BooleanAnd:
+            case BooleanXor:
+            case BooleanOr:
+                bExpr = new Logical.LogicalExpr(op);
+                return new BinaryOp(bExpr, leftE, rightE);
+            case Add:
+                bExpr = new EvalEngine.Addition();
+                return new BinaryOp(bExpr, leftE, rightE);
+            case Subtract:
+                bExpr = new EvalEngine.Subtraction();
+                return new BinaryOp(bExpr, leftE, rightE);
+            case Multiply:
+                bExpr = new EvalEngine.Multiplication();
+                return new BinaryOp(bExpr, leftE, rightE);
+            case Divide:
+                bExpr = new EvalEngine.Division();
+                return new BinaryOp(bExpr, leftE, rightE);
+            case Is:
+                bExpr = new Logical.IsExpr(false);
+                return new BinaryOp(bExpr, leftE, rightE);
+            case IsNot:
+                bExpr = new Logical.IsExpr(true);
+                return new BinaryOp(bExpr, leftE, rightE);
+            default:
+                throw new SQLFeatureNotSupportedException(op.name);
+        }
+    }
+
+    /**
+     * NullsafeHashcode returns an int64 hashcode that is guaranteed to be the same
+     * for two values that are considered equal by `NullsafeCompare`.
+     *
+     * @param v
+     * @param collation
+     * @param coerceType
+     * @return
+     */
+    public static long nullsafeHashcode(VtResultValue v, int collation, Query.Type coerceType) throws SQLException {
+        EvalResult cast = new EvalResult();
+        cast.setValueCast(v, coerceType);
+//        cast.setCollation(collation);
+        return cast.nullSafeHashcode();
     }
 
     /**
@@ -278,16 +480,22 @@ public class EvalEngine {
          */
         EvalResult evaluate(ExpressionEnv env) throws SQLException;
 
+        EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException;
+
         /**
          * @param env
          * @return
          */
         Query.Type type(ExpressionEnv env) throws SQLException;
 
+        int getFlags();
+
         /**
          * @return
          */
         String string();
+
+        boolean constant();
 
         void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException;
     }
@@ -316,88 +524,6 @@ public class EvalEngine {
         String string();
     }
 
-    @Getter
-    @Setter
-    public static class EvalResult {
-        private Query.Type type;
-
-        private Long ival;
-
-        private BigInteger uval;
-
-        private Double fval;
-
-        private BigDecimal bigDecimal;
-
-        private byte[] bytes;
-
-        public EvalResult() {
-        }
-
-        public EvalResult(byte[] bytes, Query.Type type) {
-            this.bytes = bytes;
-            this.type = type;
-        }
-
-        public EvalResult(Long ival, Query.Type type) {
-            this.ival = ival;
-            this.type = type;
-        }
-
-        public EvalResult(BigInteger uval, Query.Type type) {
-            this.uval = uval;
-            this.type = type;
-        }
-
-        public EvalResult(Double fval, Query.Type type) {
-            this.fval = fval;
-            this.type = type;
-        }
-
-        public EvalResult(BigDecimal bigDecimal, Query.Type type) {
-            this.bigDecimal = bigDecimal;
-            this.type = type;
-        }
-
-        public EvalResult(Query.Type type) {
-            this.type = type;
-        }
-
-        @Override
-        public String toString() {
-            switch (this.type) {
-                case INT64:
-                    return "Type: " + this.type + ", Value: " + this.ival;
-                case UINT64:
-                    return "Type: " + this.type + ", Value: " + this.uval.toString();
-                case FLOAT64:
-                    return "Type: " + this.type + ", Value: " + this.fval.toString();
-                case DECIMAL:
-                    return "Type: " + this.type + ", Value: " + this.bigDecimal.toString();
-                default:
-                    return "Type: " + this.type + ", Value: " + Arrays.toString(this.bytes);
-            }
-        }
-
-        /**
-         * Value allows for retrieval of the value we expose for public consumption
-         *
-         * @return
-         */
-        public VtValue value() throws SQLException {
-            if (this.type == Query.Type.INT32 || this.type == Query.Type.INT24 || this.type == Query.Type.INT16) {
-                this.type = Query.Type.INT64;
-            }
-            return Arithmetic.castFromNumeric(this, this.type);
-        }
-
-        public VtResultValue resultValue() throws SQLException {
-            if (this.type == Query.Type.INT32 || this.type == Query.Type.INT24 || this.type == Query.Type.INT16) {
-                this.type = Query.Type.INT64;
-            }
-            return Arithmetic.castFromNum(this, this.type);
-        }
-    }
 
     /**
      * ExpressionEnv contains the `environment that the expression
@@ -414,6 +540,18 @@ public class EvalEngine {
         public ExpressionEnv(Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) {
             this.bindVariableMap = bindVariableMap;
             this.row = new ArrayList<>();
+        }
+
+        public ExpressionEnv() {
+        }
+
+        public EvalResult evaluate(Expr expr) throws SQLException {
+            typecheck(expr);
+            return expr.eval(this, new EvalResult());
+        }
+
+        public void typecheck(Expr expr) {
+            //todo
         }
     }
 
@@ -433,6 +571,14 @@ public class EvalEngine {
         }
 
         @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            if (!env.bindVariableMap.containsKey(this.key)) {
+                throw new SQLException("Bind variable not found");
+            }
+            return evaluateByType(VtValue.newVtValue(env.bindVariableMap.get(this.key)));
+        }
+
+        @Override
         public Query.Type type(ExpressionEnv env) throws SQLException {
             if (!env.bindVariableMap.containsKey(this.key)) {
                 throw new SQLException("query arguments missing for index: " + this.key);
@@ -441,8 +587,18 @@ public class EvalEngine {
         }
 
         @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
         public String string() {
-            return ":" + this.key;
+            return this.key;
+        }
+
+        @Override
+        public boolean constant() {
+            return false;
         }
 
         @Override
@@ -451,9 +607,45 @@ public class EvalEngine {
         }
     }
 
-    public static class Literal implements Expr {
-        private static final Log logger = LogFactory.getLog(Literal.class);
+    public static class NullExpr implements Expr {
 
+        @Override
+        public EvalResult evaluate(ExpressionEnv env) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public Query.Type type(ExpressionEnv env) throws SQLException {
+            return Query.Type.NULL_TYPE;
+        }
+
+        @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
+        public String string() {
+            return "null";
+        }
+
+        @Override
+        public boolean constant() {
+            return false;
+        }
+
+        @Override
+        public void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+
+        }
+    }
+
+    public static class Literal implements Expr {
         @Getter
         private final EvalResult val;
 
@@ -467,18 +659,43 @@ public class EvalEngine {
         }
 
         @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            return this.val;
+        }
+
+        @Override
         public Query.Type type(ExpressionEnv env) {
             return this.val.getType();
         }
 
         @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
         public String string() {
             try {
-                return this.val.value().toString();
+                if (CollectionUtils.isNotEmpty(this.val.getTuple())) {
+                    List<String> strings = new ArrayList<>();
+                    for (VtValue tupleValue : this.val.tupleValues()) {
+                        String string = tupleValue.string();
+                        strings.add(string);
+                    }
+                    return "(" + String.join(", ", strings) + ")";
+                }
+
+                Query.Type type = this.val.getType();
+                String string = this.val.value().string();
+                return string;
             } catch (SQLException e) {
-                logger.error(e.getMessage(), e);
                 return "";
             }
+        }
+
+        @Override
+        public boolean constant() {
+            return true;
         }
 
         @Override
@@ -514,6 +731,22 @@ public class EvalEngine {
         }
 
         @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            EvalResult lval = this.left.evaluate(env);
+            EvalResult rval = this.right.evaluate(env);
+
+            if (lval.type == Query.Type.INT32 || lval.type == Query.Type.INT24 || lval.type == Query.Type.INT16 || lval.type == Query.Type.INT8) {
+                lval.type = Query.Type.INT64;
+            }
+
+            if (rval.type == Query.Type.INT32 || rval.type == Query.Type.INT24 || rval.type == Query.Type.INT16 || rval.type == Query.Type.INT8) {
+                rval.type = Query.Type.INT64;
+            }
+
+            return this.expr.evaluate(lval, rval);
+        }
+
+        @Override
         public Query.Type type(ExpressionEnv env) throws SQLException {
             Query.Type ltype = this.left.type(env);
             Query.Type rtype = this.right.type(env);
@@ -522,8 +755,18 @@ public class EvalEngine {
         }
 
         @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
         public String string() {
             return null;
+        }
+
+        @Override
+        public boolean constant() {
+            return this.left.constant() && this.right.constant();
         }
 
         @Override
@@ -613,6 +856,157 @@ public class EvalEngine {
         @Override
         public String string() {
             return "/";
+        }
+    }
+
+    public static class AnyExpr implements Expr {
+
+        private SQLExpr expr;
+
+        public AnyExpr(SQLExpr expr) {
+            this.expr = expr;
+        }
+
+        @Override
+        public EvalResult evaluate(ExpressionEnv env) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public Query.Type type(ExpressionEnv env) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
+        public String string() {
+            return expr.toString();
+        }
+
+        @Override
+        public boolean constant() {
+            return false;
+        }
+
+        @Override
+        public void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class Column implements Expr {
+
+        private int offset;
+
+        @Override
+        public EvalResult evaluate(ExpressionEnv env) throws SQLException {
+            VtResultValue value = env.getRow().get(this.offset);
+            if (value.isNull()) {
+                return new EvalResult(Query.Type.NULL_TYPE);
+            }
+            return evaluateByType(value);
+        }
+
+        @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            VtResultValue value = env.getRow().get(this.offset);
+            if (value.isNull()) {
+                return new EvalResult(Query.Type.NULL_TYPE);
+            }
+            return evaluateByType(value);
+        }
+
+        @Override
+        public Query.Type type(ExpressionEnv env) throws SQLException {
+            VtResultValue value = env.getRow().get(this.offset);
+            return value.getVtType();
+        }
+
+        @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
+        public String string() {
+            return null;
+        }
+
+        @Override
+        public boolean constant() {
+            return false;
+        }
+
+        @Override
+        public void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class TupleExpr implements Expr {
+
+        private List<Expr> tupleExpr;
+
+        @Override
+        public EvalResult evaluate(ExpressionEnv env) throws SQLException {
+            return null;
+        }
+
+        @Override
+        public EvalResult eval(ExpressionEnv env, EvalResult result) throws SQLException {
+            List<EvalResult> tup = new ArrayList<>();
+            for (Expr expr : tupleExpr) {
+                tup.add(EvalResult.init(env, expr));
+            }
+            result.setTuple(tup);
+            return result;
+        }
+
+        @Override
+        public Query.Type type(ExpressionEnv env) throws SQLException {
+            return Query.Type.TUPLE;
+        }
+
+        @Override
+        public int getFlags() {
+            return 0;
+        }
+
+        @Override
+        public String string() {
+            List<String> strings = new ArrayList<>();
+            for (Expr expr : tupleExpr) {
+                strings.add(expr.string());
+            }
+            return "(" + String.join(", ", strings) + ")";
+        }
+
+        @Override
+        public boolean constant() {
+            for (Expr subexpr : tupleExpr) {
+                if (!subexpr.constant()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public void output(StringBuilder builder, boolean wrap, Map<String, com.jd.jdbc.srvtopo.BindVariable> bindVariableMap) throws SQLException {
+
         }
     }
 }

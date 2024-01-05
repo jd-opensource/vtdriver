@@ -113,4 +113,8 @@ public class SqlTypes {
     public static Query.Value vtValueToProto(VtResultValue vtValue) {
         return Query.Value.newBuilder().setType(vtValue.getVtType()).setValue(ByteString.copyFrom(vtValue.toBytes())).build();
     }
+
+    public static Query.Value vtValueToProto(VtValue vtValue) {
+        return Query.Value.newBuilder().setType(vtValue.getVtType()).setValue(ByteString.copyFrom(vtValue.toBytes())).build();
+    }
 }

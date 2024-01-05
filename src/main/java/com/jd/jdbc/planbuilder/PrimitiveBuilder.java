@@ -89,10 +89,10 @@ import com.jd.jdbc.sqltypes.VtValue;
 import com.jd.jdbc.tindexes.LogicTable;
 import com.jd.jdbc.tindexes.TableIndex;
 import com.jd.jdbc.vindexes.VKeyspace;
-import static com.jd.jdbc.vindexes.Vschema.CODE_PINNED_TABLE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_SEQUENCE;
+import static com.jd.jdbc.vindexes.VschemaConstant.CODE_PINNED_TABLE;
+import static com.jd.jdbc.vindexes.VschemaConstant.TYPE_PINNED_TABLE;
+import static com.jd.jdbc.vindexes.VschemaConstant.TYPE_REFERENCE;
+import static com.jd.jdbc.vindexes.VschemaConstant.TYPE_SEQUENCE;
 import com.jd.jdbc.vindexes.hash.Binary;
 import com.jd.jdbc.vindexes.hash.BinaryHash;
 import com.jd.jdbc.vindexes.hash.Hash;
@@ -111,29 +111,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import vschema.Vschema;
-
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutExists;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutIn;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutNotIn;
-import static com.jd.jdbc.engine.Engine.PulloutOpcode.PulloutValue;
-import static com.jd.jdbc.engine.Engine.RouteOpcode.SelectDBA;
-import static com.jd.jdbc.engine.Engine.RouteOpcode.SelectReference;
-import static com.jd.jdbc.sqlparser.SqlParser.GroupByExpr.ColName;
-import static com.jd.jdbc.sqlparser.SqlParser.GroupByExpr.Literal;
-import static com.jd.jdbc.sqlparser.SqlParser.HAVING_STR;
-import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.AliasedExpr;
-import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.Nextval;
-import static com.jd.jdbc.sqlparser.SqlParser.SelectExpr.StarExpr;
-import static com.jd.jdbc.sqlparser.SqlParser.WHERE_STR;
-import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.BooleanAnd;
-import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.BooleanOr;
-import static com.jd.jdbc.sqlparser.ast.expr.SQLBinaryOperator.Equality;
-import static com.jd.jdbc.sqlparser.ast.statement.SQLJoinTableSource.JoinType;
-import static com.jd.jdbc.sqlparser.utils.JdbcConstants.MYSQL;
-import static com.jd.jdbc.vindexes.Vschema.CODE_PINNED_TABLE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_PINNED_TABLE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_SEQUENCE;
 
 @Data
 public class PrimitiveBuilder {
@@ -438,6 +415,9 @@ public class PrimitiveBuilder {
                 routePlan.setLimit(limit);
                 return;
             }
+        }
+        if (limit.getParent() instanceof SQLUnionQuery) {
+            throw new SQLFeatureNotSupportedException("Incorrect usage of UNION and LIMIT - add parens to disambiguate your query");
         }
         LimitPlan lb = new LimitPlan(this.builder);
         try {

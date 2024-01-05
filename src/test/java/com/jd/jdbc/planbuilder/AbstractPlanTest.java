@@ -22,8 +22,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jd.BaseTest;
 import com.jd.jdbc.VSchemaManager;
 import com.jd.jdbc.engine.Plan;
+import com.jd.jdbc.engine.PrimitiveEngine;
 import com.jd.jdbc.key.Destination;
 import com.jd.jdbc.key.DestinationShard;
+import com.jd.jdbc.planbuilder.gen4.Gen4Planner;
 import com.jd.jdbc.planbuilder.vschema.AbstractTable;
 import com.jd.jdbc.planbuilder.vschema.AutoIncrement;
 import com.jd.jdbc.planbuilder.vschema.ColumnVindexesItem;
@@ -36,6 +38,8 @@ import com.jd.jdbc.planbuilder.vschema.Tables;
 import com.jd.jdbc.planbuilder.vschema.User;
 import com.jd.jdbc.planbuilder.vschema.Vindexes;
 import com.jd.jdbc.sqlparser.SQLUtils;
+import com.jd.jdbc.sqlparser.SqlParser;
+import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
 import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLMethodInvokeExpr;
@@ -53,12 +57,13 @@ import com.jd.jdbc.sqlparser.ast.statement.SQLUnionQueryTableSource;
 import com.jd.jdbc.sqlparser.dialect.mysql.BindVarNeeds;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlDeleteStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceStatement;
+import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlUpdateStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.parser.MySqlLexer;
 import com.jd.jdbc.sqlparser.parser.Lexer;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
 import com.jd.jdbc.sqlparser.utils.TableNameUtils;
-import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
+import com.jd.jdbc.vindexes.VschemaConstant;
 import io.vitess.proto.Query;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -70,8 +75,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import vschema.Vschema;
-
-import static com.jd.jdbc.vindexes.Vschema.TYPE_REFERENCE;
 
 public class AbstractPlanTest extends BaseTest {
 
@@ -96,7 +99,7 @@ public class AbstractPlanTest extends BaseTest {
         Symtab.registSingleColumnVindex("hash_dup");
     }
 
-    protected static Plan build(String query, VSchemaManager vm) throws Exception {
+    protected static Plan build(String query, VSchemaManager vm, boolean v3) throws Exception {
         Map<String, String> prop = parseComment(query);
         SQLStatement stmt = SQLUtils.parseSingleMysqlStatement(query);
         for (Map.Entry<String, String> entry : prop.entrySet()) {
@@ -130,7 +133,7 @@ public class AbstractPlanTest extends BaseTest {
                 defaultKeyspace = uniqueTables.get(tableName.toLowerCase());
             }
         } else if (stmt instanceof MySqlDeleteStatement) {
-            MySqlDeleteStatement deleteStatement = ((MySqlDeleteStatement) stmt);
+            MySqlDeleteStatement deleteStatement = (MySqlDeleteStatement) stmt;
             if (deleteStatement.getFrom() != null) {
                 defaultKeyspace = processSQLTableSource(deleteStatement.getFrom());
             } else if (deleteStatement.getTableSource() != null) {
@@ -151,6 +154,40 @@ public class AbstractPlanTest extends BaseTest {
             } else {
                 throw new SQLException("Not found defaultKeyspace");
             }
+        }
+        if (destination == null && stmt instanceof SQLSelectStatement &&
+            (((SQLSelectStatement) stmt).getSelect().getQuery() instanceof SQLUnionQuery || ((SQLSelectStatement) stmt).getSelect().getQuery() instanceof MySqlSelectQueryBlock)) {
+            PrimitiveEngine instruction = null;
+            if (v3) {
+                if (((SQLSelectStatement) stmt).getSelect().getQuery() instanceof SQLUnionQuery) {
+                    instruction = PlanBuilder.buildUnionPlan((SQLSelectStatement) stmt, vm, defaultKeyspace);
+                }
+                if (((SQLSelectStatement) stmt).getSelect().getQuery() instanceof MySqlSelectQueryBlock) {
+                    instruction = PlanBuilder.buildSelectPlan((SQLSelectStatement) stmt, vm, defaultKeyspace);
+                }
+            } else {
+                if ((((SQLSelectStatement) stmt).getSelect().getQuery() instanceof MySqlSelectQueryBlock)) {
+                    //todo 暂时跳过derived table
+                    SQLTableSource from = ((SQLSelectStatement) stmt).getSelect().getQueryBlock().getFrom();
+                    if (PlanBuilder.hasSubquery(from)) {
+                        return null;
+                    }
+                    //todo 暂时跳过join和where带subquery的测试用例
+                    SQLExpr where = ((SQLSelectStatement) stmt).getSelect().getQueryBlock().getWhere();
+                    List<SQLExpr> filters = PlanBuilder.splitAndExpression(new ArrayList<>(), where);
+                    for (SQLExpr filter : filters) {
+                        if (PlanBuilder.hasSubquery(filter)) {
+                            return null;
+                        }
+                    }
+
+                    if (((SQLSelectStatement) stmt).getSelect().getQueryBlock().getFrom() instanceof SQLJoinTableSource) {
+                        return null;
+                    }
+                }
+                instruction = Gen4Planner.gen4SelectStmtPlanner(null, defaultKeyspace, (SQLSelectStatement) stmt, null, vm);
+            }
+            return new Plan(SqlParser.astToStatementType(stmt), instruction, new BindVarNeeds());
         }
         return PlanBuilder.buildFromStmt(stmt, vm, defaultKeyspace, new BindVarNeeds(), destination);
     }
@@ -203,7 +240,11 @@ public class AbstractPlanTest extends BaseTest {
                 defaultKeyspace = processExprTableSource((SQLExprTableSource) leftTableSource);
             } else if (leftTableSource instanceof SQLSubqueryTableSource) {
                 SQLTableSource from = ((SQLSubqueryTableSource) leftTableSource).getSelect().getQueryBlock().getFrom();
-                defaultKeyspace = processExprTableSource((SQLExprTableSource) from);
+                if (from instanceof SQLJoinTableSource) {
+                    defaultKeyspace = processSQLTableSource(from);
+                } else {
+                    defaultKeyspace = processExprTableSource((SQLExprTableSource) from);
+                }
             }
             if (StringUtils.isEmpty(defaultKeyspace)) {
                 if (rightTableSource instanceof SQLExprTableSource) {
@@ -237,6 +278,8 @@ public class AbstractPlanTest extends BaseTest {
                         defaultKeyspace = processExprTableSource((SQLExprTableSource) from);
                     }
                 }
+            } else if (subqueryTableSource instanceof SQLSubqueryTableSource) {
+                defaultKeyspace = processSQLTableSource(subqueryTableSource);
             }
         }
 
@@ -255,7 +298,8 @@ public class AbstractPlanTest extends BaseTest {
             if ("unsharded_no_metadata".equalsIgnoreCase(tableName) || "dual".equalsIgnoreCase(tableName)) {
                 defaultKeyspace = "main";
             } else {
-                defaultKeyspace = uniqueTables.get(tableName.toLowerCase());
+                String tableNameOrg = tableName.toLowerCase().replaceAll("`", "");
+                defaultKeyspace = uniqueTables.get(tableNameOrg);
             }
         }
         return defaultKeyspace;
@@ -418,7 +462,7 @@ public class AbstractPlanTest extends BaseTest {
             tableMap.put("unsharded_authoritative", this.buildVschemaTable(tables.getUnshardedAuthoritative()));
             tableMap.put("seq", this.buildVschemaTable(tables.getSeq()));
         }
-        tableMap.put("dual", Vschema.Table.newBuilder().setType(TYPE_REFERENCE).build());
+        tableMap.put("dual", Vschema.Table.newBuilder().setType(VschemaConstant.TYPE_REFERENCE).build());
         return tableMap;
     }
 

@@ -23,7 +23,13 @@ import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.key.CurrentShard;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import static com.jd.jdbc.topo.Topo.pathForCellInfo;
+import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
+import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
+import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
+import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import io.vitess.proto.Topodata;
 import java.util.ArrayList;
@@ -36,13 +42,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import vschema.Vschema;
-
-import static com.jd.jdbc.topo.Topo.pathForCellInfo;
-import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
-import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
-import static com.jd.jdbc.topo.Topo.pathForVschemaFile;
-import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 
 public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, TopoTablet, TopoVschema {
 

@@ -35,4 +35,15 @@ public class VKeyspace {
         this.name = name;
         this.sharded = sharded;
     }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof VKeyspace) {
+            return this.name == ((VKeyspace) obj).name && this.sharded == ((VKeyspace) obj).sharded;
+        }
+        return false;
+    }
 }

@@ -302,7 +302,6 @@ public class OrderedAggregateEngine implements PrimitiveEngine, Truncater {
      * @throws SQLException
      */
     private rowProcessResponse merge(Query.Field[] fields, List<VtResultValue> row1, List<VtResultValue> row2, VtResultValue curDistinct) throws SQLException {
-        // result := sqltypes.CopyRow(row1)
         List<VtResultValue> result = new ArrayList<>(row1);
         for (AggregateParams aggr : this.aggregateParamsList) {
             if (aggr.isDistinct()) {
