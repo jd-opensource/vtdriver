@@ -24,7 +24,6 @@ import com.mchange.v2.c3p0.ComboPooledDataSource;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.vitess.proto.Topodata;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
@@ -35,7 +34,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
-
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.tomcat.jdbc.pool.DataSource;
 import org.junit.Assert;
@@ -86,7 +84,7 @@ public class VitessDriverConnectionPoolTest extends TestSuite {
         random = new Random();
         vtMinimumIdle = (random.nextInt(10) + 1) + "";
         vtMaximumPoolSize = (random.nextInt(150) + 1) + "";
-        vtConnectionTimeout = (random.nextInt(50000) + 250) + "";
+        vtConnectionTimeout = (random.nextInt(50000) + 500) + "";
         vtIdleTimeout = (random.nextInt(600000) + 10000) + "";
         propsUrl = "vtMinimumIdle=" + vtMinimumIdle + ";vtMaximumPoolSize=" + vtMaximumPoolSize + ";vtConnectionInitSql=select 1;vtConnectionTestQuery=select 1;vtConnectionTimeout=" + vtConnectionTimeout + ";vtIdleTimeout=" + vtIdleTimeout;
     }
