@@ -55,6 +55,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
@@ -100,13 +101,12 @@ public class VitessDriver implements java.sql.Driver {
                 prop.put(Constant.DRIVER_PROPERTY_ROLE_KEY, role);
             }
             TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
-
             ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "ResilientSrvTopoServer");
 
             List<String> cells = topoServer.getAllCells(globalContext);
 
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, tabletKeyspace);
+                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, tabletKeyspace, TimeUnit.MINUTES);
             }
 
             TabletGateway tabletGateway = TabletGateway.build(resilientServer);
