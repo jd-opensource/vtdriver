@@ -7,7 +7,7 @@
 | 属性 | 数据类型 | 默认值 | 备注 |
 |---|---|---|---|
 | deepPaginationThreshold | int | 1000000000 | 用来设置深度分页优化的临界值,超过此参数大小会开启深度分页优化(转为流式查询) |
-| role | String | rw | 用来配置读写分离,默认role=rw <br>role=rr 优先读replica,replica不可用时读rdonly <br>role=ro 读rdonly,rdonly不可用时报错。需要注意的是,rdonly节点一般用于大数据抽数和备份,OOM风险高于其他节点<br>role=rrm 优先读replica,replica不可用时读rdonly,rdonly不可用时读取master 1.2.20-Hotfix2及之后版本支持|
+| role | String | rw | 用来配置读写分离,默认role=rw <br>role=rr 优先读replica,replica不可用时读rdonly <br>role=ro 读rdonly,rdonly不可用时报错。需要注意的是,rdonly节点一般用于抽数和备份,OOM风险高于其他节点<br>role=rrm 优先读replica,replica不可用时读rdonly,rdonly不可用时读取master|
 | vtPlanCacheCapacity  | int | 300 | 该参数用来设置执行计划缓存cache大小,最大值10240 |
 | queryConsolidator | boolean | false | 用来开启Consolidator,仅在role=rr场景生效；相同的sql语句只执行一次,其余线程等待第一次查询返回结果后返回 |
 | queryParallelNum | int | 1 | 在分表场景下,执行事务外的SQL语句时每个分片上可开启的最大并发数 |
