@@ -52,7 +52,7 @@ schemas:
 
 * shardingColumnType: 分表字段类型
 
-* sequenceColumnName: 分表全局自增字段名称 (不使用全局自增时无需配置，需1.2.16版本及以上)
+* sequenceColumnName: 分表全局自增字段名称 (不使用全局自增时无需配置)
 
 ##### 分表sequence配置
 1.在分表配置中使用sequenceColumnName指定自增列，示例见以上配置信息；

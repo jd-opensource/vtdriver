@@ -29,10 +29,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -68,14 +65,7 @@ public class ConcurrentSplitTableTest extends TestSuite {
 
     @BeforeClass
     public static void initClass() {
-        pool = Executors.newFixedThreadPool(10, new ThreadFactory() {
-            private final AtomicInteger threadNumber = new AtomicInteger(1);
-
-            @Override
-            public Thread newThread(final Runnable r) {
-                return new Thread(r, threadNumber.getAndIncrement() + "");
-            }
-        });
+        pool = getThreadPool(10, 10);
     }
 
     @AfterClass

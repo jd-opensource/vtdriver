@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import org.junit.Assert;
@@ -80,7 +79,7 @@ public class NormalizeRewritePutTest extends TestSuite {
     public void testConcurrency() throws InterruptedException {
         int tSize = 100;
         CountDownLatch cdl = new CountDownLatch(tSize);
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        ExecutorService executorService = getThreadPool(10, 10);
         executorService.submit(() -> {
             try {
                 String name = Thread.currentThread().getName();

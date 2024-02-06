@@ -24,7 +24,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Assert;
@@ -59,7 +58,7 @@ public class VitessDriverExecuteBatchTest extends TestSuite {
     public void testConcurrency() throws InterruptedException, SQLException {
         int threadCount = 10;
         CountDownLatch latch = new CountDownLatch(threadCount);
-        ExecutorService service = Executors.newFixedThreadPool(threadCount);
+        ExecutorService service = getThreadPool(10, 10);
         AtomicInteger inserted = new AtomicInteger(0);
         for (int i = 0; i < 10; i++) {
             final int finalI = i;

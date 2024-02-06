@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
@@ -70,7 +69,7 @@ public class VitessDriverConsolidatorTest extends TestSuite {
 
     @BeforeClass
     public static void initClass() {
-        executorService = Executors.newFixedThreadPool(10);
+        executorService = getThreadPool(10, 10);
     }
 
     @AfterClass
