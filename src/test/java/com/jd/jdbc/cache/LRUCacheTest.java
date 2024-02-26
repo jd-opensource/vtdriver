@@ -18,14 +18,14 @@ package com.jd.jdbc.cache;
 
 import com.jd.jdbc.util.cache.lrucache.LRUCache;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import org.junit.Assert;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import org.junit.Test;
 
 public class LRUCacheTest {
 
@@ -136,7 +136,7 @@ public class LRUCacheTest {
         CacheValue v1 = new CacheValue("v1");
         cache.set("k1", v1);
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        ExecutorService executorService = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         executorService.submit(() -> {
             if (cache.get("k1") != null) {
                 try {

@@ -26,11 +26,13 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -48,7 +50,7 @@ public class VitessDriverAllowMultiQuerieTest extends TestSuite {
 
     @BeforeClass
     public static void init() {
-        executor = Executors.newFixedThreadPool(10);
+        executor = getThreadPool(10, 10);
     }
 
     @AfterClass
