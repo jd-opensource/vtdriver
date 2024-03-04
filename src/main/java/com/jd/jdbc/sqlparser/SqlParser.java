@@ -594,19 +594,21 @@ public class SqlParser {
      */
     private static Map<String, BindVariable> combineRepeatBindVars(final List<SQLVariantRefExpr> varRefList, final Map<String, BindVariable> originBindVariableMap, String charEncoding)
         throws SQLException {
-        Map<String, Integer> vals = new HashMap<>();
-        Map<String, BindVariable> bindVariableMap = new HashMap<>();
+        Map<String, Integer> vals = new HashMap<>(originBindVariableMap.size());
+        Map<String, BindVariable> bindVariableMap = new HashMap<>(originBindVariableMap.size());
         int refIndex = 0;
         for (SQLVariantRefExpr varRef : varRefList) {
             int originKey = varRef.getIndex();
-            if (!originBindVariableMap.containsKey(String.valueOf(originKey))) {
+            BindVariable bindVar = originBindVariableMap.get(String.valueOf(originKey));
+            if (bindVar == null) {
                 throw new SQLException(String.format("Missing bind variable, missing key %d", originKey));
             }
-            BindVariable bindVar = originBindVariableMap.get(String.valueOf(originKey));
             String valueStr;
             if (bindVar.getType() == Query.Type.VARBINARY) {
                 String s = StringUtils.toString(bindVar.getValue(), charEncoding);
                 valueStr = s + "::" + bindVar.getType();
+            } else if (bindVar.getType() == Query.Type.NULL_TYPE) {
+                valueStr = null;
             } else {
                 valueStr = new String(bindVar.getValue(), 0, bindVar.getValue().length) + "::" + bindVar.getType();
             }

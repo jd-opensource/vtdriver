@@ -28,7 +28,6 @@ import com.jd.jdbc.session.SafeSession;
 import com.jd.jdbc.sqlparser.SQLUtils;
 import com.jd.jdbc.sqlparser.ast.SQLExpr;
 import com.jd.jdbc.sqlparser.ast.SQLStatement;
-import com.jd.jdbc.sqlparser.ast.expr.SQLIdentifierExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLMethodInvokeExpr;
 import com.jd.jdbc.sqlparser.ast.expr.SQLVariantRefExpr;
 import com.jd.jdbc.sqlparser.ast.statement.SQLDeleteStatement;
@@ -48,6 +47,7 @@ import com.jd.jdbc.sqlparser.ast.statement.SQLUpdateStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlInsertReplaceStatement;
 import com.jd.jdbc.sqlparser.dialect.mysql.ast.statement.MySqlSelectQueryBlock;
 import com.jd.jdbc.sqlparser.dialect.mysql.parser.MySqlLexer;
+import com.jd.jdbc.sqlparser.dialect.mysql.visitor.AddDualVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtChangeSchemaVisitor;
 import com.jd.jdbc.sqlparser.dialect.mysql.visitor.VtRemoveBacktickVisitor;
 import com.jd.jdbc.sqlparser.parser.Lexer;
@@ -190,7 +190,8 @@ public class VitessStatement extends AbstractVitessStatement {
 
     private ParseResult changeSchema(SQLStatement stmt) throws SQLException {
         String defaultKeyspace = this.connection.getDefaultKeyspace();
-
+        AddDualVisitor addDualVisitor = new AddDualVisitor();
+        stmt.accept(addDualVisitor);
         if (stmt instanceof SQLSelectStatement) {
             SQLSelectQuery selectQuery = ((SQLSelectStatement) stmt).getSelect().getQuery();
             if (selectQuery instanceof MySqlSelectQueryBlock) {
@@ -203,10 +204,9 @@ public class VitessStatement extends AbstractVitessStatement {
                     throw new SQLException("not supported sql: " + SQLUtils.toMySqlString(stmt, SQLUtils.NOT_FORMAT_OPTION));
                 }
                 if (tableSource == null) {
-                    ((MySqlSelectQueryBlock) selectQuery).setFrom(new SQLExprTableSource(new SQLIdentifierExpr(TABLE_DUAL)));
                     return new ParseResult(defaultKeyspace, stmt);
                 } else if (tableSource instanceof SQLExprTableSource) {
-                    String tableName = TableNameUtils.getTableSimpleName(((SQLExprTableSource) tableSource));
+                    String tableName = TableNameUtils.getTableSimpleName((SQLExprTableSource) tableSource);
                     if (TABLE_DUAL.equalsIgnoreCase(tableName) || RoutePlan.systemTable(tableName)) {
                         return new ParseResult(defaultKeyspace, stmt);
                     }
