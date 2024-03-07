@@ -159,6 +159,12 @@ public class EvalEngine {
             BigDecimal bResult = b1.add(b2);
             return VtResultValue.newVtResultValue(Query.Type.DECIMAL, bResult);
         }
+        if (Query.Type.FLOAT64.equals(resultType)) {
+            BigDecimal f1 = (BigDecimal) ResultSetUtil.convertValue(value1, BigDecimal.class);
+            BigDecimal f2 = (BigDecimal) ResultSetUtil.convertValue(value2, BigDecimal.class);
+            BigDecimal fResult = f1.add(f2);
+            return VtResultValue.newVtResultValue(Query.Type.FLOAT64, fResult);
+        }
         throw new SQLException("nullSafeAdd error");
     }
 
@@ -861,7 +867,7 @@ public class EvalEngine {
 
     public static class AnyExpr implements Expr {
 
-        private SQLExpr expr;
+        private final SQLExpr expr;
 
         public AnyExpr(SQLExpr expr) {
             this.expr = expr;
@@ -907,7 +913,7 @@ public class EvalEngine {
     @AllArgsConstructor
     public static class Column implements Expr {
 
-        private int offset;
+        private final int offset;
 
         @Override
         public EvalResult evaluate(ExpressionEnv env) throws SQLException {
@@ -958,7 +964,7 @@ public class EvalEngine {
     @AllArgsConstructor
     public static class TupleExpr implements Expr {
 
-        private List<Expr> tupleExpr;
+        private final List<Expr> tupleExpr;
 
         @Override
         public EvalResult evaluate(ExpressionEnv env) throws SQLException {

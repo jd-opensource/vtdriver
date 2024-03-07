@@ -16,8 +16,8 @@ limitations under the License.
 
 package com.jd.jdbc.vitess;
 
-import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.sqlparser.utils.StringUtils;
+import static com.jd.jdbc.vitess.VitessJdbcUrlParser.JDBC_VITESS_PREFIX;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.DriverManager;
@@ -28,13 +28,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import testsuite.TestSuite;
+import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
 import testsuite.internal.environment.TestSuiteEnv;
 
-import static com.jd.jdbc.vitess.VitessJdbcUrlParser.JDBC_VITESS_PREFIX;
-import static testsuite.internal.TestSuiteShardSpec.TWO_SHARDS;
-
 public class VitessJdbcUrlParserTest extends TestSuite {
-    private TestSuiteEnv env = Driver.of(TWO_SHARDS);
+    private final TestSuiteEnv env = Driver.of(TWO_SHARDS);
 
     private String schema = getKeyspace(env);
 
@@ -53,8 +51,6 @@ public class VitessJdbcUrlParserTest extends TestSuite {
     private VitessConnection conn;
 
     private void init() throws SQLException {
-        TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
-
         String connecturlionUrl = getConnectionUrl(env);
 
         URI uri = null;

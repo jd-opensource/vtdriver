@@ -20,6 +20,7 @@ package com.jd.jdbc.topo.etcd2topo;
 
 import com.google.common.collect.Lists;
 import com.jd.jdbc.common.util.CollectionUtils;
+import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.srvtopo.ResilientServer;
 import com.jd.jdbc.srvtopo.SrvTopo;
@@ -79,6 +80,8 @@ public class ServerTest extends TestSuite {
 
     private static final ExecutorService executorService = getThreadPool(10, 10);
 
+    private static final IContext globalContext = VtContext.withCancel(VtContext.background());
+
     @AfterClass
     public static void afterClass() {
         if (executorService != null) {
@@ -97,7 +100,7 @@ public class ServerTest extends TestSuite {
         if (StringUtil.isNullOrEmpty(TOPO_GLOBAL_ROOT)) {
             throw TopoException.wrap("topo_global_root must be non-empty");
         }
-        return Topo.getTopoServer(TOPO_IMPLEMENTATION, TOPO_GLOBAL_SERVER_ADDRESS);
+        return Topo.getTopoServer(globalContext, TOPO_IMPLEMENTATION, TOPO_GLOBAL_SERVER_ADDRESS);
     }
 
     @BeforeClass
@@ -141,7 +144,7 @@ public class ServerTest extends TestSuite {
     @Test
     public void case03_testServer() {
         try {
-            TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, TOPO_GLOBAL_PROXY_ADDRESS);
+            TopoServer topoServer = Topo.getTopoServer(globalContext, Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, TOPO_GLOBAL_PROXY_ADDRESS);
             Assert.assertNotNull(topoServer);
             this.commonTestServer(topoServer);
         } catch (TopoException e) {

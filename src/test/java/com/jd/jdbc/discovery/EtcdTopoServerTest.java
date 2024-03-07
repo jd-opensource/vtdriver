@@ -19,6 +19,7 @@ limitations under the License.
 package com.jd.jdbc.discovery;
 
 import com.jd.jdbc.common.Constant;
+import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.monitor.SrvKeyspaceCollector;
 import com.jd.jdbc.topo.Topo;
@@ -60,6 +61,8 @@ import testsuite.internal.TestSuiteShardSpec;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class EtcdTopoServerTest extends TestSuite {
 
+    private final IContext globalContext = VtContext.withCancel(VtContext.background());
+
     private static final ExecutorService executorService = getThreadPool(10, 10);
 
     private TopoServer topoServer;
@@ -76,9 +79,9 @@ public class EtcdTopoServerTest extends TestSuite {
 
     private String keyspacePrefix;
 
-    private String counter = "watch_SrvKeyspace_counter_total";
+    private final String counter = "watch_SrvKeyspace_counter_total";
 
-    private String errorCounter = "watch_SrvKeyspace_error_counter_total";
+    private final String errorCounter = "watch_SrvKeyspace_error_counter_total";
 
     @AfterClass
     public static void afterClass() {
@@ -92,7 +95,7 @@ public class EtcdTopoServerTest extends TestSuite {
         keyspace = prop.getProperty(Constant.DRIVER_PROPERTY_SCHEMA);
 
         String topoServerAddress = "http://" + prop.getProperty("host") + ":" + prop.getProperty("port");
-        topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
+        topoServer = Topo.getTopoServer(globalContext, Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
         cells = topoServer.getAllCells(VtContext.withCancel(VtContext.background()));
         cell = cells.get(0);
         keyspacePrefix = "testkeyspace";

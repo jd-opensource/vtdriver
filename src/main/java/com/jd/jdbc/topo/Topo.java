@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.topo;
 
+import com.jd.jdbc.context.IContext;
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_IMPLEMENTATION;
 import static com.jd.jdbc.topo.TopoServer.CELLS_PATH;
 import static com.jd.jdbc.topo.TopoServer.CELL_INFO_FILE;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Topo {
 
@@ -45,7 +47,7 @@ public class Topo {
 
     public static String TOPO_GLOBAL_ROOT = "/vitess/global";
 
-    public static TopoServer getTopoServer(TopoServerImplementType topoServerImplementType, String topoServerAddress) throws TopoException {
+    public static TopoServer getTopoServer(IContext ctx, TopoServerImplementType topoServerImplementType, String topoServerAddress) throws TopoException {
         synchronized (Topo.class) {
             registerFactory(topoServerImplementType);
 
@@ -58,6 +60,7 @@ public class Topo {
                 throw new TopoException(Vtrpc.Code.UNKNOWN, "");
             }
             topoServers.put(topoServerAddress, topoServer);
+            topoServer.startTickerReloadCell(ctx);
             return topoServer;
         }
     }
@@ -124,7 +127,10 @@ public class Topo {
         topoServer.globalCell = conn;
         topoServer.globalReadOnlyCell = connReadOnly;
         topoServer.topoFactory = topoFactory;
-        topoServer.cells = new HashMap<>(16);
+        topoServer.cellsTopoConnMap = new HashMap<>(16);
+        topoServer.keyspaces = ConcurrentHashMap.newKeySet();
+        topoServer.cells = ConcurrentHashMap.newKeySet();
+        topoServer.localCell = "";
         topoServer.serverAddress = serverAddress;
         return topoServer;
     }

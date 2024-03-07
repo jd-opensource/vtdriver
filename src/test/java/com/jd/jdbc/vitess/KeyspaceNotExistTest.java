@@ -19,7 +19,6 @@ package com.jd.jdbc.vitess;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,10 +36,10 @@ public class KeyspaceNotExistTest extends TestSuite {
         String connectionUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         String keyspaceNotExist = keyspace + "not_exist";
         connectionUrl = connectionUrl.replaceAll(keyspace, keyspaceNotExist);
-        thrown.expect(SQLSyntaxErrorException.class);
-        thrown.expectMessage("Unknown database '" + keyspaceNotExist + "'");
+        thrown.expectMessage("node doesn't exist");
+        thrown.expectMessage("/keyspaces/" + keyspaceNotExist + "/SrvKeyspace");
         try (Connection connection = DriverManager.getConnection(connectionUrl);
-             Statement stmt = connection.createStatement();) {
+             Statement stmt = connection.createStatement()) {
             stmt.executeQuery("select 1");
         }
     }

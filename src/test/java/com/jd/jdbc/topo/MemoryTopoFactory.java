@@ -20,8 +20,10 @@ package com.jd.jdbc.topo;
 
 import com.jd.jdbc.context.VtBackgroundContext;
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+import com.jd.jdbc.util.ScheduledManager;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Synchronized;
@@ -51,6 +53,7 @@ public class MemoryTopoFactory implements TopoFactory {
             globalCell.create(new VtBackgroundContext(), Topo.pathForCellInfo(cell), null);
             factory.getCells().put(cell, factory.newDirectory(cell, null));
         }
+        topoServer.setScheduledManager(new ScheduledManager("test-schedule", 1, TimeUnit.SECONDS));
         return new ServerWithFactory(topoServer, factory);
     }
 

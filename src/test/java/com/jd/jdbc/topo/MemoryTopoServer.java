@@ -20,6 +20,9 @@ package com.jd.jdbc.topo;
 
 import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtBackgroundContext;
+import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
+import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
+import static com.jd.jdbc.topo.TopoServer.TABLET_FILE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
 import io.vitess.proto.Topodata;
 import java.util.ArrayList;
@@ -29,10 +32,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-
-import static com.jd.jdbc.topo.TopoExceptionCode.NODE_EXISTS;
-import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
-import static com.jd.jdbc.topo.TopoServer.TABLET_FILE;
 
 @AllArgsConstructor
 public class MemoryTopoServer implements TopoConnection {
@@ -201,14 +200,12 @@ public class MemoryTopoServer implements TopoConnection {
     }
 
     public static void deleteCellInMemoryTopo(IContext ctx, TopoServer topoServer, String cell) throws TopoException {
-        TopoConnection globalCell = topoServer.globalCell;
         TopoFactory factory = topoServer.topoFactory;
         if (factory instanceof MemoryTopoFactory) {
             MemoryTopoFactory memoryTopoFactory = (MemoryTopoFactory) factory;
             memoryTopoFactory.deleteNode(cell);
             memoryTopoFactory.getCells().remove(cell);
         }
-        List<String> allCells = topoServer.getAllCells(ctx);
     }
 
     // createTablet creates a new tablet and all associated paths for the
