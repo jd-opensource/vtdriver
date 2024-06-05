@@ -18,6 +18,7 @@ limitations under the License.
 
 package com.jd.jdbc.topo.etcd2topo;
 
+import com.jd.jdbc.context.IContext;
 import com.jd.jdbc.context.VtContext;
 import com.jd.jdbc.topo.Topo;
 import com.jd.jdbc.topo.TopoServer;
@@ -33,6 +34,8 @@ import testsuite.internal.TestSuiteShardSpec;
 
 public class Etcd2TopoServerTest extends TestSuite {
 
+    private final IContext globalContext = VtContext.withCancel(VtContext.background());
+
     @Test
     @Ignore
     public void testTopoExecuteTimeout() throws Exception {
@@ -42,7 +45,7 @@ public class Etcd2TopoServerTest extends TestSuite {
         String connectionUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         Properties prop = VitessJdbcUrlParser.parse(connectionUrl, null);
         String topoServerAddress = "http://" + prop.getProperty("host") + ":" + prop.getProperty("port");
-        TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
+        TopoServer topoServer = Topo.getTopoServer(globalContext, Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
         List<String> cells = topoServer.getAllCells(VtContext.withCancel(VtContext.background()));
         String cell = cells.get(0);
         topoServer.connForCell(null, cell);
@@ -58,7 +61,7 @@ public class Etcd2TopoServerTest extends TestSuite {
         String connectionUrl = getConnectionUrl(Driver.of(TestSuiteShardSpec.TWO_SHARDS));
         Properties prop = VitessJdbcUrlParser.parse(connectionUrl, null);
         String topoServerAddress = "http://" + prop.getProperty("host") + ":" + prop.getProperty("port");
-        TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
+        TopoServer topoServer = Topo.getTopoServer(globalContext, Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, topoServerAddress);
         List<String> cells = topoServer.getAllCells(VtContext.withCancel(VtContext.background()));
         String cell = cells.get(0);
         topoServer.connForCell(null, cell);

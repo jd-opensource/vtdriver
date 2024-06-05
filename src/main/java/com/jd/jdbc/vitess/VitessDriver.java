@@ -55,8 +55,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public class VitessDriver implements java.sql.Driver {
@@ -80,8 +79,6 @@ public class VitessDriver implements java.sql.Driver {
         new BinaryHash();
     }
 
-    private final ReentrantLock lock = new ReentrantLock();
-
     public Connection initConnect(String url, Properties info, boolean initOnly) throws SQLException {
         if (log.isDebugEnabled()) {
             log.debug("initConnect,url=" + url);
@@ -100,13 +97,13 @@ public class VitessDriver implements java.sql.Driver {
             if (!prop.containsKey(Constant.DRIVER_PROPERTY_ROLE_KEY)) {
                 prop.put(Constant.DRIVER_PROPERTY_ROLE_KEY, role);
             }
-            TopoServer topoServer = Topo.getTopoServer(Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
+            TopoServer topoServer = Topo.getTopoServer(globalContext, Topo.TopoServerImplementType.TOPO_IMPLEMENTATION_ETCD2, "http://" + prop.getProperty("host") + ":" + prop.getProperty("port"));
             ResilientServer resilientServer = SrvTopo.newResilientServer(topoServer, "ResilientSrvTopoServer");
 
-            List<String> cells = topoServer.getAllCells(globalContext);
+            Set<String> cells = topoServer.getCells(globalContext);
 
             for (String cell : cells) {
-                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, tabletKeyspace, TimeUnit.MINUTES);
+                TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, tabletKeyspace);
             }
 
             TabletGateway tabletGateway = TabletGateway.build(resilientServer);
@@ -115,7 +112,7 @@ public class VitessDriver implements java.sql.Driver {
                 TopologyWatcherManager.INSTANCE.watch(globalContext, cell, tabletKeyspace);
             }
 
-            String localCell = topoServer.getLocalCell(globalContext, topoServer, cells, tabletKeyspace);
+            String localCell = topoServer.getLocalCell(globalContext, resilientServer, cells, tabletKeyspace);
 
             boolean masterFlag = role.equalsIgnoreCase(Constant.DRIVER_PROPERTY_ROLE_RW);
             List<Topodata.TabletType> tabletTypes = masterFlag

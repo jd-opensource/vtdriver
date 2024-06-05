@@ -20,9 +20,13 @@ package com.jd.jdbc.topo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.jd.jdbc.context.IContext;
+import com.jd.jdbc.discovery.TopologyWatcherManager;
 import com.jd.jdbc.key.CurrentShard;
+import com.jd.jdbc.monitor.TopoServerCollector;
 import com.jd.jdbc.sqlparser.support.logging.Log;
 import com.jd.jdbc.sqlparser.support.logging.LogFactory;
+import com.jd.jdbc.srvtopo.ResilientServer;
+import com.jd.jdbc.srvtopo.SrvTopoServer;
 import static com.jd.jdbc.topo.Topo.pathForCellInfo;
 import static com.jd.jdbc.topo.Topo.pathForSrvKeyspaceFile;
 import static com.jd.jdbc.topo.Topo.pathForTabletAlias;
@@ -31,16 +35,20 @@ import static com.jd.jdbc.topo.TopoConnection.ConnGetResponse;
 import com.jd.jdbc.topo.TopoConnection.DirEntry;
 import static com.jd.jdbc.topo.TopoExceptionCode.NO_NODE;
 import com.jd.jdbc.topo.topoproto.TopoProto;
+import com.jd.jdbc.util.ScheduledManager;
 import io.vitess.proto.Topodata;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import lombok.Setter;
 import vschema.Vschema;
 
 public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, TopoTablet, TopoVschema {
@@ -75,15 +83,25 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
 
     ReentrantLock lock;
 
-    Map<String, TopoConnection> cells;
+    Map<String, TopoConnection> cellsTopoConnMap;
+
+    Set<String> cells;
+
+    String localCell;
+
+    Set<String> keyspaces;
 
     String serverAddress;
+
+    @Setter
+    private ScheduledManager scheduledManager;
 
     /**
      *
      */
     TopoServer() {
         lock = new ReentrantLock(true);
+        scheduledManager = new ScheduledManager("reload-cell-schedule", 1, TimeUnit.MINUTES);
     }
 
     /**
@@ -100,7 +118,7 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
         this.lock.lock();
         TopoConnection topoConnection;
         try {
-            topoConnection = this.cells.get(cell);
+            topoConnection = this.cellsTopoConnMap.get(cell);
         } finally {
             this.lock.unlock();
         }
@@ -112,14 +130,14 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
 
         this.lock.lock();
         try {
-            topoConnection = this.cells.get(cell);
+            topoConnection = this.cellsTopoConnMap.get(cell);
             if (topoConnection != null) {
                 return topoConnection;
             }
             String serverAddr = cellInfo.getServerAddress();
             topoConnection = this.topoFactory.create(cell, serverAddr, cellInfo.getRoot());
             topoConnection = new TopoStatsConnection(cell, topoConnection);
-            this.cells.put(cell, topoConnection);
+            this.cellsTopoConnMap.put(cell, topoConnection);
             return topoConnection;
         } catch (Exception e) {
             if (TopoException.isErrType(e, NO_NODE)) {
@@ -138,15 +156,19 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
     @Override
     public void close() {
         this.globalCell.close();
+        scheduledManager.close();
+
         if (this.globalReadOnlyCell != this.globalCell) {
             this.globalReadOnlyCell.close();
         }
         this.globalCell = null;
         this.globalReadOnlyCell = null;
+        this.keyspaces.clear();
+        this.cells.clear();
         lock.lock();
         try {
-            this.cells.forEach((s, topoConnection) -> topoConnection.close());
-            this.cells = new HashMap<>(16);
+            this.cellsTopoConnMap.forEach((s, topoConnection) -> topoConnection.close());
+            this.cellsTopoConnMap = new HashMap<>(16);
         } finally {
             lock.unlock();
         }
@@ -198,22 +220,46 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
         return cells;
     }
 
-    public String getLocalCell(IContext globalContext, TopoServer topoServer, List<String> cells, String defaultKeyspace) throws TopoException {
-        String localCell = cells.get(0);
+    public Set<String> getCells(IContext ctx) throws TopoException {
+        if (this.cells.isEmpty()) {
+            this.cells.addAll(this.getAllCells(ctx));
+        }
+        return this.cells;
+    }
+
+    public String getLocalCell(IContext globalContext, SrvTopoServer srvTopoServer, Set<String> cells, String defaultKeyspace) throws TopoException {
+        if (this.localCell.isEmpty()) {
+            return resetLocalCell(globalContext, cells, defaultKeyspace);
+        }
+
+        String currentLocalCell = this.localCell;
+        ResilientServer.GetSrvKeyspaceResponse srvKeyspace = srvTopoServer.getSrvKeyspace(globalContext, currentLocalCell, defaultKeyspace);
+        Exception err = srvKeyspace.getException();
+        if (err != null) {
+            return resetLocalCell(globalContext, cells, defaultKeyspace);
+        }
+
+        return currentLocalCell;
+    }
+
+    private String resetLocalCell(IContext globalContext, Set<String> cells, String defaultKeyspace) throws TopoException {
+        String errMessage = "";
         for (String cell : cells) {
             try {
-                Topodata.SrvKeyspace getSrvKeyspace = topoServer.getSrvKeyspace(globalContext, cell, defaultKeyspace);
+                Topodata.SrvKeyspace getSrvKeyspace = this.getSrvKeyspace(globalContext, cell, defaultKeyspace);
                 if (getSrvKeyspace != null) {
-                    localCell = cell;
-                    return localCell;
+                    this.localCell = cell;
+                    return cell;
                 }
             } catch (TopoException e) {
-                if (e.getCode() != TopoExceptionCode.NO_NODE) {
+                if (e.getCode() != NO_NODE) {
                     throw TopoException.wrap(e.getMessage());
                 }
+                errMessage = e.getMessage();
             }
         }
-        return localCell;
+
+        throw TopoException.wrap(NO_NODE, errMessage + " OR invalid local cell: " + cells);
     }
 
     /**
@@ -343,7 +389,6 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
         } catch (TopoException e) {
             if (TopoException.isErrType(e, NO_NODE)) {
                 log.debug("failed to get tablet in cell " + cell + " . error: " + e);
-                return null;
             }
             throw e;
         }
@@ -389,5 +434,32 @@ public class TopoServer implements Resource, TopoCellInfo, TopoSrvKeyspace, Topo
 
     public String getServerAddress() {
         return this.serverAddress;
+    }
+
+    public void addKeyspace(String ks) {
+        this.keyspaces.add(ks);
+    }
+
+    public void startTickerReloadCell(IContext globalContext) {
+        scheduledManager.getScheduledExecutor().scheduleWithFixedDelay(() -> {
+            try {
+                tickerUpdateCells(globalContext);
+            } catch (Throwable e) {
+                log.error("tickerUpdateCells error: " + e);
+            }
+        }, 5, 10, scheduledManager.getTimeUnit());
+    }
+
+    private void tickerUpdateCells(IContext globalContext) throws TopoException {
+        List<String> allCells = this.getAllCells(globalContext);
+        for (String cell : allCells) {
+            if (!this.cells.contains(cell)) {
+                this.cells.add(cell);
+                TopologyWatcherManager.INSTANCE.startWatch(globalContext, this, cell, this.keyspaces);
+
+                TopoServerCollector.geCellsCounter().labels(this.serverAddress).inc();
+            }
+        }
+        TopoServerCollector.getExecCounterCounter().labels(this.serverAddress).inc();
     }
 }

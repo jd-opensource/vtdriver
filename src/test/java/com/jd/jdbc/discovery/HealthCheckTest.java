@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
@@ -617,10 +616,10 @@ public class HealthCheckTest extends TestSuite {
 
     @Test
     public void testPrimaryInOtherCell() throws TopoException, InterruptedException {
-        TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
-
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
+        topoServer.addKeyspace("k");
+        topoServer.startTickerReloadCell(globalContext);
 
         printComment("10. HealthCheck Test Primary in other cell");
         printComment("a. Get Health");
@@ -640,16 +639,18 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals(1, hcList.size());
 
         MockTablet.closeQueryService(mockTablet);
+        TopologyWatcherManager.INSTANCE.close();
+        topoServer.close();
 
         printOk();
     }
 
     @Test
-    public void testReplicaInOtherCell() throws TopoException, InterruptedException {
-        TopologyWatcherManager.INSTANCE.resetScheduledExecutor();
-
+    public void testReplicaInOtherCell() throws TopoException {
         TopoServer topoServer = MemoryTopoFactory.newServerAndFactory("cell1", "cell2").getTopoServer();
         startWatchTopo("k", topoServer, "cell1", "cell2");
+        topoServer.addKeyspace("k");
+        topoServer.startTickerReloadCell(globalContext);
 
         printComment("11. HealthCheck Test Primary in other cell");
         printComment("a. Get Health");
@@ -683,6 +684,8 @@ public class HealthCheckTest extends TestSuite {
         Assert.assertEquals(2, hcList.size());
 
         MockTablet.closeQueryService(mockTablet, mockTablet1);
+        TopologyWatcherManager.INSTANCE.close();
+        topoServer.close();
 
         printOk();
     }
@@ -1145,7 +1148,7 @@ public class HealthCheckTest extends TestSuite {
 
     private void startWatchTopo(String keyspaceName, TopoServer topoServer, String... cells) {
         for (String cell : cells) {
-            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName, TimeUnit.SECONDS);
+            TopologyWatcherManager.INSTANCE.startWatch(globalContext, topoServer, cell, keyspaceName);
         }
     }
 
